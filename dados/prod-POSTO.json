@@ -1,0 +1,416 @@
+{
+ "itens": {
+  "P001": {
+   "c": 2,
+   "e": 100,
+   "n": "Café",
+   "u": "Pacote"
+  },
+  "P002": {
+   "c": "Copa/cozinha",
+   "e": 284,
+   "m": 15,
+   "n": "Copo 180 ml",
+   "u": "Pacote"
+  },
+  "P003": {
+   "c": "Copa/cozinha",
+   "e": 206,
+   "m": 10,
+   "n": "Copo 50 ml",
+   "u": "Pacote"
+  },
+  "P004": {
+   "c": 2,
+   "n": "Copo para café",
+   "u": "Pacote",
+   "x": 1
+  },
+  "P005": {
+   "c": 0,
+   "e": 65,
+   "n": "Desinfetante"
+  },
+  "P006": {
+   "c": 0,
+   "e": 4,
+   "n": "Desinfetante 5 litros"
+  },
+  "P007": {
+   "c": "Material de limpeza",
+   "e": 98,
+   "m": 10,
+   "n": "Água sanitária",
+   "u": "Unidade"
+  },
+  "P008": {
+   "c": 0,
+   "n": "Sabão"
+  },
+  "P009": {
+   "c": "Copa/cozinha",
+   "e": 30,
+   "m": 10,
+   "n": "Açúcar 1kg",
+   "u": "Pacote"
+  },
+  "P010": {
+   "c": 0,
+   "e": 997,
+   "n": "Saco de lixo 100 litros",
+   "u": "Pacote"
+  },
+  "P011": {
+   "c": 0,
+   "n": "Saco de lixo 30 litros",
+   "u": "Pacote"
+  },
+  "P012": {
+   "c": 0,
+   "n": "Saco de lixo 15 litros",
+   "u": "Pacote"
+  },
+  "P013": {
+   "c": "Material de limpeza",
+   "e": 877,
+   "m": 1,
+   "n": "Saco de lixo 20 litros",
+   "u": "Pacote"
+  },
+  "P014": {
+   "c": 0,
+   "e": 928,
+   "n": "Saco branco 100 litros",
+   "u": "Pacote",
+   "x": 1
+  },
+  "P015": {
+   "c": "Material de limpeza",
+   "e": 3,
+   "m": 1,
+   "n": "Luvas nitrílicas",
+   "u": "Caixa"
+  },
+  "P016": {
+   "c": 0,
+   "e": 1,
+   "n": "Par de luvas látex",
+   "u": "Par"
+  },
+  "P017": {
+   "c": "Material de limpeza",
+   "e": 31,
+   "m": 1,
+   "n": "Papel higiênico — fardo 8 unidades",
+   "u": "Pacote"
+  },
+  "P018": {
+   "c": 0,
+   "n": "Bucha de aço"
+  },
+  "P019": {
+   "c": "Material de limpeza",
+   "e": 11,
+   "m": 1,
+   "n": "Bucha 1 UND",
+   "u": "Unidade"
+  },
+  "P020": {
+   "c": 0,
+   "n": "Bombril",
+   "u": "Pacote"
+  },
+  "P021": {
+   "c": 0,
+   "n": "Escova sanitária"
+  },
+  "P022": {
+   "c": 0,
+   "n": "Escova de vaso"
+  },
+  "P023": {
+   "c": 0,
+   "n": "Escova amarela",
+   "x": 1
+  },
+  "P024": {
+   "c": 0,
+   "e": 3,
+   "n": "Pedra de vaso sanitário"
+  },
+  "P025": {
+   "c": 0,
+   "e": 4,
+   "n": "Rodo 60 cm"
+  },
+  "P026": {
+   "c": 0,
+   "n": "Rodo 20 cm"
+  },
+  "P027": {
+   "c": 0,
+   "e": 9,
+   "n": "Vassoura dura"
+  },
+  "P028": {
+   "c": 0,
+   "n": "Vassoura para pista"
+  },
+  "P029": {
+   "c": 0,
+   "e": 4,
+   "n": "Pano multiuso — 300 m",
+   "u": "Rolo"
+  },
+  "P030": {
+   "c": 0,
+   "e": 4,
+   "n": "Pano de chão"
+  },
+  "P031": {
+   "c": 0,
+   "n": "Pano"
+  },
+  "P032": {
+   "c": 0,
+   "n": "Flanela"
+  },
+  "P033": {
+   "c": 0,
+   "n": "Limpa-vidros"
+  },
+  "P034": {
+   "c": 0,
+   "n": "Papel-toalha",
+   "u": "Pacote"
+  },
+  "P035": {
+   "c": 0,
+   "e": 290,
+   "n": "Detergente"
+  },
+  "P036": {
+   "c": 0,
+   "n": "Esponja"
+  },
+  "P037": {
+   "c": 0,
+   "n": "Pá para lixo"
+  },
+  "P038": {
+   "c": 0,
+   "n": "Balde"
+  },
+  "P039": {
+   "c": 0,
+   "n": "Mangueira"
+  },
+  "P040": {
+   "c": 0,
+   "n": "Sacos para descarte",
+   "u": "Pacote"
+  },
+  "P041": {
+   "c": 0,
+   "n": "Aromatizante/odorizador de ambiente"
+  },
+  "P042": {
+   "c": 1,
+   "n": "Papel A4",
+   "u": "Pacote"
+  },
+  "P043": {
+   "c": 1,
+   "n": "Caneta azul"
+  },
+  "P044": {
+   "c": 1,
+   "n": "Caneta preta"
+  },
+  "P045": {
+   "c": 1,
+   "n": "Caneta vermelha"
+  },
+  "P046": {
+   "c": 1,
+   "n": "Lápis"
+  },
+  "P047": {
+   "c": 1,
+   "n": "Borracha"
+  },
+  "P048": {
+   "c": 1,
+   "n": "Apontador"
+  },
+  "P049": {
+   "c": 1,
+   "n": "Marca-texto"
+  },
+  "P050": {
+   "c": 1,
+   "n": "Marcador permanente"
+  },
+  "P051": {
+   "c": 1,
+   "n": "Corretivo"
+  },
+  "P052": {
+   "c": 1,
+   "n": "Régua"
+  },
+  "P053": {
+   "c": 1,
+   "n": "Tesoura"
+  },
+  "P054": {
+   "c": 1,
+   "n": "Estilete"
+  },
+  "P055": {
+   "c": 1,
+   "n": "Cola"
+  },
+  "P056": {
+   "c": 1,
+   "n": "Fita adesiva",
+   "u": "Rolo"
+  },
+  "P057": {
+   "c": 1,
+   "n": "Fita dupla face",
+   "u": "Rolo"
+  },
+  "P058": {
+   "c": 1,
+   "n": "Fita crepe",
+   "u": "Rolo"
+  },
+  "P059": {
+   "c": 1,
+   "n": "Grampeador"
+  },
+  "P060": {
+   "c": 1,
+   "n": "Grampos para grampeador",
+   "u": "Caixa"
+  },
+  "P061": {
+   "c": 1,
+   "n": "Perfurador de papel"
+  },
+  "P062": {
+   "c": 1,
+   "n": "Clips",
+   "u": "Caixa"
+  },
+  "P063": {
+   "c": 1,
+   "n": "Elásticos",
+   "u": "Pacote"
+  },
+  "P064": {
+   "c": 1,
+   "n": "Post-it"
+  },
+  "P065": {
+   "c": 1,
+   "n": "Bloco de anotações"
+  },
+  "P066": {
+   "c": 1,
+   "n": "Caderno",
+   "x": 1
+  },
+  "P067": {
+   "c": 1,
+   "n": "Pasta com elástico"
+  },
+  "P068": {
+   "c": 1,
+   "n": "Pasta catálogo"
+  },
+  "P069": {
+   "c": 1,
+   "n": "Pasta suspensa"
+  },
+  "P070": {
+   "c": 1,
+   "n": "Envelopes",
+   "x": 1
+  },
+  "P071": {
+   "c": 1,
+   "n": "Papel para impressão",
+   "u": "Pacote"
+  },
+  "P072": {
+   "c": 1,
+   "n": "Etiquetas adesivas",
+   "u": "Pacote"
+  },
+  "P073": {
+   "c": 1,
+   "n": "Cartucho/toner para impressora"
+  },
+  "P074": {
+   "c": 1,
+   "n": "Calculadora"
+  },
+  "P075": {
+   "c": 1,
+   "n": "Prancheta"
+  },
+  "P076": {
+   "c": 1,
+   "n": "Livro de protocolo"
+  },
+  "P077": {
+   "c": 1,
+   "n": "Livro de registro"
+  },
+  "P078": {
+   "c": 1,
+   "n": "Carimbo",
+   "x": 1
+  },
+  "P079": {
+   "c": 1,
+   "n": "Almofada para carimbo"
+  },
+  "P080": {
+   "c": 1,
+   "n": "Tinta para carimbo"
+  },
+  "P081": {
+   "c": 1,
+   "n": "Organizador de documentos"
+  },
+  "P082": {
+   "c": 1,
+   "n": "Sacos plásticos para documentos",
+   "u": "Pacote"
+  },
+  "Pmwc9bfv5": {
+   "c": "Material de limpeza",
+   "e": 2,
+   "m": 1,
+   "n": "Espanador",
+   "u": "Unidade"
+  },
+  "Pmwcblh23": {
+   "c": "Copa/cozinha",
+   "e": 9,
+   "m": 1,
+   "n": "Açúcar 2kg",
+   "u": "Pacote"
+  },
+  "Pmwcc5az0": {
+   "c": "Material de limpeza",
+   "e": 450,
+   "m": 1,
+   "n": "Saco de lixo 50 litros",
+   "u": "Unidade"
+  }
+ }
+}

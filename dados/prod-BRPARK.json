@@ -1,0 +1,392 @@
+{
+ "itens": {
+  "B001": {
+   "c": "Copa/cozinha",
+   "e": 32,
+   "m": 10,
+   "n": "Café",
+   "u": "Pacote"
+  },
+  "B002": {
+   "c": "Copa/cozinha",
+   "e": 130,
+   "m": 15,
+   "n": "Copo 180 ml",
+   "u": "Pacote"
+  },
+  "B003": {
+   "c": 2,
+   "e": 99,
+   "n": "Copo 50 ml",
+   "u": "Pacote"
+  },
+  "B004": {
+   "c": 2,
+   "n": "Copo para café",
+   "u": "Pacote"
+  },
+  "B005": {
+   "c": 0,
+   "e": 39,
+   "n": "Desinfetante"
+  },
+  "B006": {
+   "c": 0,
+   "n": "Desinfetante 5 litros"
+  },
+  "B007": {
+   "c": 0,
+   "e": 69,
+   "n": "Água sanitária"
+  },
+  "B008": {
+   "c": 0,
+   "n": "Sabão"
+  },
+  "B009": {
+   "c": "Copa/cozinha",
+   "e": 36,
+   "m": 1,
+   "n": "Açúcar 1 kg",
+   "u": "Pacote"
+  },
+  "B010": {
+   "c": 0,
+   "e": 714,
+   "n": "Saco de lixo 100 litros",
+   "u": "Pacote"
+  },
+  "B011": {
+   "c": 0,
+   "n": "Saco de lixo 30 litros",
+   "u": "Pacote"
+  },
+  "B012": {
+   "c": 0,
+   "n": "Saco de lixo 15 litros",
+   "u": "Pacote"
+  },
+  "B013": {
+   "c": 0,
+   "n": "Saco de lixo 10 litros",
+   "u": "Pacote"
+  },
+  "B014": {
+   "c": 0,
+   "n": "Saco branco 100 litros",
+   "u": "Pacote"
+  },
+  "B015": {
+   "c": 0,
+   "n": "Par de luvas nitrílicas",
+   "u": "Par"
+  },
+  "B016": {
+   "c": 0,
+   "n": "Par de luvas látex",
+   "u": "Par"
+  },
+  "B017": {
+   "c": 0,
+   "e": 18,
+   "n": "Papel higiênico — 8 unidades",
+   "u": "Pacote"
+  },
+  "B018": {
+   "c": 0,
+   "n": "Bucha de aço"
+  },
+  "B019": {
+   "c": 0,
+   "n": "Bucha"
+  },
+  "B020": {
+   "c": 0,
+   "n": "Bombril",
+   "u": "Pacote"
+  },
+  "B021": {
+   "c": 0,
+   "n": "Escova sanitária"
+  },
+  "B022": {
+   "c": 0,
+   "n": "Escova de vaso"
+  },
+  "B023": {
+   "c": 0,
+   "n": "Escova amarela"
+  },
+  "B024": {
+   "c": 0,
+   "n": "Pedra de vaso sanitário"
+  },
+  "B025": {
+   "c": 0,
+   "n": "Rodo 60 cm"
+  },
+  "B026": {
+   "c": 0,
+   "n": "Rodo 20 cm"
+  },
+  "B027": {
+   "c": 0,
+   "n": "Vassoura dura"
+  },
+  "B028": {
+   "c": 0,
+   "n": "Vassoura para pista"
+  },
+  "B029": {
+   "c": 0,
+   "n": "Pano multiuso — 300 m",
+   "u": "Rolo"
+  },
+  "B030": {
+   "c": 0,
+   "n": "Pano de chão"
+  },
+  "B031": {
+   "c": 0,
+   "n": "Pano"
+  },
+  "B032": {
+   "c": 0,
+   "n": "Flanela"
+  },
+  "B033": {
+   "c": 0,
+   "n": "Limpa-vidros"
+  },
+  "B034": {
+   "c": 0,
+   "n": "Papel-toalha",
+   "u": "Pacote"
+  },
+  "B035": {
+   "c": 0,
+   "e": 74,
+   "n": "Detergente"
+  },
+  "B036": {
+   "c": 0,
+   "n": "Esponja"
+  },
+  "B037": {
+   "c": 0,
+   "n": "Pá para lixo"
+  },
+  "B038": {
+   "c": 0,
+   "n": "Balde"
+  },
+  "B039": {
+   "c": 0,
+   "n": "Mangueira"
+  },
+  "B040": {
+   "c": 0,
+   "n": "Sacos para descarte",
+   "u": "Pacote"
+  },
+  "B041": {
+   "c": 0,
+   "n": "Aromatizante/odorizador de ambiente"
+  },
+  "B042": {
+   "c": 1,
+   "n": "Papel A4",
+   "u": "Pacote"
+  },
+  "B043": {
+   "c": 1,
+   "n": "Caneta azul"
+  },
+  "B044": {
+   "c": 1,
+   "n": "Caneta preta"
+  },
+  "B045": {
+   "c": 1,
+   "n": "Caneta vermelha"
+  },
+  "B046": {
+   "c": 1,
+   "n": "Lápis"
+  },
+  "B047": {
+   "c": 1,
+   "n": "Borracha"
+  },
+  "B048": {
+   "c": 1,
+   "n": "Apontador"
+  },
+  "B049": {
+   "c": 1,
+   "n": "Marca-texto"
+  },
+  "B050": {
+   "c": 1,
+   "n": "Marcador permanente"
+  },
+  "B051": {
+   "c": 1,
+   "n": "Corretivo"
+  },
+  "B052": {
+   "c": 1,
+   "n": "Régua"
+  },
+  "B053": {
+   "c": 1,
+   "n": "Tesoura"
+  },
+  "B054": {
+   "c": 1,
+   "n": "Estilete"
+  },
+  "B055": {
+   "c": 1,
+   "n": "Cola"
+  },
+  "B056": {
+   "c": 1,
+   "n": "Fita adesiva",
+   "u": "Rolo"
+  },
+  "B057": {
+   "c": 1,
+   "n": "Fita dupla face",
+   "u": "Rolo"
+  },
+  "B058": {
+   "c": 1,
+   "n": "Fita crepe",
+   "u": "Rolo"
+  },
+  "B059": {
+   "c": 1,
+   "n": "Grampeador"
+  },
+  "B060": {
+   "c": 1,
+   "n": "Grampos para grampeador",
+   "u": "Caixa"
+  },
+  "B061": {
+   "c": 1,
+   "n": "Perfurador de papel"
+  },
+  "B062": {
+   "c": 1,
+   "n": "Clips",
+   "u": "Caixa"
+  },
+  "B063": {
+   "c": 1,
+   "n": "Elásticos",
+   "u": "Pacote"
+  },
+  "B064": {
+   "c": 1,
+   "n": "Post-it"
+  },
+  "B065": {
+   "c": 1,
+   "n": "Bloco de anotações"
+  },
+  "B066": {
+   "c": 1,
+   "n": "Caderno"
+  },
+  "B067": {
+   "c": 1,
+   "n": "Pasta com elástico"
+  },
+  "B068": {
+   "c": 1,
+   "n": "Pasta catálogo"
+  },
+  "B069": {
+   "c": 1,
+   "n": "Pasta suspensa"
+  },
+  "B070": {
+   "c": 1,
+   "n": "Envelopes"
+  },
+  "B071": {
+   "c": 1,
+   "n": "Papel para impressão",
+   "u": "Pacote"
+  },
+  "B072": {
+   "c": 1,
+   "n": "Etiquetas adesivas",
+   "u": "Pacote"
+  },
+  "B073": {
+   "c": 1,
+   "n": "Cartucho/toner para impressora"
+  },
+  "B074": {
+   "c": 1,
+   "n": "Calculadora"
+  },
+  "B075": {
+   "c": 1,
+   "n": "Prancheta"
+  },
+  "B076": {
+   "c": 1,
+   "n": "Livro de protocolo"
+  },
+  "B077": {
+   "c": 1,
+   "n": "Livro de registro"
+  },
+  "B078": {
+   "c": 1,
+   "n": "Carimbo"
+  },
+  "B079": {
+   "c": 1,
+   "n": "Almofada para carimbo"
+  },
+  "B080": {
+   "c": 1,
+   "n": "Tinta para carimbo"
+  },
+  "B081": {
+   "c": 1,
+   "n": "Organizador de documentos"
+  },
+  "B082": {
+   "c": 1,
+   "n": "Sacos plásticos para documentos",
+   "u": "Pacote"
+  },
+  "Bmwcbpanl": {
+   "c": "Material de limpeza",
+   "e": 10,
+   "m": 0,
+   "n": "Açúcar 2kg",
+   "u": "Pacote"
+  },
+  "Bmwcc25ss": {
+   "c": "Material de limpeza",
+   "e": 700,
+   "m": 1,
+   "n": "Saco de 20 litros",
+   "u": "Unidade"
+  },
+  "Bmwcc61wx": {
+   "c": "Material de limpeza",
+   "e": 100,
+   "m": 1,
+   "n": "Saco de lixo 50 litros",
+   "u": "Unidade"
+  }
+ }
+}
