@@ -1,0 +1,18 @@
+{
+ "categorias": [
+  "Material de limpeza",
+  "Material de escritório",
+  "Copa/cozinha",
+  "Outros"
+ ],
+ "unidades": [
+  "Unidade",
+  "Pacote",
+  "Caixa",
+  "Par",
+  "Rolo",
+  "Litro",
+  "Metro",
+  "Fardo"
+ ]
+}
