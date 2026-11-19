@@ -3,9 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b1220">
 <title>Controle de Estoque</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="supabase-config.js"></script>
 <style>
 /* layout: app de uma coluna para o polegar, agora com visual de painel de controle — fundo em grade, cartões de vidro, números em fonte mono */
 :root{
@@ -142,7 +145,7 @@ h2::before{content:"";width:4px;height:18px;border-radius:2px;background:var(--c
 </style>
 </head>
 <body>
-<div id="app"><div class="top"><div><h1>Controle de estoque</h1><p class="sub">Posto &amp; BR Park</p></div></div><div class="pad"><div class="card empty" id="boot">Carregando o estoque…</div></div></div>
+<div id="app"><div class="top"><div><h1>Controle de estoque</h1><p class="sub">Posto &amp; BR Park · Aplicativo independente</p></div></div><div class="pad"><div class="card empty" id="boot">Carregando o estoque…</div></div></div>
 <div id="veil"><div id="sheet" role="dialog" aria-modal="true"></div></div>
 <div id="toast" role="status"></div>
 <input type="file" id="pick" accept="image/*" hidden>
@@ -182,11 +185,79 @@ function photo(pid, it){
   return src ? `<img src="${src}" alt="">` : esc((it.n || "?").slice(0,2).toUpperCase());
 }
 
-/* ---------- gravação ---------- */
+/* ---------- banco online (Supabase) ---------- */
+function deepMerge(target, patch){
+  if (!patch || typeof patch !== "object" || Array.isArray(patch)) return patch;
+  const out = (target && typeof target === "object" && !Array.isArray(target)) ? {...target} : {};
+  for (const [k,v] of Object.entries(patch)) out[k] = (v && typeof v === "object" && !Array.isArray(v)) ? deepMerge(out[k], v) : v;
+  return out;
+}
+function createLocalDB(){
+  const KEYDB = "estoque.db.v1"; let store={};
+  try { store=JSON.parse(localStorage.getItem(KEYDB)||"{}"); } catch(e) { store={}; }
+  const save=()=>localStorage.setItem(KEYDB,JSON.stringify(store));
+  const emit=path=>{ const ls=window.__estoqueListeners?.[path]||[]; const snap={exists:store[path]!==undefined,data:()=>store[path]}; ls.forEach(fn=>{try{fn(snap)}catch(e){}}); };
+  const notify=()=>Object.values(window.__estoqueCollectionListeners||{}).flat().forEach(fn=>{try{fn()}catch(e){}});
+  const doc=path=>({set:async d=>{store[path]=JSON.parse(JSON.stringify(d||{}));save();emit(path);notify()},update:async p=>{store[path]=deepMerge(store[path]||{},p||{});save();emit(path);notify()},onSnapshot:fn=>{window.__estoqueListeners||={};(window.__estoqueListeners[path]||=[]).push(fn);fn({exists:store[path]!==undefined,data:()=>store[path]});return()=>{window.__estoqueListeners[path]=(window.__estoqueListeners[path]||[]).filter(x=>x!==fn)}}});
+  const collection=name=>({onSnapshot:fn=>{const send=()=>fn({docs:Object.entries(store).filter(([k])=>k.startsWith(name+"/")).map(([k,v])=>({id:k.slice(name.length+1),data:()=>v}))});window.__estoqueCollectionListeners||={};(window.__estoqueCollectionListeners[name]||=[]).push(send);send();return()=>{window.__estoqueCollectionListeners[name]=(window.__estoqueCollectionListeners[name]||[]).filter(x=>x!==send)}}});
+  return {doc,collection};
+}
+function createSupabaseDB(){
+  /* Lê e grava na tabela public.app_docs (colunas id, data). IDs: cfg/main, prod/POSTO, prod/BRPARK, foto/<código>, movs/<AAAA-MM>. */
+  const cfg = window.ESTOQUE_SUPABASE || {};
+  const url = String(cfg.url || "").trim(), key = String(cfg.anonKey || "").trim();
+  if (!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(url) || !key) { console.error("supabase-config.js: url ou anonKey inválidos."); return null; }
+  const base = url.replace(/\/$/,"") + "/rest/v1/app_docs";
+  const headers = {"apikey":key,"Content-Type":"application/json","Accept":"application/json"};
+  if (/^eyJ/.test(key)) headers.Authorization = "Bearer " + key; // chave anon antiga (JWT); a publicável sb_publishable_ vai só em apikey
+  const pollMs = Math.max(2000, Number(cfg.pollMs) || 5000);
+  const cache = new Map();
+  async function req(q, opts={}){
+    const r = await fetch(base + q, {...opts, cache:"no-store", headers:{...headers, ...(opts.headers||{})}});
+    const txt = await r.text();
+    if (!r.ok) { const e = new Error("Supabase HTTP " + r.status + ": " + txt); e.status = r.status; throw e; }
+    return txt ? JSON.parse(txt) : null;
+  }
+  const enc = s => encodeURIComponent(s);
+  async function getDoc(id){
+    const rows = await req("?id=eq." + enc(id) + "&select=id,data");
+    if (!rows || !rows.length) return {exists:false, id, data:()=>undefined};
+    const d = rows[0].data; cache.set(id, d); return {exists:true, id, data:()=>d};
+  }
+  const docListeners = new Map();
+  async function notifyDoc(id){ const s = await getDoc(id); (docListeners.get(id)||[]).forEach(fn => { try { fn(s); } catch(e) { console.error(e); } }); }
+  const doc = id => ({
+    async set(data){ await req("", {method:"POST", headers:{Prefer:"resolution=merge-duplicates,return=minimal"}, body:JSON.stringify({id, data})}); cache.set(id, data); await notifyDoc(id); },
+    async update(patch){ const cur = (await getDoc(id)).data(); const data = deepMerge(cur || {}, patch || {});
+      if (cur === undefined) await req("", {method:"POST", headers:{Prefer:"resolution=merge-duplicates,return=minimal"}, body:JSON.stringify({id, data})});
+      else await req("?id=eq." + enc(id), {method:"PATCH", headers:{Prefer:"return=minimal"}, body:JSON.stringify({data})});
+      cache.set(id, data); await notifyDoc(id); },
+    onSnapshot(fn, onErr){
+      const arr = docListeners.get(id) || []; arr.push(fn); docListeners.set(id, arr);
+      let active = true;
+      const poll = () => getDoc(id).then(s => { if (active) fn(s); }).catch(e => { console.error(e); if (active && onErr) onErr(e); });
+      poll(); const t = setInterval(poll, pollMs);
+      return () => { active = false; clearInterval(t); docListeners.set(id, (docListeners.get(id)||[]).filter(x => x !== fn)); };
+    }
+  });
+  const collection = name => ({ onSnapshot(fn, onErr){
+    let active = true;
+    const poll = async () => {
+      try {
+        const rows = await req("?id=like." + enc(name + "/") + "*&select=id,data");
+        if (!active) return;
+        fn({docs:(rows||[]).map(x => ({id:x.id.slice(name.length+1), data:()=>x.data}))});
+      } catch(e) { console.error(e); if (active && onErr) onErr(e); }
+    };
+    poll(); const t = setInterval(poll, pollMs);
+    return () => { active = false; clearInterval(t); };
+  }});
+  return {doc, collection};
+}
 async function safe(fn, okMsg){
-  if (!S.db) { toast("Sem conexão com o banco de dados."); return false; }
+  if (!S.db) { toast("Banco online indisponível."); return false; }
   try { await fn(); if (okMsg) toast(okMsg); return true; }
-  catch(e){ toast(e && e.code === "invalid_argument" ? "Esta conta não tem permissão para gravar." : e && e.code === "quota_exceeded" ? "O banco de dados está cheio." : "Não foi possível gravar. Tente de novo."); return false; }
+  catch(e){ toast(e && e.code === "quota_exceeded" ? "Armazenamento cheio. Faça um backup e remova fotos antigas." : "Não foi possível gravar. Tente de novo."); return false; }
 }
 async function addMov(m){
   const d = new Date(m.t), ym = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0");
@@ -211,11 +282,12 @@ function render(){
   if (ADMIN_VIEWS.includes(S.view) && !S.admin) S.view = "home";
   const V = {local:vLocal, rel:vRel, admin:vAdmin, aprod:vAProd, ausers:vAUsers, acfg:vACfg};
   app.innerHTML = (V[S.view] || vHome)();
+  if (S.view === "local") { const sel = $("#oper"); console.log("[ESTOQUE] opções finais do select:", sel ? Array.from(sel.options).map(o => o.textContent) : "select #oper não encontrado na tela"); }
   if (S.view === "local") renderList();
   if (S.view === "aprod") renderAList();
 }
 function bootMsg(){
-  if (S.state === "nodb") return `<div class="note crit">Não foi possível abrir o banco de dados deste aplicativo. Abra-o com a conta Claude do dono (a mesma que criou o aplicativo) e com internet.</div>`;
+  if (S.state === "nodb") return `<div class="note crit">Não foi possível conectar ao banco online. Confira a configuração do Supabase e a conexão com a internet.</div>`;
   if (S.state === "slow") return `<div class="note">Ainda sem resposta do banco de dados. Confira a internet; o aplicativo continua tentando.</div>`;
   if (S.state === "empty") return `<div class="card empty">O estoque ainda está sendo preparado. Volte em instantes.</div>`;
   return `<div class="card empty">Carregando o estoque…</div>`;
@@ -238,9 +310,11 @@ function vHome(){
     <button class="adm" data-act="admin">⚙️ Administração</button></div>`;
 }
 function vLocal(){
-  const c = cfg(), cats = ["Todos", ...c.categorias];
+  const c = cfg(), cats = ["Todos", ...(Array.isArray(c.categorias) ? c.categorias : [])];
+  const nomes = Array.isArray(c.usuarios) ? c.usuarios : [];
   return `<div class="top"><button class="back" data-act="home">Voltar</button><img class="hlogo" src="${LOGO[S.local]}" alt=""><h1>${S.local}</h1></div><div class="pad">
-    <label class="f" for="oper"><span class="lead" style="color:var(--ink)">Olá! Quem está retirando?</span><select id="oper" class="inp who"><option value="">Selecione o seu nome</option>${c.usuarios.map(u => `<option ${u === S.oper ? "selected" : ""}>${esc(u)}</option>`).join("")}</select></label>
+    <label class="f" for="oper"><span class="lead" style="color:var(--ink)">Olá! Quem está retirando?</span><select id="oper" class="inp who"><option value="">Selecione o seu nome</option>${nomes.map(u => `<option ${u === S.oper ? "selected" : ""}>${esc(u)}</option>`).join("")}</select></label>
+    ${(console.log("[ESTOQUE] Select preenchido:", nomes.length, "funcionário(s) em " + S.local), "")}
     ${S.oper ? `<label class="f" for="busca">Pesquisar produto<input id="busca" class="inp" type="search" placeholder="Ex.: sabão, copo, caneta" value="${esc(S.busca)}" autocomplete="off"></label>
     <div class="chips">${cats.map(k => `<button class="chip ${k === S.cat ? "on" : ""}" data-act="cat" data-c="${esc(k)}">${esc(k)}</button>`).join("")}</div>
     <div class="grid" id="list"></div>` : `<div class="card empty">Selecione o seu nome para ver os produtos.</div>`}</div>`;
@@ -252,6 +326,7 @@ function filtrados(local, busca, cat){
 function renderList(){
   const el = $("#list"); if (!el) return;
   const arr = filtrados(S.local, S.busca, S.cat);
+  console.log("[ESTOQUE] " + S.local + ": produtos enviados para renderizar =", arr.length, "| com busca/categoria:", S.busca || S.cat);
   el.innerHTML = arr.length ? arr.map(([pid,it]) => { const st = status(it); return `<div class="pcard">
       <div class="pic">${photo(pid,it)}</div>
       <div class="body"><h3>${esc(it.n)}</h3><div class="est">Estoque: <b>${fmt(it.e)}</b> ${esc(it.u || "")}</div><span class="pill ${st}" style="align-self:flex-start">${STXT[st]}</span>
@@ -596,9 +671,14 @@ document.addEventListener("change", ev => {
 document.addEventListener("keydown", ev => { if (ev.key === "Escape") closeSheet(); });
 
 /* ---------- dados ---------- */
+let ultimaAssinatura = null;
 function refresh(){
   if (S.got.cfg && S.got.prod) S.state = (S.cfg && (itens("POSTO").length || itens("BR PARK").length)) ? "ok" : "empty";
-  const ae = document.activeElement, typing = ae && ["busca","abusca"].includes(ae.id);
+  // as consultas automáticas chamam refresh() a cada poucos segundos; sem mudança real, não redesenha (senão o select fecha antes da escolha)
+  const assinatura = [S.state, S.view, S.local, S.oper, S.cat, S.busca, S.admin, JSON.stringify(S.cfg), JSON.stringify(S.prod), Object.keys(S.fotos).length, Object.keys(S.movs).length, Object.values(S.movs).reduce((n, d) => n + Object.keys(d.itens || {}).length, 0)].join("|");
+  if (assinatura === ultimaAssinatura) return;
+  ultimaAssinatura = assinatura;
+  const ae = document.activeElement, typing = ae && (["busca","abusca"].includes(ae.id) || ae.tagName === "SELECT");
   if ($("#veil").classList.contains("open")) { if (S.view === "local") renderList(); else if (S.view === "aprod") renderAList(); return; }
   if (S.state === "ok" && typing) { if (S.view === "local") renderList(); else renderAList(); }
   else render();
@@ -606,20 +686,59 @@ function refresh(){
 (async function start(){
   render();
   const slow = setTimeout(() => { if (S.state === "boot") { S.state = "slow"; render(); } }, 10000);
-  let db = null;
-  try { db = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch(e) {}
-  if (!db) { clearTimeout(slow); S.state = "nodb"; render(); return; }
+  const falhou = e => { console.error("Banco online:", e); if (S.state !== "ok") { clearTimeout(slow); S.state = "nodb"; render(); } };
+  const db = createSupabaseDB();
+  if (!db) { falhou(new Error("Configuração do Supabase ausente ou inválida.")); return; }
   S.db = db;
-  const dead = () => { clearTimeout(slow); if (S.state !== "ok") { S.state = "nodb"; render(); } };
-  db.doc("cfg/main").onSnapshot(s => { S.cfg = s.exists ? s.data() : null; S.got.cfg = true; if (S.state === "slow") S.state = "boot"; clearTimeout(slow); refresh(); }, dead);
-  db.collection("prod").onSnapshot(q => { for (const d of q.docs) { const l = d.id === "POSTO" ? "POSTO" : "BR PARK"; const src = (d.data() || {}).itens || {}, out = {};
-      for (const [id, it] of Object.entries(src)) { if (!it || typeof it !== "object") continue;
+  const localPhotoMap = {};
+  ["B003.jpg","B005.jpg","B035.jpg","Bmwcbpanl.jpg","P002.jpg","P003.jpg","P005.jpg","P007.jpg","P009.jpg","P016.jpg","P017.jpg","P024.jpg","P027.jpg","P028.jpg","P029.jpg","P035.jpg","Pmwcblh23.jpg"].forEach(f => localPhotoMap[f.replace(/\.jpg$/i,"")] = "dados/fotos/" + f);
+  S.fotos = {...localPhotoMap};
+  // cfg/main → usuários (campo "Selecione o seu nome"), colaboradores, categorias, unidades, senha
+  // cfg/main → public.app_docs (id = 'cfg/main'): lê o campo data e extrai a lista "usuarios" (select "Selecione o seu nome")
+  console.log("[ESTOQUE] Buscando cfg/main…");
+  db.doc("cfg/main").onSnapshot(s => {
+    clearTimeout(slow);
+    try {
+      if (!s.exists) throw new Error("nenhuma linha com id = 'cfg/main' em public.app_docs");
+      let dados = s.data();
+      if (typeof dados === "string") { console.log("[ESTOQUE] campo data veio como texto; convertendo JSON…"); dados = JSON.parse(dados); }
+      if (!dados || typeof dados !== "object" || Array.isArray(dados)) throw new Error("campo data não é um objeto JSON (tipo recebido: " + (Array.isArray(dados) ? "array" : typeof dados) + ")");
+      S.cfg = dados;
+      console.log("[ESTOQUE] cfg/main encontrado");
+      console.log("[ESTOQUE] Dados do cfg/main:", dados);
+      if (!Array.isArray(dados.usuarios)) throw new Error("propriedade 'usuarios' ausente ou não é lista. Chaves recebidas: " + Object.keys(dados).join(", "));
+      const nomes = dados.usuarios.filter(x => typeof x === "string" && x.trim() !== "");
+      console.log("[ESTOQUE] Funcionários encontrados (" + nomes.length + "):", nomes);
+      if (nomes.length === 0) console.warn("[ESTOQUE] 'usuarios' está vazio em cfg/main: o select 'Selecione o seu nome' não terá nomes para mostrar.");
+    } catch (err) {
+      console.error("[ESTOQUE] ERRO AO CARREGAR cfg/main:", err && err.message ? err.message : err);
+      S.cfg = null;
+    }
+    S.got.cfg = true; refresh();
+  }, err => { console.error("[ESTOQUE] ERRO AO CARREGAR cfg/main:", err && err.message ? err.message : err); falhou(err); });
+  // prod/POSTO → produtos do POSTO; prod/BRPARK → produtos do BR PARK
+  db.collection("prod").onSnapshot(q => {
+    console.log("[ESTOQUE] prod: registros encontrados em public.app_docs:", q.docs.map(d => d.id));
+    if (!q.docs.some(d => d.id === "POSTO")) console.error("[ESTOQUE] ERRO AO CARREGAR produtos do POSTO: prod/POSTO não encontrado em public.app_docs");
+    for (const d of q.docs) {
+      const l = d.id === "POSTO" ? "POSTO" : d.id === "BRPARK" ? "BR PARK" : null;
+      if (!l) continue;
+      const src = (d.data() || {}).itens || {}, out = {};
+      for (const [id, it] of Object.entries(src)) {
+        if (!it || typeof it !== "object") continue;
         out[id] = {...it, c: typeof it.c === "number" ? (BASECATS[it.c] || "Outros") : (it.c || "Outros"), u: it.u || "Unidade", m: it.m ?? 1, e: num(it.e),
-          i: Number.isInteger(it.i) ? it.i : (/^[PB]\d{3}$/.test(id) ? Number(id.slice(1)) - 1 : undefined)}; }
-      S.prod[l] = out; } S.got.prod = true; refresh(); }, dead);
-  db.collection("foto").onSnapshot(q => { const o = {}; for (const d of q.docs) { const v = d.data(); if (v && typeof v.d === "string" && v.d.startsWith("data:image/")) o[d.id] = v.d; } S.fotos = o; if (S.state === "ok") refresh(); }, () => {});
+          i: Number.isInteger(it.i) ? it.i : (/^[PB]\d{3}$/.test(id) ? Number(id.slice(1)) - 1 : undefined)};
+      }
+      S.prod[l] = out;
+      console.log("[ESTOQUE] dados brutos de " + d.id + ":", d.data());
+      console.log("[ESTOQUE] " + l + ": produtos identificados =", Object.keys(out).length, "(ativos:", Object.values(out).filter(x => !x.x && x.n).length + ")");
+    }
+    S.got.prod = true; refresh();
+  }, falhou);
+  db.collection("foto").onSnapshot(q => { const o = {...localPhotoMap}; for (const d of q.docs) { const v = d.data(); if (v && typeof v.d === "string" && v.d.startsWith("data:image/")) o[d.id] = v.d; } S.fotos = o; if (S.state === "ok") refresh(); }, () => {});
   db.collection("movs").onSnapshot(q => { const o = {}; for (const d of q.docs) o[d.id] = d.data() || {}; S.movs = o; if (S.state === "ok") refresh(); }, () => {});
 })();
 </script>
+<script>if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js?v=2').catch(()=>{});</script>
 </body>
 </html>

@@ -1,37 +1,27 @@
 # Controle de Estoque — Posto & BR Park
 
-App web de uma página para controlar o estoque de materiais (limpeza, escritório, copa/cozinha) de dois locais: **POSTO (ALDO)** e **BR PARK**.
+App web (um único `index.html`) que lê e grava no Supabase, tabela `public.app_docs` (colunas `id`, `data`).
 
-Funções: retirada de materiais por colaborador, entrada de estoque, cadastro e edição de produtos, fotos dos produtos, painel administrativo com indicadores, histórico e relatórios mensais, gestão de usuários, categorias e unidades.
-
-## Arquivos
-
-| Caminho | O que é |
+## Documentos usados
+| id | conteúdo |
 |---|---|
-| `index.html` | O app completo (HTML, CSS e JavaScript num único arquivo, com as fotos padrão e as logos embutidas). |
-| `dados/prod-POSTO.json`, `dados/prod-BRPARK.json` | Cadastro e saldo dos produtos de cada local. |
-| `dados/cfg-main.json` | Categorias e unidades de medida. |
-| `dados/fotos/` | Fotos de produtos trocadas pelos usuários (nome do arquivo = código do produto). |
-| `dados/logos/` | Logos da ALDO e da BR Park. |
+| `cfg/main` | `usuarios` (lista do campo "Selecione o seu nome"), `colaboradores`, `categorias`, `unidades`, `senha` |
+| `prod/POSTO` | produtos do POSTO em `itens` |
+| `prod/BRPARK` | produtos do BR PARK em `itens` |
+| `foto/<código>` | fotos trocadas pelos usuários |
+| `movs/<AAAA-MM>` | histórico de movimentações do mês |
 
-Nomes de colaboradores e operadores, o histórico de movimentações e a senha da área administrativa **não** estão no repositório.
+O app não grava nada ao abrir e não lê dados de arquivos locais. As fotos padrão e as logos ficam em `dados/fotos` e `dados/logos`.
 
-## Como executar
+## Configuração
+`supabase-config.js`: `url` (Project URL) e `anonKey` (Publishable key `sb_publishable_...` ou anon `eyJ...`).
 
-O app foi feito como um Artifact do claude.ai e guarda os dados no banco do artefato, acessado por `window.claude.use("db")`.
+## Como abrir no computador
+Na pasta do projeto, no Terminal:
 
-- **Dentro do claude.ai:** publique `index.html` como Artifact com a capacidade `db` (e `user`). Os dados ficam no banco compartilhado do artefato.
-- **Fora do claude.ai:** o arquivo abre em qualquer navegador, mas mostra "sem conexão com o banco de dados", porque esse banco não existe fora do claude.ai. Para rodar de forma independente é preciso trocar `window.claude.use("db")` por outro banco (Firebase, Supabase etc.) com a mesma interface abaixo.
+    python3 -m http.server 5500
 
-### Estrutura do banco
+e abra http://localhost:5500
 
-| Documento | Conteúdo |
-|---|---|
-| `cfg/main` | `usuarios`, `colaboradores`, `categorias`, `unidades`, `senha`/`senhaHash` |
-| `prod/POSTO`, `prod/BRPARK` | `itens: { <código>: { n: nome, c: categoria, u: unidade, m: mínimo, e: estoque, x: 1 se excluído } }` |
-| `foto/<código>` | `d`: imagem em data URL |
-| `movs/<AAAA-MM>` | `a`: ano, `m`: mês, `itens: { <id>: { t, l, p, n, tp, q, a, d, u, c } }` — `tp`: R retirada, E entrada, C cadastro, X correção, D exclusão |
-
-Interface usada: `db.doc(caminho).onSnapshot / set / update` e `db.collection(nome).onSnapshot`.
-
-Para carregar os dados desta pasta num banco novo, grave cada arquivo `dados/*.json` no documento de mesmo nome (`prod-POSTO.json` → `prod/POSTO`) e cada foto em `foto/<código>` como data URL.
+## Publicar
+Suba todos os arquivos da pasta em qualquer hospedagem estática com HTTPS (GitHub Pages, Netlify, Vercel, Cloudflare Pages).
