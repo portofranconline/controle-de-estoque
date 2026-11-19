@@ -870,9 +870,14 @@ function vSetup(){
     <label class="f" for="sKey" style="margin-top:8px">Chave publicável<input id="sKey" class="inp" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="sb_publishable_..."></label>
     <div id="sErr" class="note crit" hidden style="margin-top:10px"></div>
     <button class="btn pri" style="margin-top:12px" data-act="salvarBanco">Salvar e conectar</button></div>
-    <div class="card"><h2>Projeto novo?</h2>
-    <p class="meta" style="margin:6px 0 10px">No projeto do Supabase, abra o SQL Editor, cole o SQL de instalação e clique em Run. Depois volte aqui.</p>
-    <button class="btn" data-act="copiarSql">📋 Copiar SQL de instalação</button></div></div>`;
+    <div class="card"><h2>Nova unidade? Crie o banco aqui</h2>
+    <ol class="meta" style="margin:6px 0 10px 18px;line-height:1.7">
+      <li>Toque em <b>Criar projeto no Supabase</b> e entre com sua conta (ou crie uma, grátis). Dê o nome da unidade e uma senha do banco, e guarde-a.</li>
+      <li>Toque em <b>Copiar SQL de instalação</b>. No projeto novo, abra o <b>SQL Editor</b>, cole e clique em <b>Run</b>.</li>
+      <li>No projeto, pegue a <b>Project URL</b> (Settings → Data API) e a <b>chave publicável</b> (Settings → API Keys) e cole acima.</li>
+    </ol>
+    <a class="btn brand" href="https://supabase.com/dashboard/new" target="_blank" rel="noopener">🌐 Criar projeto no Supabase</a>
+    <button class="btn" style="margin-top:8px" data-act="copiarSql">📋 Copiar SQL de instalação</button></div></div>`;
 }
 async function salvarBanco(b){
   const u = $("#sUrl").value.trim().replace(/\/$/, ""), k = $("#sKey").value.trim(), e = $("#sErr");
