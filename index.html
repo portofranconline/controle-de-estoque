@@ -185,6 +185,140 @@ function photo(pid, it){
   return src ? `<img src="${src}" alt="">` : esc((it.n || "?").slice(0,2).toUpperCase());
 }
 
+/* ---------- login (Supabase Auth) ---------- */
+const AUTH = {url:"", key:""};
+const SESS_KEY = "estoque.sessao";
+let refrescando = null;
+function sessaoSalva(){ try { return JSON.parse(localStorage.getItem(SESS_KEY) || "null"); } catch(e) { return null; } }
+function gravaSessao(s){ S.sess = s || null; try { if (s) localStorage.setItem(SESS_KEY, JSON.stringify(s)); else localStorage.removeItem(SESS_KEY); } catch(e) {} }
+function guardaTokens(j, uid){ gravaSessao({access:j.access_token, refresh:j.refresh_token, exp:Date.now() + Number(j.expires_in || 3600) * 1000, uid:(j.user && j.user.id) || uid}); }
+async function api(metodo, caminho, corpo, comToken = true){
+  const h = {apikey:AUTH.key, "Content-Type":"application/json", Accept:"application/json"};
+  if (comToken) Object.assign(h, await authHeader());
+  const r = await fetch(AUTH.url + caminho, {method:metodo, headers:h, body: corpo === undefined ? undefined : JSON.stringify(corpo), cache:"no-store"});
+  const txt = await r.text(); let j = null; try { j = txt ? JSON.parse(txt) : null; } catch(e) {}
+  if (!r.ok) { const err = new Error((j && (j.message || j.msg || j.error_description || j.error)) || ("HTTP " + r.status)); err.status = r.status; throw err; }
+  return j;
+}
+async function authHeader(){
+  const t = await tokenValido();
+  if (t) return {Authorization:"Bearer " + t};
+  return /^eyJ/.test(AUTH.key) ? {Authorization:"Bearer " + AUTH.key} : {};
+}
+async function tokenValido(){
+  const s = S.sess; if (!s) return null;
+  if (s.exp - 60000 > Date.now()) return s.access;
+  if (!refrescando) refrescando = (async () => {
+    try { const j = await api("POST", "/auth/v1/token?grant_type=refresh_token", {refresh_token:s.refresh}, false); guardaTokens(j, s.uid); return S.sess ? S.sess.access : null; }
+    catch (e) { console.error("Sessão:", e); if (S.perfil) voltaLogin("Sessão expirada. Entre de novo."); else gravaSessao(null); return null; }
+    finally { refrescando = null; }
+  })();
+  return refrescando;
+}
+async function loginComSenha(email, senha){ const j = await api("POST", "/auth/v1/token?grant_type=password", {email, password:senha}, false); guardaTokens(j); }
+async function carregaPerfil(){
+  if (!S.sess) return false;
+  const rows = await api("GET", "/rest/v1/perfis?user_id=eq." + S.sess.uid + "&select=login,papel");
+  if (!rows || !rows.length) return false;
+  S.perfil = rows[0]; return true;
+}
+function entrarNoApp(){
+  S.admin = S.perfil.papel === "admin"; S.adminNome = S.perfil.login; S.oper = S.perfil.login;
+  try { localStorage.setItem("estoque.oper", S.oper); } catch(e) {}
+  S.view = "home"; S.state = "boot"; iniciarDados(); refresh(); render();
+}
+function voltaLogin(msg){ gravaSessao(null); S.perfil = null; S.admin = false; S.adminNome = ""; S.oper = ""; S.view = "home"; S.state = "login"; closeSheet(); render(); if (msg) toast(msg); }
+function emailDe(v){ v = String(v || "").trim(); return v.includes("@") ? v.toLowerCase() : semAcento(v).replace(/[^a-z0-9]/g, "") + "@estoque.local"; }
+function vLogin(){
+  const criar = S.modoLogin === "criar";
+  return `<div class="top"><div><h1>Controle de estoque</h1><p class="sub">Posto &amp; BR Park · ${criar ? "primeiro acesso" : "entrar"}</p></div></div><div class="pad">
+    <div class="card"><h2>${criar ? "Criar administrador" : "Entrar"}</h2>
+    ${criar ? `<p class="meta" style="margin:6px 0 10px">Ainda não há administrador. Crie a conta do administrador agora.</p>
+    <label class="f" for="lNome">Nome<input id="lNome" class="inp" autocomplete="name"></label>
+    <label class="f" for="lEmail" style="margin-top:8px">E-mail<input id="lEmail" class="inp" type="email" autocomplete="email"></label>`
+    : `<label class="f" for="lUser">Login<input id="lUser" class="inp" autocomplete="username" autocapitalize="none" spellcheck="false"></label>`}
+    <label class="f" for="lSenha" style="margin-top:8px">Senha<input id="lSenha" class="inp" type="password" autocomplete="${criar ? "new-password" : "current-password"}"></label>
+    <div id="lErr" class="note crit" hidden style="margin-top:10px"></div>
+    <button class="btn pri" style="margin-top:12px" data-act="${criar ? "criarAdmin" : "entrar"}">${criar ? "Criar administrador e entrar" : "Entrar"}</button>
+    <button class="adm" style="margin-top:14px;align-self:center" data-act="trocarBanco">Trocar banco de dados</button>
+    </div></div>`;
+}
+async function entrar(b){
+  const u = $("#lUser").value, p = $("#lSenha").value, e = $("#lErr");
+  if (!u.trim() || !p) { e.textContent = "Digite o login e a senha."; e.hidden = false; return; }
+  b.disabled = true; e.hidden = true;
+  try {
+    await loginComSenha(emailDe(u), p);
+    if (!(await carregaPerfil())) { gravaSessao(null); throw new Error("Este login não tem acesso ao estoque."); }
+    entrarNoApp();
+  } catch (err) {
+    console.error("Login:", err);
+    e.textContent = (err.status === 400 || /invalid/i.test(err.message)) ? "Login ou senha incorretos." : err.message; e.hidden = false; b.disabled = false;
+  }
+}
+async function criarAdmin(b){
+  const nome = $("#lNome").value.trim(), email = $("#lEmail").value.trim().toLowerCase(), p = $("#lSenha").value, e = $("#lErr");
+  let msg = "";
+  if (!nome) msg = "Digite o nome."; else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) msg = "Digite um e-mail válido."; else if (p.length < 6) msg = "Use uma senha com pelo menos 6 caracteres.";
+  if (msg) { e.textContent = msg; e.hidden = false; return; }
+  b.disabled = true; e.hidden = true;
+  try {
+    await api("POST", "/rest/v1/rpc/criar_primeiro_admin", {p_login:nome, p_email:email, p_senha:p}, false);
+    await loginComSenha(email, p);
+    if (!(await carregaPerfil())) throw new Error("Administrador criado, mas o acesso não foi carregado. Recarregue a página.");
+    entrarNoApp();
+  } catch (err) { console.error("Criar administrador:", err); e.textContent = err.message; e.hidden = false; b.disabled = false; }
+}
+function shMinhaSenha(){
+  openSheet(`<h2>Trocar minha senha</h2>
+    <label class="f" for="novaSenha">Nova senha (mínimo 6 caracteres)<input id="novaSenha" class="inp" type="password" autocomplete="new-password" autofocus></label>
+    <div id="err" class="note crit" hidden></div>
+    <div class="row"><button class="btn" data-act="fechar">Cancelar</button><button class="btn pri" data-act="salvarMinhaSenha">Salvar</button></div>`);
+}
+async function salvarMinhaSenha(b){
+  const v = $("#novaSenha").value, e = $("#err");
+  if (v.length < 6) { e.textContent = "Use pelo menos 6 caracteres."; e.hidden = false; return; }
+  b.disabled = true;
+  try { await api("PUT", "/auth/v1/user", {password:v}); closeSheet(); toast("Senha trocada."); }
+  catch (err) { e.textContent = err.message; e.hidden = false; b.disabled = false; }
+}
+async function carregaLogins(){
+  try { S.logins = (await api("GET", "/rest/v1/perfis?select=login,papel&order=login.asc")) || []; }
+  catch (e) { console.error("Logins:", e); S.logins = []; toast("Não foi possível carregar os logins."); }
+  if (S.view === "ausers") render();
+}
+function secaoLogins(){
+  const l = S.logins || [], ops = l.filter(x => x.papel === "operador");
+  return `<div class="card"><h2>Logins de acesso</h2>
+    <p class="meta" style="margin:6px 0 10px">Crie o login e a senha inicial de cada pessoa. Depois, a pessoa troca a senha em "Trocar minha senha".</p>
+    <div class="list" style="margin-bottom:12px">${l.length ? l.map(x => `<div class="meta"><b>${esc(x.login)}</b><span class="pill ${x.papel === "admin" ? "warn" : "good"}">${x.papel === "admin" ? "administrador" : "operador"}</span></div>`).join("") : '<div class="empty">Nenhum login ainda.</div>'}</div>
+    <label class="f" for="nLogin">Novo login<input id="nLogin" class="inp" autocomplete="off" placeholder="Ex.: Kaliel"></label>
+    <label class="f" for="nSenha" style="margin-top:8px">Senha inicial (mínimo 6 caracteres)<input id="nSenha" class="inp" type="password" autocomplete="new-password"></label>
+    <button class="btn brand" style="margin-top:8px" data-act="criarLogin">Criar login</button>
+    <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
+    <label class="f" for="rLogin">Redefinir senha de<select id="rLogin" class="inp"><option value="">Selecione</option>${ops.map(x => `<option>${esc(x.login)}</option>`).join("")}</select></label>
+    <label class="f" for="rSenha" style="margin-top:8px">Nova senha<input id="rSenha" class="inp" type="password" autocomplete="new-password"></label>
+    <button class="btn" style="margin-top:8px" data-act="redefinirSenha">Redefinir senha</button></div>`;
+}
+async function criarLogin(b){
+  const nome = $("#nLogin").value.trim(), senha = $("#nSenha").value;
+  if (!nome) return toast("Digite o nome do login.");
+  if (senha.length < 6) return toast("Use uma senha com pelo menos 6 caracteres.");
+  b.disabled = true;
+  try { await api("POST", "/rest/v1/rpc/criar_operador", {p_login:nome, p_senha:senha}); toast("Login " + nome + " criado."); await carregaLogins(); }
+  catch (e) { toast(e.message); }
+  b.disabled = false;
+}
+async function redefinirSenha(b){
+  const nome = $("#rLogin").value, senha = $("#rSenha").value;
+  if (!nome) return toast("Selecione o login.");
+  if (senha.length < 6) return toast("Use uma senha com pelo menos 6 caracteres.");
+  b.disabled = true;
+  try { await api("POST", "/rest/v1/rpc/redefinir_senha", {p_login:nome, p_senha:senha}); $("#rSenha").value = ""; toast("Senha de " + nome + " redefinida."); }
+  catch (e) { toast(e.message); }
+  b.disabled = false;
+}
+
 /* ---------- banco online (Supabase) ---------- */
 function deepMerge(target, patch){
   if (!patch || typeof patch !== "object" || Array.isArray(patch)) return patch;
@@ -204,16 +338,15 @@ function createLocalDB(){
 }
 function createSupabaseDB(){
   /* Lê e grava na tabela public.app_docs (colunas id, data). IDs: cfg/main, prod/POSTO, prod/BRPARK, foto/<código>, movs/<AAAA-MM>. */
-  const cfg = window.ESTOQUE_SUPABASE || {};
+  const cfg = configAtual();
   const url = String(cfg.url || "").trim(), key = String(cfg.anonKey || "").trim();
   if (!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(url) || !key) { console.error("supabase-config.js: url ou anonKey inválidos."); return null; }
   const base = url.replace(/\/$/,"") + "/rest/v1/app_docs";
   const headers = {"apikey":key,"Content-Type":"application/json","Accept":"application/json"};
-  if (/^eyJ/.test(key)) headers.Authorization = "Bearer " + key; // chave anon antiga (JWT); a publicável sb_publishable_ vai só em apikey
   const pollMs = Math.max(2000, Number(cfg.pollMs) || 5000);
   const cache = new Map();
   async function req(q, opts={}){
-    const r = await fetch(base + q, {...opts, cache:"no-store", headers:{...headers, ...(opts.headers||{})}});
+    const r = await fetch(base + q, {...opts, cache:"no-store", headers:{...headers, ...(await authHeader()), ...(opts.headers||{})}});
     const txt = await r.text();
     if (!r.ok) { const e = new Error("Supabase HTTP " + r.status + ": " + txt); e.status = r.status; throw e; }
     return txt ? JSON.parse(txt) : null;
@@ -278,6 +411,8 @@ async function movimentar(local, pid, tp, q, colab, quem){
 function go(view, extra){ Object.assign(S, extra || {}); S.view = view; render(); window.scrollTo(0,0); }
 function render(){
   const app = $("#app");
+  if (S.state === "login") { app.innerHTML = vLogin(); return; }
+  if (S.state === "setup") { app.innerHTML = vSetup(); return; }
   if (S.state !== "ok") { app.innerHTML = `<div class="top"><div><h1>Controle de estoque</h1><p class="sub">Posto &amp; BR Park</p></div></div><div class="pad">${bootMsg()}</div>`; return; }
   if (ADMIN_VIEWS.includes(S.view) && !S.admin) S.view = "home";
   const V = {local:vLocal, rel:vRel, admin:vAdmin, aprod:vAProd, ausers:vAUsers, acfg:vACfg};
@@ -306,15 +441,12 @@ function vHome(){
   return `<div class="top"><div><h1>Controle de estoque</h1><p class="sub">Posto &amp; BR Park</p></div></div><div class="pad">
     <p class="lead">Selecione o local</p>
     <div class="big">${b}</div>
-    <div class="soon">🚧 Cadastro de item em manutenção</div>
-    <button class="adm" data-act="admin">⚙️ Administração</button></div>`;
+    <div class="row" style="justify-content:center"><button class="adm" data-act="admin">⚙️ Administração</button><button class="adm" data-act="minhaSenha">🔑 Trocar minha senha</button><button class="adm" data-act="sair">🚪 Sair</button></div></div>`;
 }
 function vLocal(){
   const c = cfg(), cats = ["Todos", ...(Array.isArray(c.categorias) ? c.categorias : [])];
-  const nomes = Array.isArray(c.usuarios) ? c.usuarios : [];
   return `<div class="top"><button class="back" data-act="home">Voltar</button><img class="hlogo" src="${LOGO[S.local]}" alt=""><h1>${S.local}</h1></div><div class="pad">
-    <label class="f" for="oper"><span class="lead" style="color:var(--ink)">Olá! Quem está retirando?</span><select id="oper" class="inp who"><option value="">Selecione o seu nome</option>${nomes.map(u => `<option ${u === S.oper ? "selected" : ""}>${esc(u)}</option>`).join("")}</select></label>
-    ${(console.log("[ESTOQUE] Select preenchido:", nomes.length, "funcionário(s) em " + S.local), "")}
+    <p class="lead" style="color:var(--ink)">Operando: ${esc(S.oper)}</p>
     ${S.oper ? `<label class="f" for="busca">Pesquisar produto<input id="busca" class="inp" type="search" placeholder="Ex.: sabão, copo, caneta" value="${esc(S.busca)}" autocomplete="off"></label>
     <div class="chips">${cats.map(k => `<button class="chip ${k === S.cat ? "on" : ""}" data-act="cat" data-c="${esc(k)}">${esc(k)}</button>`).join("")}</div>
     <div class="grid" id="list"></div>` : `<div class="card empty">Selecione o seu nome para ver os produtos.</div>`}</div>`;
@@ -452,23 +584,6 @@ function shExcluir(pid){
   openSheet(`<h2>Excluir produto</h2><p style="margin:0">Excluir <b>${esc(it.n)}</b> do ${S.admLocal}? O histórico dele continua nos relatórios.</p>
     <div class="row"><button class="btn" data-act="fechar">Cancelar</button><button class="btn pri" data-act="confExcluir" data-p="${pid}">Excluir</button></div>`);
 }
-function shSenha(){
-  openSheet(`<h2>Área administrativa</h2>
-    <label class="f" for="admNome">Administrador responsável<select id="admNome" class="inp"><option value="">Selecione o seu nome</option>${cfg().usuarios.map(u => `<option>${esc(u)}</option>`).join("")}</select></label>
-    <label class="f" for="senha">Senha<input id="senha" class="inp" type="password" autocomplete="off"></label>
-    <div id="err" class="note crit" hidden></div>
-    <div class="row"><button class="btn" data-act="fechar">Cancelar</button><button class="btn pri" data-act="entrarAdmin">Entrar</button></div>`);
-}
-async function sha(t){
-  try { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("estoque:" + t)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,"0")).join(""); }
-  catch(e) { return null; }
-}
-async function senhaOk(v){
-  const c = cfg();
-  if (c.senhaHash) { const h = await sha(v); return !!h && h === c.senhaHash; }
-  return v !== "" && v === String(c.senha || "1234");
-}
-
 /* ---------- manutenção ---------- */
 function listaEdit(titulo, chave, dica){
   const arr = cfg()[chave] || [];
@@ -518,14 +633,14 @@ function renderAList(){
 }
 function vAUsers(){
   return admTop("Usuários", "admin") + `<div class="pad">
-    ${listaEdit("Operadores", "usuarios", "Quem retira materiais e quem entra como administrador responsável.")}
+    ${secaoLogins()}
     ${listaEdit("Colaboradores", "colaboradores", "Quem recebe os produtos retirados.")}</div>`;
 }
 function vACfg(){
   return admTop("Configurações", "admin") + `<div class="pad">
     ${listaEdit("Categorias", "categorias", "Aparecem como filtros na lista de produtos.")}
     ${listaEdit("Unidades de medida", "unidades", "Unidade, pacote, caixa, par, rolo, litro…")}
-    <div class="card"><h2>Senha da área administrativa</h2><div class="row" style="margin-top:10px"><input class="inp" id="novaSenha" type="password" placeholder="Nova senha" autocomplete="off" style="flex:1 1 180px"><button class="btn sm brand" data-act="trocarSenha">Trocar senha</button></div></div></div>`;
+    </div>`;
 }
 
 /* ---------- relatórios ---------- */
@@ -593,24 +708,27 @@ document.addEventListener("click", async ev => {
   if (ev.target.id === "veil") return closeSheet();
   const b = ev.target.closest("[data-act]"); if (!b) return;
   const a = b.dataset.act, pid = b.dataset.p;
-  if (ADMIN_ACTS.has(a) && !S.admin) { toast("Área restrita ao administrador."); closeSheet(); return shSenha(); }
+  if (ADMIN_ACTS.has(a) && !S.admin) { toast("Área restrita ao administrador."); closeSheet(); return; }
   if (a === "home") go("home");
-  else if (a === "admin") { S.admin ? go("admin") : shSenha(); }
+  else if (a === "admin") { if (S.admin) go("admin"); else toast("Área restrita ao administrador."); }
   else if (a === "sairAdmin") { S.admin = false; S.adminNome = ""; closeSheet(); go("home"); }
   else if (a === "aprod") go("aprod");
-  else if (a === "ausers") go("ausers");
+  else if (a === "ausers") { go("ausers"); carregaLogins(); }
   else if (a === "acfg") go("acfg");
   else if (a === "kpiLocal") { S.kpiLocal = b.dataset.l; render(); }
   else if (a === "admLocal") { S.admLocal = b.dataset.l; render(); }
   else if (a === "addEstoque") shAddEstoque(pid);
   else if (a === "confEntrada") confEntrada(b);
-  else if (a === "entrarAdmin") {
-    const nome = $("#admNome").value, e = $("#err");
-    if (!nome) { e.textContent = "Selecione o seu nome."; e.hidden = false; return; }
-    b.disabled = true;
-    if (await senhaOk($("#senha").value)) { S.admin = true; S.adminNome = nome; closeSheet(); go("admin"); }
-    else { b.disabled = false; e.textContent = "Senha incorreta."; e.hidden = false; }
-  }
+  else if (a === "entrar") entrar(b);
+  else if (a === "criarAdmin") criarAdmin(b);
+  else if (a === "sair") voltaLogin();
+  else if (a === "salvarBanco") salvarBanco(b);
+  else if (a === "trocarBanco") trocarBanco();
+  else if (a === "copiarSql") copiarSql();
+  else if (a === "minhaSenha") shMinhaSenha();
+  else if (a === "salvarMinhaSenha") salvarMinhaSenha(b);
+  else if (a === "criarLogin") criarLogin(b);
+  else if (a === "redefinirSenha") redefinirSenha(b);
   else if (a === "abrir") go("local", {local:b.dataset.l, busca:"", cat:"Todos"});
   else if (a === "rel") go("rel");
   else if (a === "cat") { S.cat = b.dataset.c; document.querySelectorAll(".chip").forEach(c => c.classList.toggle("on", c.dataset.c === S.cat)); renderList(); }
@@ -651,13 +769,8 @@ document.addEventListener("click", async ev => {
     const k = b.dataset.k, arr = [...(cfg()[k] || [])], nome = arr.splice(Number(b.dataset.i), 1)[0];
     await safe(() => S.db.doc("cfg/main").update({[k]:arr}), nome + " removido.");
   }
-  else if (a === "trocarSenha") {
-    const v = $("#novaSenha").value.trim(); if (v.length < 4) return toast("Use uma senha com pelo menos 4 caracteres.");
-    const h = await sha(v);
-    if (await safe(() => S.db.doc("cfg/main").update(h ? {senhaHash:h, senha:""} : {senha:v}), "Senha trocada.")) $("#novaSenha").value = "";
-  }
 });
-const ADMIN_ACTS = new Set(["aprod","ausers","acfg","rel","addEstoque","confEntrada","novo","salvarNovo","editar","salvarEdit","corrigir","salvarCorr","excluir","confExcluir","foto","mais","addLista","rmLista","trocarSenha","kpiLocal","admLocal"]);
+const ADMIN_ACTS = new Set(["aprod","ausers","acfg","rel","addEstoque","confEntrada","novo","salvarNovo","editar","salvarEdit","corrigir","salvarCorr","excluir","confExcluir","foto","mais","addLista","rmLista","criarLogin","redefinirSenha","kpiLocal","admLocal"]);
 document.addEventListener("input", ev => { if (ev.target.id === "busca") { S.busca = ev.target.value; renderList(); } else if (ev.target.id === "abusca") { S.abusca = ev.target.value; renderAList(); } });
 document.addEventListener("change", ev => {
   const t = ev.target;
@@ -673,7 +786,8 @@ document.addEventListener("keydown", ev => { if (ev.key === "Escape") closeSheet
 /* ---------- dados ---------- */
 let ultimaAssinatura = null;
 function refresh(){
-  if (S.got.cfg && S.got.prod) S.state = (S.cfg && (itens("POSTO").length || itens("BR PARK").length)) ? "ok" : "empty";
+  if (S.state === "login" || S.state === "setup") return;
+  if (S.got.cfg && S.got.prod) S.state = S.cfg ? "ok" : "empty";
   // as consultas automáticas chamam refresh() a cada poucos segundos; sem mudança real, não redesenha (senão o select fecha antes da escolha)
   const assinatura = [S.state, S.view, S.local, S.oper, S.cat, S.busca, S.admin, JSON.stringify(S.cfg), JSON.stringify(S.prod), Object.keys(S.fotos).length, Object.keys(S.movs).length, Object.values(S.movs).reduce((n, d) => n + Object.keys(d.itens || {}).length, 0)].join("|");
   if (assinatura === ultimaAssinatura) return;
@@ -683,13 +797,13 @@ function refresh(){
   if (S.state === "ok" && typing) { if (S.view === "local") renderList(); else renderAList(); }
   else render();
 }
-(async function start(){
-  render();
+let dadosIniciados = false;
+function iniciarDados(){
+  if (dadosIniciados) return; dadosIniciados = true;
+  const db = S.db;
+  S.state = "boot"; render();
   const slow = setTimeout(() => { if (S.state === "boot") { S.state = "slow"; render(); } }, 10000);
-  const falhou = e => { console.error("Banco online:", e); if (S.state !== "ok") { clearTimeout(slow); S.state = "nodb"; render(); } };
-  const db = createSupabaseDB();
-  if (!db) { falhou(new Error("Configuração do Supabase ausente ou inválida.")); return; }
-  S.db = db;
+  const falhou = e => { console.error("Banco online:", e); if (S.state !== "ok" && S.state !== "login") { clearTimeout(slow); S.state = "nodb"; render(); } };
   const localPhotoMap = {};
   ["B003.jpg","B005.jpg","B035.jpg","Bmwcbpanl.jpg","P002.jpg","P003.jpg","P005.jpg","P007.jpg","P009.jpg","P016.jpg","P017.jpg","P024.jpg","P027.jpg","P028.jpg","P029.jpg","P035.jpg","Pmwcblh23.jpg"].forEach(f => localPhotoMap[f.replace(/\.jpg$/i,"")] = "dados/fotos/" + f);
   S.fotos = {...localPhotoMap};
@@ -699,11 +813,12 @@ function refresh(){
   db.doc("cfg/main").onSnapshot(s => {
     clearTimeout(slow);
     try {
-      if (!s.exists) throw new Error("nenhuma linha com id = 'cfg/main' em public.app_docs");
-      let dados = s.data();
+      const novo = !s.exists;
+      let dados = novo ? cfgPadrao() : s.data();
       if (typeof dados === "string") { console.log("[ESTOQUE] campo data veio como texto; convertendo JSON…"); dados = JSON.parse(dados); }
       if (!dados || typeof dados !== "object" || Array.isArray(dados)) throw new Error("campo data não é um objeto JSON (tipo recebido: " + (Array.isArray(dados) ? "array" : typeof dados) + ")");
       S.cfg = dados;
+      if (novo && S.admin) S.db.doc("cfg/main").set(dados).catch(err => console.error("[ESTOQUE] não foi possível criar cfg/main:", err));
       console.log("[ESTOQUE] cfg/main encontrado");
       console.log("[ESTOQUE] Dados do cfg/main:", dados);
       if (!Array.isArray(dados.usuarios)) throw new Error("propriedade 'usuarios' ausente ou não é lista. Chaves recebidas: " + Object.keys(dados).join(", "));
@@ -737,6 +852,70 @@ function refresh(){
   }, falhou);
   db.collection("foto").onSnapshot(q => { const o = {...localPhotoMap}; for (const d of q.docs) { const v = d.data(); if (v && typeof v.d === "string" && v.d.startsWith("data:image/")) o[d.id] = v.d; } S.fotos = o; if (S.state === "ok") refresh(); }, () => {});
   db.collection("movs").onSnapshot(q => { const o = {}; for (const d of q.docs) o[d.id] = d.data() || {}; S.movs = o; if (S.state === "ok") refresh(); }, () => {});
+}
+
+const SQL_INSTALACAO = "-- INSTALAÇÃO DE UMA UNIDADE NOVA (projeto Supabase vazio)\n-- Rode inteiro no SQL Editor do projeto. Pode rodar uma vez só.\n-- Depois, abra o app, informe a URL e a chave publicável e crie o administrador.\n\ncreate table if not exists public.app_docs (\n  id text primary key,\n  data jsonb not null default '{}'::jsonb,\n  updated_at timestamptz not null default now()\n);\n\n-- 01 — PREPARAÇÃO DOS LOGINS\n-- Não bloqueia o app: a tabela public.app_docs continua como está.\n-- Rode no SQL Editor do projeto nbxculupvmgwmjjbabrt (Posto Franco).\n\nbegin;\n\ncreate extension if not exists pgcrypto with schema extensions;\n\n-- perfis de acesso: um por usuário do Supabase Auth\ncreate table if not exists public.perfis (\n  user_id uuid primary key references auth.users(id) on delete cascade,\n  login text not null,\n  papel text not null check (papel in ('admin','operador')),\n  criado_em timestamptz not null default now()\n);\ncreate unique index if not exists perfis_login_unico on public.perfis (lower(login));\nalter table public.perfis enable row level security;\n\ndrop policy if exists perfis_ler on public.perfis;\n-- (a política usa eh_admin, criada abaixo)\n\n-- o usuário logado é administrador?\ncreate or replace function public.eh_admin() returns boolean\nlanguage sql stable security definer set search_path = public as $$\n  select exists (select 1 from public.perfis where user_id = auth.uid() and papel = 'admin');\n$$;\n\n-- já existe administrador? (usado na primeira abertura do app)\ncreate or replace function public.tem_admin() returns boolean\nlanguage sql stable security definer set search_path = public as $$\n  select exists (select 1 from public.perfis where papel = 'admin');\n$$;\n\n-- transforma o login em e-mail interno: \"Inácio\" -> inacio@estoque.local\ncreate or replace function public.email_do_login(p_login text) returns text\nlanguage sql immutable as $$\n  select regexp_replace(lower(translate(trim(p_login),\n    'áàâãäéèêëíìîïóòôõöúùûüçñÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇÑ',\n    'aaaaaeeeeiiiiooooouuuucnaaaaaeeeeiiiiooooouuuucn')), '[^a-z0-9]', '', 'g') || '@estoque.local';\n$$;\n\n-- cria a conta no Supabase Auth com senha (uso interno das funções abaixo)\ncreate or replace function public.criar_usuario_auth(p_email text, p_senha text) returns uuid\nlanguage plpgsql security definer set search_path = public, auth, extensions as $$\ndeclare v_id uuid := gen_random_uuid();\nbegin\n  if length(coalesce(p_senha,'')) < 6 then raise exception 'Use uma senha com pelo menos 6 caracteres.'; end if;\n  if exists (select 1 from auth.users where email = p_email) then raise exception 'Esse login já existe.'; end if;\n  insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,\n      raw_app_meta_data, raw_user_meta_data, created_at, updated_at,\n      confirmation_token, recovery_token, email_change_token_new, email_change)\n  values ('00000000-0000-0000-0000-000000000000', v_id, 'authenticated', 'authenticated', p_email,\n      extensions.crypt(p_senha, extensions.gen_salt('bf')), now(),\n      '{\"provider\":\"email\",\"providers\":[\"email\"]}'::jsonb, '{}'::jsonb, now(), now(), '', '', '', '');\n  insert into auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)\n  values (gen_random_uuid(), v_id,\n      jsonb_build_object('sub', v_id::text, 'email', p_email, 'email_verified', true, 'phone_verified', false),\n      'email', v_id::text, now(), now(), now());\n  return v_id;\nend $$;\n\n-- primeiro administrador (só funciona se ainda não houver nenhum)\ncreate or replace function public.criar_primeiro_admin(p_login text, p_email text, p_senha text) returns void\nlanguage plpgsql security definer set search_path = public, auth, extensions as $$\ndeclare v_id uuid;\nbegin\n  if public.tem_admin() then raise exception 'Já existe um administrador.'; end if;\n  v_id := public.criar_usuario_auth(lower(trim(p_email)), p_senha);\n  insert into public.perfis (user_id, login, papel) values (v_id, trim(p_login), 'admin');\nend $$;\n\n-- administrador cria login de operador (ex.: Kaliel)\ncreate or replace function public.criar_operador(p_login text, p_senha text) returns void\nlanguage plpgsql security definer set search_path = public, auth, extensions as $$\ndeclare v_id uuid;\nbegin\n  if not public.eh_admin() then raise exception 'Apenas o administrador cria logins.'; end if;\n  if trim(coalesce(p_login,'')) = '' then raise exception 'Digite o nome do login.'; end if;\n  if exists (select 1 from public.perfis where lower(login) = lower(trim(p_login))) then raise exception 'Esse login já existe.'; end if;\n  v_id := public.criar_usuario_auth(public.email_do_login(p_login), p_senha);\n  insert into public.perfis (user_id, login, papel) values (v_id, trim(p_login), 'operador');\nend $$;\n\n-- administrador redefine a senha de um operador\ncreate or replace function public.redefinir_senha(p_login text, p_senha text) returns void\nlanguage plpgsql security definer set search_path = public, auth, extensions as $$\ndeclare v_id uuid;\nbegin\n  if not public.eh_admin() then raise exception 'Apenas o administrador redefine senhas.'; end if;\n  if length(coalesce(p_senha,'')) < 6 then raise exception 'Use uma senha com pelo menos 6 caracteres.'; end if;\n  select user_id into v_id from public.perfis where lower(login) = lower(trim(p_login));\n  if v_id is null then raise exception 'Login não encontrado.'; end if;\n  update auth.users set encrypted_password = extensions.crypt(p_senha, extensions.gen_salt('bf')), updated_at = now()\n   where id = v_id;\nend $$;\n\n-- quem vê a própria linha; o administrador vê todas (para a lista de logins)\ncreate policy perfis_ler on public.perfis for select to authenticated\n  using (user_id = auth.uid() or public.eh_admin());\n\n-- permissões das funções\nrevoke all on function public.criar_usuario_auth(text,text) from public, anon, authenticated;\nrevoke all on function public.eh_admin() from public, anon;\nrevoke all on function public.tem_admin() from public;\nrevoke all on function public.criar_primeiro_admin(text,text,text) from public;\nrevoke all on function public.criar_operador(text,text) from public, anon;\nrevoke all on function public.redefinir_senha(text,text) from public, anon;\ngrant execute on function public.eh_admin() to authenticated;\ngrant execute on function public.tem_admin() to anon, authenticated;\ngrant execute on function public.criar_primeiro_admin(text,text,text) to anon, authenticated;\ngrant execute on function public.criar_operador(text,text) to authenticated;\ngrant execute on function public.redefinir_senha(text,text) to authenticated;\n\ncommit;\n\n-- conferência (somente leitura)\nselect 'funções criadas' as item, count(*) from pg_proc\n where pronamespace = 'public'::regnamespace and proname in ('eh_admin','tem_admin','criar_primeiro_admin','criar_operador','redefinir_senha');\n\n-- 02 — BLOQUEIO: só quem entrou com login acessa os dados.\n-- RODE SOMENTE DEPOIS que o administrador criou a conta e entrou no app novo.\n-- Depois disso, o app antigo (sem login) deixa de funcionar — é o esperado.\n\nbegin;\n\nalter table public.app_docs enable row level security;\n\n-- remove as políticas antigas (eram abertas para o público)\ndo $$ declare r record; begin\n  for r in select policyname from pg_policies where schemaname = 'public' and tablename = 'app_docs' loop\n    execute format('drop policy %I on public.app_docs', r.policyname);\n  end loop;\nend $$;\n\n-- qualquer usuário logado lê\ncreate policy docs_ler_logado on public.app_docs for select to authenticated using (true);\n\n-- administrador: cadastro, edição de produtos, fotos, configurações\ncreate policy docs_admin_inserir on public.app_docs for insert to authenticated with check (public.eh_admin());\ncreate policy docs_admin_atualizar on public.app_docs for update to authenticated\n  using (public.eh_admin()) with check (public.eh_admin());\n\n-- operador: só grava estoque (prod/) e histórico (movs/), para retirada\ncreate policy docs_operador_inserir on public.app_docs for insert to authenticated\n  with check (id like 'prod/%' or id like 'movs/%');\ncreate policy docs_operador_atualizar on public.app_docs for update to authenticated\n  using (id like 'prod/%' or id like 'movs/%') with check (id like 'prod/%' or id like 'movs/%');\n\n-- sem política de exclusão: ninguém apaga linhas pela API\n\ncommit;\n";
+const CFG_KEY = "estoque.config";
+const urlValida = s => /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(String(s || "").trim());
+function configAtual(){
+  try { const s = JSON.parse(localStorage.getItem(CFG_KEY) || "null"); if (s && s.url && s.anonKey) return s; } catch(e) {}
+  return window.ESTOQUE_SUPABASE || {};
+}
+function cfgPadrao(){ return {usuarios:[], colaboradores:[], categorias:[...BASECATS], unidades:["Unidade","Pacote","Caixa","Par","Rolo","Litro"]}; }
+function vSetup(){
+  return `<div class="top"><div><h1>Controle de estoque</h1><p class="sub">Configuração do banco de dados</p></div></div><div class="pad">
+    <div class="card"><h2>Conectar ao banco</h2>
+    <p class="meta" style="margin:6px 0 10px">Cole a URL e a chave publicável do projeto Supabase da sua unidade. Ficam salvas só neste aparelho.</p>
+    <label class="f" for="sUrl">Project URL<input id="sUrl" class="inp" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="https://xxxxx.supabase.co"></label>
+    <label class="f" for="sKey" style="margin-top:8px">Chave publicável<input id="sKey" class="inp" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="sb_publishable_..."></label>
+    <div id="sErr" class="note crit" hidden style="margin-top:10px"></div>
+    <button class="btn pri" style="margin-top:12px" data-act="salvarBanco">Salvar e conectar</button></div>
+    <div class="card"><h2>Projeto novo?</h2>
+    <p class="meta" style="margin:6px 0 10px">No projeto do Supabase, abra o SQL Editor, cole o SQL de instalação e clique em Run. Depois volte aqui.</p>
+    <button class="btn" data-act="copiarSql">📋 Copiar SQL de instalação</button></div></div>`;
+}
+async function salvarBanco(b){
+  const u = $("#sUrl").value.trim().replace(/\/$/, ""), k = $("#sKey").value.trim(), e = $("#sErr");
+  if (!urlValida(u)) { e.textContent = "URL inválida. Use o formato https://xxxxx.supabase.co"; e.hidden = false; return; }
+  if (!k) { e.textContent = "Cole a chave publicável."; e.hidden = false; return; }
+  b.disabled = true; e.hidden = true;
+  try {
+    AUTH.url = u; AUTH.key = k;
+    await api("POST", "/rest/v1/rpc/tem_admin", {}, false);
+    try { localStorage.setItem(CFG_KEY, JSON.stringify({url:u, anonKey:k})); } catch(err) { throw new Error("Este aparelho não permite guardar a configuração."); }
+    location.reload();
+  } catch (err) {
+    console.error("Conexão:", err);
+    const falta = /could not find|schema cache|does not exist/i.test(err.message);
+    e.textContent = falta ? "Este projeto ainda não tem o SQL de instalação. Copie o SQL, rode no SQL Editor e tente de novo." : "Não foi possível conectar: " + err.message;
+    e.hidden = false; b.disabled = false;
+  }
+}
+function trocarBanco(){ try { localStorage.removeItem(CFG_KEY); } catch(e) {} gravaSessao(null); location.reload(); }
+async function copiarSql(){
+  try { await navigator.clipboard.writeText(SQL_INSTALACAO); toast("SQL copiado. Cole no SQL Editor do Supabase."); }
+  catch (e) {
+    const t = document.createElement("textarea"); t.value = SQL_INSTALACAO; document.body.appendChild(t); t.select();
+    let ok = false; try { ok = document.execCommand("copy"); } catch (err) {}
+    t.remove(); toast(ok ? "SQL copiado. Cole no SQL Editor do Supabase." : "Não consegui copiar. Use o arquivo sql/instalacao-nova-unidade.sql.");
+  }
+}
+(async function start(){
+  render();
+  const c = configAtual();
+  if (!urlValida(c.url) || !String(c.anonKey || "").trim()) { S.state = "setup"; render(); return; }
+  AUTH.url = String(c.url).trim().replace(/\/$/, ""); AUTH.key = String(c.anonKey).trim();
+  S.db = createSupabaseDB();
+  if (!S.db) { S.state = "setup"; render(); return; }
+  S.sess = sessaoSalva();
+  if (S.sess) {
+    try { if ((await tokenValido()) && (await carregaPerfil())) return entrarNoApp(); }
+    catch (e) { console.error("Sessão salva:", e); }
+  }
+  gravaSessao(null);
+  try { S.modoLogin = (await api("POST", "/rest/v1/rpc/tem_admin", {}, false)) ? "entrar" : "criar"; }
+  catch (e) { console.error("tem_admin:", e); S.modoLogin = "entrar"; }
+  S.state = "login"; render();
 })();
 </script>
 <script>if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js?v=2').catch(()=>{});</script>
