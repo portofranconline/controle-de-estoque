@@ -633,6 +633,7 @@ function renderAList(){
 }
 function vAUsers(){
   return admTop("Usuários", "admin") + `<div class="pad">
+    ${listaEdit("Operadores", "usuarios", "Quem retira materiais e quem entra como administrador responsável.")}
     ${secaoLogins()}
     ${listaEdit("Colaboradores", "colaboradores", "Quem recebe os produtos retirados.")}</div>`;
 }
