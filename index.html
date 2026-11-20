@@ -399,11 +399,11 @@ async function addMov(m){
   if (S.movs[ym]) await ref.update({itens:{[id]:m}});
   else { S.movs[ym] = {a:d.getFullYear(), m:d.getMonth()+1, itens:{}}; await ref.set({a:d.getFullYear(), m:d.getMonth()+1, itens:{[id]:m}}); }
 }
-async function movimentar(local, pid, tp, q, colab, quem){
+async function movimentar(local, pid, tp, q, colab, quem, entr){
   const it = S.prod[local][pid]; const antes = num(it.e);
   const depois = Math.round((tp === "R" ? antes - q : tp === "X" ? q : antes + q) * 1000) / 1000;
   await S.db.doc("prod/" + KEY(local)).update({itens:{[pid]:{e:depois}}});
-  await addMov({t:Date.now(), l:local, p:pid, n:it.n, tp, q: tp === "X" ? Math.abs(depois - antes) : q, a:antes, d:depois, u:quem || S.oper || "—", c:colab || ""});
+  await addMov({t:Date.now(), l:local, p:pid, n:it.n, tp, q: tp === "X" ? Math.abs(depois - antes) : q, a:antes, d:depois, u:quem || S.oper || "—", c:colab || "", ...(entr ? {e:entr} : {})});
   return depois;
 }
 
@@ -476,7 +476,8 @@ function shMov(pid, tp){
     <div class="item" style="border:0;padding:0;border-left:0"><div class="ph">${photo(pid,it)}</div><div><h3>${esc(it.n)}</h3><div class="meta">Estoque atual <b>${fmt(it.e)}</b> ${esc(it.u || "")} · ${S.local}</div></div></div>
     <label class="f" for="q">${ret ? "Quanto deseja retirar?" : "Quantidade que chegou"}</label>
     <div class="step"><button data-act="menos" aria-label="Diminuir">−</button><input id="q" class="inp" inputmode="decimal" value="1" autocomplete="off"><button data-act="mais1" aria-label="Aumentar">+</button></div>
-    ${ret ? `<label class="f" for="colab">Quem vai receber?<select id="colab" class="inp"><option value="">Selecione o colaborador</option>${c.colaboradores.map(n => `<option>${esc(n)}</option>`).join("")}<option value="+">+ Adicionar colaborador</option></select></label>
+    ${ret ? `<label class="f" for="entr">Quem está entregando?<select id="entr" class="inp"><option value="">Selecione o operador</option>${(c.usuarios || []).map(n => `<option>${esc(n)}</option>`).join("")}</select></label>
+    <label class="f" for="colab">Quem vai receber?<select id="colab" class="inp"><option value="">Selecione o colaborador</option>${c.colaboradores.map(n => `<option>${esc(n)}</option>`).join("")}<option value="+">+ Adicionar colaborador</option></select></label>
     <label class="f" id="novoColabBox" for="novoColab" hidden>Nome do novo colaborador<input id="novoColab" class="inp" autocomplete="off"></label>` : ""}
     <div id="err" class="note crit" hidden></div>
     <div class="row"><button class="btn" data-act="fechar">Cancelar</button><button class="btn ${ret ? "pri" : "good"}" data-act="confMov" data-p="${pid}" data-tp="${tp}">${ret ? "Confirmar retirada" : "Confirmar entrada"}</button></div>
@@ -488,8 +489,10 @@ async function confMov(pid, tp, btn){
   if (!ret) return fail("A entrada de estoque é feita só na área administrativa.");
   if (!(q > 0)) return fail("Digite uma quantidade maior que zero. Ex.: 2 ou 2,5.");
   if (ret && q > num(it.e)) return fail(`⚠️ Estoque insuficiente. Você pediu ${fmt(q)} e só tem ${fmt(it.e)} ${it.u || ""}.`);
-  let colab = "";
+  let colab = "", entr = "";
   if (ret) {
+    entr = $("#entr").value;
+    if (!entr) return fail("Selecione quem está entregando o produto.");
     colab = $("#colab").value;
     if (colab === "+") { colab = $("#novoColab").value.trim(); if (!colab) return fail("Digite o nome do novo colaborador."); }
     if (!colab) return fail("Selecione quem vai receber o produto.");
@@ -497,7 +500,7 @@ async function confMov(pid, tp, btn){
   btn.disabled = true;
   const ok = await safe(async () => {
     if (ret && !cfg().colaboradores.includes(colab)) await S.db.doc("cfg/main").update({colaboradores:[...cfg().colaboradores, colab]});
-    const d = await movimentar(S.local, pid, tp, q, colab);
+    const d = await movimentar(S.local, pid, tp, q, colab, undefined, entr);
     toast(`${ret ? "Retirada" : "Entrada"} registrada. ${it.n}: ${fmt(d)} ${it.u || ""} em estoque.`);
   });
   if (ok) closeSheet(); else btn.disabled = false;
