@@ -187,7 +187,7 @@ const parseQ = s => { s = String(s ?? "").trim().replace(",", "."); if (s === ""
 const semAcento = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const status = it => num(it.e) <= 0 ? "crit" : (num(it.e) <= num(it.m) ? "warn" : "good");
 const STXT = {crit:"🔴 Sem estoque", warn:"🟡 Estoque baixo", good:"🟢 Disponível"};
-const ADMIN_VIEWS = ["admin","aprod","ausers","acfg","rel","filtro"];
+const ADMIN_VIEWS = ["admin","aprod","ausers","acfg","rel","filtro","rkcfg"];
 const itens = l => Object.entries(S.prod[l] || {}).filter(([,it]) => it && !it.x && it.n).sort((a,b) => a[1].n.localeCompare(b[1].n, "pt-BR"));
 const cfg = () => S.cfg || {usuarios:[], colaboradores:[], categorias:[], unidades:[], senha:"1234"};
 
@@ -487,7 +487,7 @@ function render(){
   if (S.state === "setup") { app.innerHTML = vSetup(); return; }
   if (S.state !== "ok") { app.innerHTML = `<div class="top"><div><h1>Controle de estoque</h1><p class="sub">${esc((S.nomeFilial ? S.nomeFilial + " · " : "") + locaisAtivos().map(nomeLocal).join(" & "))}</p></div></div><div class="pad">${bootMsg()}</div>`; return; }
   if (ADMIN_VIEWS.includes(S.view) && !S.admin) S.view = "home";
-  const V = {local:vLocal, rel:vRel, admin:vAdmin, aprod:vAProd, ausers:vAUsers, acfg:vACfg, filtro:vFiltro, ranking:vRanking};
+  const V = {local:vLocal, rel:vRel, admin:vAdmin, aprod:vAProd, ausers:vAUsers, acfg:vACfg, filtro:vFiltro, ranking:vRanking, rkcfg:vRkCfg};
   app.innerHTML = (V[S.view] || vHome)();
   if (S.view === "local") { const sel = $("#oper"); console.log("[ESTOQUE] opções finais do select:", sel ? Array.from(sel.options).map(o => o.textContent) : "select #oper não encontrado na tela"); }
   if (S.view === "local") renderList();
@@ -754,6 +754,7 @@ async function fotoLocal(l, arq){
   } catch (e) { console.error("Foto do estoque:", e); toast("Não foi possível usar essa imagem."); }
 }
 document.addEventListener("change", ev => { if (ev.target && ev.target.id === "rkMes") { S.rkMes = ev.target.value; render(); return; }
+  if (ev.target && ev.target.dataset && ev.target.dataset.rkFoto) { if (!S.admin) return toast("Área restrita ao administrador."); const f = ev.target.files && ev.target.files[0]; const id = ev.target.dataset.rkFoto; ev.target.value = ""; fotoPessoaUpload(id, f); return; }
   if (ev.target && ev.target.dataset && ev.target.dataset.rkImg) { if (!S.admin) return toast("Área restrita ao administrador."); const f = ev.target.files && ev.target.files[0]; ev.target.value = ""; importarImagem(f); return; }
   const l = ev.target && ev.target.dataset && ev.target.dataset.locFoto; if (l) { if (!S.admin) return toast("Área restrita ao administrador."); fotoLocal(l, ev.target.files && ev.target.files[0]); } });
 function vACfg(){
@@ -869,73 +870,242 @@ function baixarFiltro(b, tipo){
   exportarPaginas(b, pags, tipo, nomeArquivo("Relatorio"));
 }
 
-/* ---------- ranking de vendas: loja, frentista diesel, frentista gasolina e caixa ---------- */
+/* ---------- ranking de vendas posto: abas, funções, metas, equipe e fotos ---------- */
 const RK = [
   {k:"loja", t:"Loja", ico:"🛒", p:"Vendedor", lt:false},
   {k:"diesel", t:"Frentista Diesel", ico:"🛢️", p:"Frentista", lt:true},
   {k:"gasolina", t:"Frentista Gasolina", ico:"⛽", p:"Frentista", lt:true},
   {k:"caixa", t:"Caixa", ico:"💵", p:"Caixa", lt:false}
 ];
+const FUNCOES = {loja:"Loja", caixa:"Caixa", caixa_madrugada:"Caixa Madrugada", frentista:"Frentista", frentista_madrugada:"Frentista Madrugada", lubrificador:"Frentista Lubrificador"};
+const funcoesDaAba = t => t === "loja" ? ["loja"] : t === "caixa" ? ["caixa", "caixa_madrugada"] : ["frentista", "frentista_madrugada", "lubrificador"];
+const funcaoPadrao = t => t === "loja" ? "loja" : t === "caixa" ? "caixa" : "frentista";
+const campoPadrao = t => (t === "diesel" || t === "gasolina") ? "lt" : "mc";
 const CAMPOS = {q:"Quantidade", mc:"Venda MC", lt:"Litragem"};
 const rkCat = () => RK.find(c => c.k === S.rkTipo) || RK[0];
 const rankingAtivo = () => !!(S.cfg && S.cfg.ranking);
+const rkFotosAtivas = () => !!(S.cfg && S.cfg.rkFotos);
 const moeda = v => num(v).toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2});
 const fmt2 = v => num(v).toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2});
-async function gravaVendas(patch){
-  await S.db.doc("vendas/" + S.rkMes).update(patch);
-  S.vendas = {...(S.vendas || {}), [S.rkMes]:deepMerge((S.vendas || {})[S.rkMes] || {}, patch)}; S.vendasK = JSON.stringify(S.vendas);
-  if (S.view === "ranking") render();
-}
+const fmtCampo = (campo, v) => campo === "mc" ? "R$ " + moeda(v) : campo === "lt" ? fmt2(v) + " L" : fmt2(v);
 function mesAtual(){ const h = new Date(); return h.getFullYear() + "-" + String(h.getMonth() + 1).padStart(2, "0"); }
+function rkLayout(){ try { return localStorage.getItem("estoque.rkLayout") || "cartoes"; } catch (e) { return "cartoes"; } }
+
+/* equipe: cadastrada automaticamente na importação; o que o administrador muda não é trocado pelas próximas importações */
+const pessoasRk = () => (S.cfg && S.cfg.rkPessoas) || {};
+function acharPessoa(nome){
+  const n = semAcento(nome).replace(/\s+/g, " ").trim(), P = pessoasRk();
+  for (const [id, p] of Object.entries(P)) { if (!p || p.x) continue; if (semAcento(p.nome || "") === n || (p.chaves || []).includes(n)) return {id, ...p}; }
+  return null;
+}
+function funcaoDe(p, tab){ const f = p && p.funcao; return funcoesDaAba(tab).includes(f) ? f : funcaoPadrao(tab); }
+/* cadastra quem ainda não existe; devolve {nomeLido: id} */
+async function registrarPessoas(nomes, tab){
+  const patch = {}, ids = {};
+  nomes.forEach((nome, i) => {
+    const ja = acharPessoa(nome);
+    if (ja) { ids[nome] = ja.id; return; }
+    const chave = semAcento(nome).replace(/\s+/g, " ").trim(), novo = Object.entries(patch).find(([, v]) => v.chaves[0] === chave);
+    if (novo) { ids[nome] = novo[0]; return; }
+    const id = "p" + Date.now().toString(36) + i;
+    patch[id] = {nome:nome.trim(), funcao:funcaoPadrao(tab), chaves:[chave], x:0}; ids[nome] = id;
+  });
+  if (Object.keys(patch).length) {
+    await S.db.doc("cfg/main").update({rkPessoas:patch});
+    S.cfg = {...(S.cfg || {}), rkPessoas:{...pessoasRk(), ...patch}};
+  }
+  return ids;
+}
+
+/* lançamentos do mês, com a pessoa e a função de cada um */
 function vendasDoMes(tipo){
-  const d = (S.vendas || {})[S.rkMes] || {}, o = {...(tipo === "diesel" ? (d.frentista || {}) : {}), ...(d[tipo] || {})};
-  const arr = Object.entries(o).filter(([, v]) => v && !v.x && v.nome).map(([id, v]) => ({id, nome:v.nome, q:num(v.q), mc:num(v.mc), lt:num(v.lt)}));
+  const d = (S.vendas || {})[S.rkMes] || {}, o = {...(tipo === "diesel" ? (d.frentista || {}) : {}), ...(d[tipo] || {})}, P = pessoasRk();
+  const arr = Object.entries(o).filter(([, v]) => v && !v.x && v.nome).map(([id, v]) => {
+    const p = (v.pid && P[v.pid] && !P[v.pid].x) ? {id:v.pid, ...P[v.pid]} : acharPessoa(v.nome);
+    return {id, pid:p ? p.id : null, nome:p ? p.nome : v.nome, funcao:funcaoDe(p, tipo), q:num(v.q), mc:num(v.mc), lt:num(v.lt)};
+  });
   const ord = S.rkOrdem || "q", chaves = [ord, ...["q", "mc", "lt"].filter(k => k !== ord)];
   arr.sort((a, b) => { for (const k of chaves) if (b[k] !== a[k]) return b[k] - a[k]; return a.nome.localeCompare(b.nome, "pt-BR"); });
   return arr;
 }
-function metaDe(tipo){
-  const meses = Object.keys(S.vendas || {}).filter(m => m <= S.rkMes).sort().reverse();
-  for (const m of meses) { const mt = ((S.vendas[m] || {}).metas || {})[tipo]; if (mt && num(mt.valor) > 0) return {campo:mt.campo || "mc", valor:num(mt.valor), herdada:m !== S.rkMes}; }
+
+/* metas: por aba e função (por pessoa ou total da equipe dividido) e individual; valem a partir do mês em que foram salvas */
+function ultimoMes(fn){
+  const meses = Object.keys(S.vendas || {}).filter(m => /^\d{4}-\d{2}$/.test(m) && m <= S.rkMes).sort().reverse();
+  for (const m of meses) { const v = fn(S.vendas[m] || {}); if (v != null) return {v, mes:m}; }
   return null;
 }
-function barraMeta(v, meta){
-  if (!meta) return "";
-  const bateu = meta.valor > 0 && v[meta.campo] >= meta.valor, pct = meta.valor > 0 ? Math.floor(v[meta.campo] / meta.valor * 100) : 0, cor = bateu ? "var(--good)" : pct >= 70 ? "var(--warn)" : "var(--crit)";
-  return `<div style="height:7px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:5px"><i style="display:block;height:100%;width:${Math.min(100, pct)}%;background:${cor}"></i></div><small style="color:${cor};font-weight:700">${pct}% da meta${bateu ? " ✅" : ""}</small>`;
+function metaGrupo(tab, funcao){
+  const r = ultimoMes(d => { const g = ((d.metas2 || {})[tab] || {})[funcao]; if (g && num(g.valor) > 0) return g;
+    if (funcao === funcaoPadrao(tab)) { const a = (d.metas || {})[tab]; if (a && num(a.valor) > 0) return {campo:a.campo || "mc", modo:"pessoa", valor:a.valor}; } return null; });
+  return r ? {campo:r.v.campo || campoPadrao(tab), modo:r.v.modo || "pessoa", valor:num(r.v.valor), herdada:r.mes !== S.rkMes} : null;
 }
+function metaIndividual(tab, pid){
+  if (!pid) return null;
+  const r = ultimoMes(d => { const v = ((d.metasInd || {})[tab] || {})[pid]; return num(v) > 0 ? num(v) : null; });
+  return r ? r.v : null;
+}
+/* meta de uma pessoa: a individual, se houver; senão a da função (por pessoa, ou o total dividido pela equipe) */
+function metaDaPessoa(r, tab, lista){
+  const g = metaGrupo(tab, r.funcao), ind = metaIndividual(tab, r.pid), campo = g ? g.campo : campoPadrao(tab);
+  if (ind) return {campo, valor:ind, origem:"individual"};
+  if (!g) return null;
+  if (g.modo === "equipe") { const n = lista.filter(x => x.funcao === r.funcao).length || 1; return {campo, valor:g.valor / n, origem:"dividida"}; }
+  return {campo, valor:g.valor, origem:"funcao"};
+}
+function situacao(v, meta){
+  if (!meta || !(meta.valor > 0)) return null;
+  const real = v[meta.campo], pct = Math.floor(real / meta.valor * 100), bateu = real >= meta.valor, dif = Math.abs(real - meta.valor);
+  return {pct, bateu, cor:bateu ? "var(--good)" : pct >= 70 ? "var(--warn)" : "var(--crit)", texto:bateu ? `✅ ${pct}% · passou ${fmtCampo(meta.campo, dif)}` : `${pct}% · faltam ${fmtCampo(meta.campo, dif)}`};
+}
+function barra(st, alto){
+  if (!st) return "";
+  const passou = st.pct > 100 ? Math.min(100, st.pct - 100) : 0;
+  return `<div style="position:relative;height:${alto || 8}px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:5px"><i style="position:absolute;left:0;top:0;bottom:0;width:${Math.min(100, st.pct)}%;background:${st.cor}"></i>${passou ? `<i style="position:absolute;right:0;top:0;bottom:0;width:${passou}%;background:repeating-linear-gradient(45deg,var(--good),var(--good) 4px,color-mix(in srgb,var(--good) 55%,#fff) 4px,color-mix(in srgb,var(--good) 55%,#fff) 8px)"></i>` : ""}</div><small style="color:${st.cor};font-weight:700">${st.texto}</small>`;
+}
+function fotoPessoa(r, tam){
+  if (!rkFotosAtivas()) return "";
+  const f = r.pid && (S.rkFotos || {})[r.pid];
+  return `<span style="width:${tam}px;height:${tam}px;border-radius:50%;flex:none;overflow:hidden;background:var(--surface2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:${Math.round(tam / 2.6)}px;color:var(--muted)">${f ? `<img src="${f}" alt="" style="width:100%;height:100%;object-fit:cover">` : esc((r.nome || "?").split(" ").map(x => x[0]).slice(0, 2).join(""))}</span>`;
+}
+function carregaFotosRk(forcar){
+  if (!rkFotosAtivas() || (S.rkFotosLidas && !forcar) || !S.db) return;
+  S.rkFotosLidas = true; let parar = null;
+  parar = S.db.collection("rkfoto").onSnapshot(q => { const o = {}; for (const d of q.docs) { const v = d.data(); if (v && typeof v.d === "string") o[d.id] = v.d; } S.rkFotos = o; if (parar) parar(); if (S.view === "ranking" || S.view === "rkcfg") render(); }, () => {});
+}
+async function gravaVendas(patch){
+  await S.db.doc("vendas/" + S.rkMes).update(patch);
+  S.vendas = {...(S.vendas || {}), [S.rkMes]:deepMerge((S.vendas || {})[S.rkMes] || {}, patch)}; S.vendasK = JSON.stringify(S.vendas);
+  if (S.view === "ranking" || S.view === "rkcfg") render();
+}
+const nomeMes = ym => { const [a, m] = ym.split("-"); return MESES[Number(m) - 1] + " de " + a; };
+
 function vRanking(){
   S.rkMes = S.rkMes || mesAtual(); S.rkTipo = RK.some(c => c.k === S.rkTipo) ? S.rkTipo : "loja"; S.rkOrdem = S.rkOrdem || "q";
-  const c = rkCat(), lista = vendasDoMes(c.k), meta = metaDe(c.k), med = ["🥇", "🥈", "🥉"];
-  const meses = [...new Set([mesAtual(), S.rkMes, ...Object.keys(S.vendas || {})])].sort().reverse();
-  const nomeMes = ym => { const [a, m] = ym.split("-"); return MESES[Number(m) - 1] + " de " + a; };
-  const bateram = meta ? lista.filter(r => r[meta.campo] >= meta.valor).length : 0;
-  const total = k => lista.reduce((a, r) => a + r[k], 0);
+  carregaFotosRk();
+  const c = rkCat(), lista = vendasDoMes(c.k), med = ["🥇", "🥈", "🥉"], lay = rkLayout();
+  const meses = [...new Set([mesAtual(), S.rkMes, ...Object.keys(S.vendas || {}).filter(m => /^\d{4}-\d{2}$/.test(m))])].sort().reverse();
   const ordens = [["q", "Quantidade"], ["mc", "Venda MC"], ...(c.lt ? [["lt", "Litragem"]] : [])];
-  return `<div class="top"><button class="back" data-act="${S.admin ? "admin" : "home"}">Voltar</button><h1>Ranking de vendas</h1></div><div class="pad">
+  const linhas = lista.map(r => ({...r, meta:metaDaPessoa(r, c.k, lista)})).map(r => ({...r, st:situacao(r, r.meta)}));
+  // resumo por função: realizado x meta total (soma das metas de cada um)
+  const resumo = funcoesDaAba(c.k).map(f => {
+    const g = linhas.filter(r => r.funcao === f); if (!g.length) return "";
+    const comMeta = g.filter(r => r.meta); if (!comMeta.length) return `<div style="margin-top:8px"><b>${FUNCOES[f]}</b> <span class="meta">· ${g.length} pessoa(s) · sem meta</span></div>`;
+    const campo = comMeta[0].meta.campo, metaTot = comMeta.reduce((a, r) => a + r.meta.valor, 0), real = comMeta.reduce((a, r) => a + r[campo], 0), bat = comMeta.filter(r => r.st && r.st.bateu).length, mg = metaGrupo(c.k, f);
+    const st = situacao({[campo]:real}, {campo, valor:metaTot});
+    return `<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${FUNCOES[f]}</b><span class="meta">${bat} de ${g.length} bateram</span></div>
+      <div class="meta">Meta total ${fmtCampo(campo, metaTot)}${mg ? ` · ${mg.modo === "equipe" ? "dividida: " + fmtCampo(campo, mg.valor / g.length) + " por pessoa" : "por pessoa: " + fmtCampo(campo, mg.valor)}` : ""}${mg && mg.herdada ? " (do mês anterior)" : ""} · realizado ${fmtCampo(campo, real)}</div>${barra(st, 10)}</div>`;
+  }).join("");
+  const nomeL = r => `<div style="display:flex;gap:8px;align-items:center;min-width:0">${fotoPessoa(r, 34)}<div style="min-width:0"><b style="display:block">${esc(r.nome)}</b><span class="meta" style="font-size:11px">${FUNCOES[r.funcao]}${r.meta && r.meta.origem === "individual" ? " · meta individual" : ""}</span></div></div>`;
+  const acoes = r => S.admin ? `<div style="display:flex;flex-direction:column;gap:4px"><button class="btn sm" style="padding:4px 8px;min-width:0;width:auto" data-act="editarVenda" data-id="${r.id}" aria-label="Alterar">✏️</button><button class="btn sm" style="padding:4px 8px;min-width:0;width:auto;color:var(--crit)" data-act="excluirVenda" data-id="${r.id}" aria-label="Excluir">🗑️</button></div>` : "";
+  let corpo = "";
+  if (!linhas.length) corpo = `<p class="meta">Nenhum lançamento em ${c.t} · ${nomeMes(S.rkMes)}.${S.admin ? " Use <b>Importar da imagem</b> ou <b>Lançar à mão</b>." : ""}</p>`;
+  else if (lay === "tabela") corpo = `<div style="overflow-x:auto"><table class="tbl"><tr><th>#</th><th>${c.p}</th><th class="n">Qtd.</th><th class="n">Venda MC</th>${c.lt ? `<th class="n">Litragem</th>` : ""}<th class="n">Meta</th><th class="n">%</th></tr>
+      ${linhas.map((r, i) => `<tr><td>${med[i] || i + 1}</td><td><b>${esc(r.nome)}</b><br><span class="meta" style="font-size:11px">${FUNCOES[r.funcao]}</span></td><td class="n">${fmt2(r.q)}</td><td class="n">${moeda(r.mc)}</td>${c.lt ? `<td class="n">${fmt2(r.lt)}</td>` : ""}<td class="n">${r.meta ? fmtCampo(r.meta.campo, r.meta.valor) : "—"}</td><td class="n" style="color:${r.st ? r.st.cor : "inherit"};font-weight:700">${r.st ? r.st.pct + "%" : "—"}</td></tr>`).join("")}</table></div>`;
+  else if (lay === "grafico") corpo = linhas.map((r, i) => `<div style="padding:8px 0;border-bottom:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div style="display:flex;gap:6px;align-items:center;min-width:0"><span style="font-weight:800;min-width:24px">${med[i] || i + 1}</span>${nomeL(r)}</div><b style="white-space:nowrap">${r.meta ? fmtCampo(r.meta.campo, r[r.meta.campo]) : fmtCampo(S.rkOrdem, r[S.rkOrdem])}</b></div>${r.st ? barra(r.st, 14) : `<small class="meta">sem meta</small>`}</div>`).join("");
+  else corpo = linhas.map((r, i) => `<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)">
+        <div style="font-size:20px;min-width:28px;text-align:center;font-weight:800">${med[i] || i + 1}</div>
+        <div style="flex:1;min-width:0">${nomeL(r)}
+          <div class="meta" style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:4px"><span>Qtd. <b>${fmt2(r.q)}</b></span><span>Venda MC <b>R$ ${moeda(r.mc)}</b></span>${c.lt ? `<span>Litragem <b>${fmt2(r.lt)} L</b></span>` : ""}${r.meta ? `<span>Meta <b>${fmtCampo(r.meta.campo, r.meta.valor)}</b></span>` : ""}</div>
+          ${barra(r.st)}</div>${acoes(r)}</div>`).join("");
+  const total = k => lista.reduce((a, r) => a + r[k], 0);
+  return `<div class="top"><button class="back" data-act="${S.admin ? "admin" : "home"}">Voltar</button><h1>Ranking de vendas posto</h1></div><div class="pad">
     <div class="chips">${RK.map(x => `<button class="chip ${x.k === c.k ? "on" : ""}" data-act="rkTipo" data-t="${x.k}">${x.ico} ${x.t}</button>`).join("")}</div>
     <label class="f" for="rkMes">Mês<select id="rkMes" class="inp">${meses.map(m => `<option value="${m}" ${m === S.rkMes ? "selected" : ""}>${nomeMes(m)}</option>`).join("")}</select></label>
-    <div class="chips" style="margin-top:6px"><span class="meta" style="align-self:center">Ordenar por:</span>${ordens.map(([k, t]) => `<button class="chip ${k === S.rkOrdem ? "on" : ""}" data-act="rkOrdem" data-o="${k}">${t}</button>`).join("")}</div>
-    <div class="card"><h2>🎯 Meta · ${c.t}</h2>
-      ${meta ? `<p class="meta" style="margin:4px 0">Meta por pessoa: <b>${meta.campo === "mc" ? "R$ " + moeda(meta.valor) : fmt2(meta.valor) + (meta.campo === "lt" ? " L" : "")}</b> em ${CAMPOS[meta.campo]}${meta.herdada ? " (mesma do mês anterior)" : ""} · <b>${bateram} de ${lista.length}</b> bateram a meta.</p>
-        <div style="height:10px;background:var(--line);border-radius:99px;overflow:hidden"><i style="display:block;height:100%;width:${lista.length ? Math.round(bateram / lista.length * 100) : 0}%;background:var(--good)"></i></div>` : `<p class="meta" style="margin:4px 0">Sem meta definida.</p>`}
-      ${S.admin ? `<div class="row" style="flex-wrap:wrap;margin-top:8px;align-items:flex-end">
-        <label class="f" style="flex:1 1 140px">Meta em<select id="mtCampo" class="inp">${Object.entries(CAMPOS).filter(([k]) => c.lt || k !== "lt").map(([k, t]) => `<option value="${k}" ${meta && meta.campo === k ? "selected" : ""}>${t}</option>`).join("")}</select></label>
-        <label class="f" style="flex:1 1 140px">Valor da meta<input id="mtValor" class="inp" inputmode="decimal" placeholder="Ex.: 5.000,00" value="${meta ? esc(fmt2(meta.valor)) : ""}"></label>
-        <button class="btn" style="flex:0 0 auto;width:auto" data-act="salvarMeta">Salvar meta</button></div>` : ""}</div>
-    ${S.admin ? `<div class="row" style="flex-wrap:wrap"><label class="btn brand" style="cursor:pointer">📷 Importar da imagem<input type="file" accept="image/*" data-rk-img="1" hidden></label><button class="btn" data-act="novaVenda">➕ Lançar à mão</button><button class="btn" data-act="baixarRanking" data-t="pdf">⬇️ PDF</button><button class="btn" data-act="baixarRanking" data-t="jpg">⬇️ JPG</button></div>` : ""}
-    <div class="card">${lista.length ? lista.map((r, i) => `<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)">
-        <div style="font-size:20px;min-width:28px;text-align:center;font-weight:800">${med[i] || i + 1}</div>
-        <div style="flex:1;min-width:0"><b style="display:block">${esc(r.nome)}</b>
-          <div class="meta" style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:3px"><span>Qtd. <b>${fmt2(r.q)}</b></span><span>Venda MC <b>R$ ${moeda(r.mc)}</b></span>${c.lt ? `<span>Litragem <b>${fmt2(r.lt)} L</b></span>` : ""}</div>
-          ${barraMeta(r, meta)}</div>
-        ${S.admin ? `<div style="display:flex;flex-direction:column;gap:4px"><button class="btn sm" style="padding:4px 8px;min-width:0;width:auto" data-act="editarVenda" data-id="${r.id}" aria-label="Alterar">✏️</button><button class="btn sm" style="padding:4px 8px;min-width:0;width:auto;color:var(--crit)" data-act="excluirVenda" data-id="${r.id}" aria-label="Excluir">🗑️</button></div>` : ""}
-      </div>`).join("") + `<div class="meta" style="display:flex;flex-wrap:wrap;gap:4px 12px;padding-top:10px"><b>Total</b><span>Qtd. <b>${fmt2(total("q"))}</b></span><span>Venda MC <b>R$ ${moeda(total("mc"))}</b></span>${c.lt ? `<span>Litragem <b>${fmt2(total("lt"))} L</b></span>` : ""}</div>`
-      : `<p class="meta">Nenhum lançamento em ${c.t} · ${nomeMes(S.rkMes)}.${S.admin ? " Use <b>Importar da imagem</b> ou <b>Lançar à mão</b>." : ""}</p>`}</div></div>`;
+    <div class="chips" style="margin-top:6px"><span class="meta" style="align-self:center">Ordenar:</span>${ordens.map(([k, t]) => `<button class="chip ${k === S.rkOrdem ? "on" : ""}" data-act="rkOrdem" data-o="${k}">${t}</button>`).join("")}</div>
+    <div class="chips"><span class="meta" style="align-self:center">Layout:</span>${[["cartoes", "Cartões"], ["grafico", "Gráfico"], ["tabela", "Tabela"]].map(([k, t]) => `<button class="chip ${k === lay ? "on" : ""}" data-act="rkLayout" data-l="${k}">${t}</button>`).join("")}</div>
+    ${S.admin ? `<div class="row" style="flex-wrap:wrap"><button class="btn" data-act="rkCfg">⚙️ Configurar metas e equipe</button><label class="btn brand" style="cursor:pointer">📷 Importar da imagem<input type="file" accept="image/*" data-rk-img="1" hidden></label><button class="btn" data-act="novaVenda">➕ Lançar à mão</button><button class="btn" data-act="baixarRanking" data-t="pdf">⬇️ PDF</button><button class="btn" data-act="baixarRanking" data-t="jpg">⬇️ JPG</button></div>` : ""}
+    <div class="card"><h2>🎯 Metas · ${c.t}</h2>${resumo || `<p class="meta" style="margin:4px 0">Sem lançamentos neste mês.</p>`}</div>
+    <div class="card">${corpo}${linhas.length ? `<div class="meta" style="display:flex;flex-wrap:wrap;gap:4px 12px;padding-top:10px"><b>Total</b><span>Qtd. <b>${fmt2(total("q"))}</b></span><span>Venda MC <b>R$ ${moeda(total("mc"))}</b></span>${c.lt ? `<span>Litragem <b>${fmt2(total("lt"))} L</b></span>` : ""}</div>` : ""}</div></div>`;
+}
+
+/* ⚙️ configurar: metas por função, metas individuais, equipe e opções */
+function vRkCfg(){
+  S.rkMes = S.rkMes || mesAtual(); S.rkTipo = RK.some(c => c.k === S.rkTipo) ? S.rkTipo : "loja"; S.rkCfgAba = S.rkCfgAba || "metas";
+  carregaFotosRk();
+  const c = rkCat(), aba = S.rkCfgAba, P = pessoasRk(), lista = vendasDoMes(c.k);
+  const abas = [["metas", "🎯 Metas por função"], ["individual", "👤 Metas individuais"], ["equipe", "👥 Equipe"], ["opcoes", "⚙️ Opções"]];
+  let corpo = "";
+  if (aba === "metas") corpo = `<div class="card"><h2>Metas · ${c.t} · ${nomeMes(S.rkMes)}</h2>
+      <p class="meta" style="margin:4px 0 10px"><b>Por pessoa:</b> o valor vale para cada um. <b>Total da equipe:</b> o valor é dividido entre as pessoas da função no mês. Em branco: sem meta. Vale deste mês em diante, até ser trocada.</p>
+      ${funcoesDaAba(c.k).map(f => { const g = metaGrupo(c.k, f) || {}; return `<div style="border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:8px"><b>${FUNCOES[f]}</b>
+        <div class="row" style="flex-wrap:wrap;margin-top:6px">
+          <label class="f" style="flex:1 1 120px">Meta em<select class="inp" data-mg-campo="${f}">${Object.entries(CAMPOS).filter(([k]) => c.lt || k !== "lt").map(([k, t]) => `<option value="${k}" ${(g.campo || campoPadrao(c.k)) === k ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+          <label class="f" style="flex:1 1 150px">Tipo<select class="inp" data-mg-modo="${f}"><option value="pessoa" ${g.modo !== "equipe" ? "selected" : ""}>Por pessoa</option><option value="equipe" ${g.modo === "equipe" ? "selected" : ""}>Total da equipe (dividida)</option></select></label>
+          <label class="f" style="flex:1 1 120px">Valor<input class="inp" data-mg-valor="${f}" inputmode="decimal" placeholder="Ex.: 90.000" value="${g.valor ? esc(fmt2(g.valor)) : ""}"></label></div></div>`; }).join("")}
+      <button class="btn pri" style="margin-top:12px" data-act="salvarMetas">Salvar metas</button></div>`;
+  else if (aba === "individual") {
+    const gente = [...new Map([...lista.map(r => [r.pid || r.nome, r]), ...Object.entries(P).filter(([, p]) => p && !p.x && funcoesDaAba(c.k).includes(p.funcao)).map(([id, p]) => [id, {pid:id, nome:p.nome, funcao:funcaoDe(p, c.k)}])]).values()].filter(r => r.pid);
+    corpo = `<div class="card"><h2>Metas individuais · ${c.t} · ${nomeMes(S.rkMes)}</h2>
+      <p class="meta" style="margin:4px 0 10px">Preencha só para quem tem meta diferente da função. Em branco: usa a meta da função. Medida: <b>${CAMPOS[(metaGrupo(c.k, funcaoPadrao(c.k)) || {}).campo || campoPadrao(c.k)]}</b>.</p>
+      ${gente.length ? gente.map(r => `<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)">${fotoPessoa(r, 30)}<div style="flex:1;min-width:0"><b>${esc(r.nome)}</b><br><span class="meta" style="font-size:11px">${FUNCOES[r.funcao]}</span></div><input class="inp" style="max-width:140px" data-mi="${r.pid}" inputmode="decimal" placeholder="usa a da função" value="${metaIndividual(c.k, r.pid) ? esc(fmt2(metaIndividual(c.k, r.pid))) : ""}"></div>`).join("") : `<p class="meta">Ninguém cadastrado nesta aba ainda. Importe uma imagem ou lance à mão primeiro.</p>`}
+      ${gente.length ? `<button class="btn pri" style="margin-top:12px" data-act="salvarMetasInd">Salvar metas individuais</button>` : ""}</div>`;
+  }
+  else if (aba === "equipe") {
+    const gente = Object.entries(P).filter(([, p]) => p && !p.x).sort((a, b) => a[1].nome.localeCompare(b[1].nome, "pt-BR"));
+    corpo = `<div class="card"><h2>Equipe do ranking</h2>
+      <p class="meta" style="margin:4px 0 10px">Cadastrada automaticamente na primeira importação. Escolha a função de cada um (ex.: quem é <b>Frentista Madrugada</b>, <b>Lubrificador</b> ou <b>Caixa Madrugada</b>). As próximas importações não mudam o que você salvar aqui.</p>
+      ${gente.length ? gente.map(([id, p]) => `<div style="border:1px solid var(--line);border-radius:12px;padding:8px;margin-top:8px"><div style="display:flex;gap:8px;align-items:center">${fotoPessoa({pid:id, nome:p.nome}, 40)}<input class="inp" data-eq-nome="${id}" value="${esc(p.nome)}" style="flex:1"></div>
+        <div class="row" style="flex-wrap:wrap;margin-top:6px;align-items:center"><select class="inp" data-eq-funcao="${id}" style="flex:1 1 180px">${Object.entries(FUNCOES).map(([k, t]) => `<option value="${k}" ${p.funcao === k ? "selected" : ""}>${t}</option>`).join("")}</select>
+        ${rkFotosAtivas() ? `<label class="btn" style="width:auto;margin:0;cursor:pointer;padding:8px 10px">📷 Foto<input type="file" accept="image/*" data-rk-foto="${id}" hidden></label>${(S.rkFotos || {})[id] ? `<button class="btn" style="width:auto;margin:0;padding:8px 10px" data-act="tirarFotoPessoa" data-id="${id}">Tirar foto</button>` : ""}` : ""}
+        <button class="btn" style="width:auto;margin:0;padding:8px 10px;color:var(--crit)" data-act="removerPessoa" data-id="${id}">🗑️</button></div></div>`).join("") : `<p class="meta">Ninguém cadastrado ainda. Importe a primeira imagem no ranking.</p>`}
+      ${gente.length ? `<button class="btn pri" style="margin-top:12px" data-act="salvarEquipe">Salvar equipe</button>` : ""}
+      <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
+      <label class="f" for="eqNovo">Cadastrar pessoa à mão<input id="eqNovo" class="inp" placeholder="Nome completo"></label>
+      <select id="eqNovaFuncao" class="inp" style="margin-top:6px">${Object.entries(FUNCOES).map(([k, t]) => `<option value="${k}">${t}</option>`).join("")}</select>
+      <button class="btn brand" style="margin-top:8px" data-act="novaPessoa">➕ Cadastrar</button></div>`;
+  }
+  else corpo = `<div class="card"><h2>Opções do ranking</h2>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:6px"><input type="checkbox" id="rkFotosOn" ${rkFotosAtivas() ? "checked" : ""}> Mostrar fotos das pessoas no ranking</label>
+      <p class="meta" style="margin:6px 0 0">Com a opção ligada, a foto de cada um é colocada em <b>Equipe</b>.</p>
+      <button class="btn pri" style="margin-top:12px" data-act="salvarRkOpcoes">Salvar opções</button></div>`;
+  return `<div class="top"><button class="back" data-act="ranking">Voltar</button><h1>Configurar ranking</h1></div><div class="pad">
+    <div class="chips">${abas.map(([k, t]) => `<button class="chip ${k === aba ? "on" : ""}" data-act="rkCfgAba" data-a="${k}">${t}</button>`).join("")}</div>
+    ${aba === "metas" || aba === "individual" ? `<div class="chips">${RK.map(x => `<button class="chip ${x.k === c.k ? "on" : ""}" data-act="rkTipo" data-t="${x.k}">${x.ico} ${x.t}</button>`).join("")}</div>
+    <label class="f" for="rkMes">Mês<select id="rkMes" class="inp">${[...new Set([mesAtual(), S.rkMes, ...Object.keys(S.vendas || {}).filter(m => /^\d{4}-\d{2}$/.test(m))])].sort().reverse().map(m => `<option value="${m}" ${m === S.rkMes ? "selected" : ""}>${nomeMes(m)}</option>`).join("")}</select></label>` : ""}
+    ${corpo}</div>`;
+}
+async function salvarMetas(b){
+  const c = rkCat(), patch = {};
+  for (const f of funcoesDaAba(c.k)) {
+    const campo = (document.querySelector(`[data-mg-campo="${f}"]`) || {}).value, modo = (document.querySelector(`[data-mg-modo="${f}"]`) || {}).value, txt = ((document.querySelector(`[data-mg-valor="${f}"]`) || {}).value || "").trim();
+    const valor = txt ? parse(txt) : 0;
+    if (txt && !(valor >= 0)) return toast("Valor inválido em " + FUNCOES[f] + ". Ex.: 90.000 ou 5.000,00");
+    patch[f] = {campo, modo, valor};
+  }
+  b.disabled = true; await safe(() => gravaVendas({metas2:{[c.k]:patch}}), "Metas salvas."); b.disabled = false;
+}
+async function salvarMetasInd(b){
+  const c = rkCat(), patch = {};
+  for (const el of document.querySelectorAll("[data-mi]")) { const t = el.value.trim(), v = t ? parse(t) : 0; if (t && !(v >= 0)) return toast("Valor inválido. Ex.: 90.000"); patch[el.dataset.mi] = v; }
+  b.disabled = true; await safe(() => gravaVendas({metasInd:{[c.k]:patch}}), "Metas individuais salvas."); b.disabled = false;
+}
+async function salvarEquipe(b){
+  const patch = {};
+  for (const el of document.querySelectorAll("[data-eq-nome]")) {
+    const id = el.dataset.eqNome, nome = el.value.trim(), f = (document.querySelector(`[data-eq-funcao="${id}"]`) || {}).value, p = pessoasRk()[id] || {};
+    if (!nome) return toast("Nome em branco na equipe.");
+    const chaves = [...new Set([...(p.chaves || []), semAcento(nome).replace(/\s+/g, " ").trim()])];
+    patch[id] = {nome, funcao:f, chaves};
+  }
+  b.disabled = true;
+  if (await safe(() => S.db.doc("cfg/main").update({rkPessoas:patch}), "Equipe salva.")) { S.cfg = {...S.cfg, rkPessoas:deepMerge(pessoasRk(), patch)}; render(); }
+  b.disabled = false;
+}
+async function fotoPessoaUpload(id, arq){
+  if (!arq) return;
+  try {
+    const url = await new Promise((ok, erro) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = erro; r.readAsDataURL(arq); });
+    const img = await new Promise((ok, erro) => { const i = new Image(); i.onload = () => ok(i); i.onerror = erro; i.src = url; });
+    const lado = Math.min(img.width, img.height), cv = document.createElement("canvas"); cv.width = cv.height = 220;
+    cv.getContext("2d").drawImage(img, (img.width - lado) / 2, (img.height - lado) / 2, lado, lado, 0, 0, 220, 220);
+    const d = cv.toDataURL("image/jpeg", 0.8);
+    if (await safe(() => S.db.doc("rkfoto/" + id).set({d}), "Foto salva.")) { S.rkFotos = {...(S.rkFotos || {}), [id]:d}; render(); }
+  } catch (e) { console.error("Foto da pessoa:", e); toast("Não foi possível usar essa imagem."); }
 }
 function shVenda(id){
   const c = rkCat(), o = ((S.vendas || {})[S.rkMes] || {}), v = id ? ((o[c.k] || {})[id] || (c.k === "diesel" ? (o.frentista || {})[id] : null) || {}) : {};
-  const nomes = [...new Set([...(cfg().colaboradores || []), ...(cfg().usuarios || [])])].sort();
+  const nomes = [...new Set([...Object.values(pessoasRk()).filter(p => p && !p.x).map(p => p.nome), ...(cfg().colaboradores || []), ...(cfg().usuarios || [])])].sort();
   openSheet(`<h2>${id ? "Alterar" : "Lançar"} · ${c.t}</h2>
     <label class="f" for="vNome">${c.p}<input id="vNome" class="inp" list="vNomes" value="${esc(v.nome || "")}" autofocus></label><datalist id="vNomes">${nomes.map(n => `<option value="${esc(n)}">`).join("")}</datalist>
     <div class="row"><label class="f" for="vQ" style="flex:1">Quantidade<input id="vQ" class="inp" inputmode="decimal" value="${v.q != null ? esc(fmt2(v.q)) : ""}"></label>
@@ -949,23 +1119,20 @@ async function salvarVenda(b){
   const fail = t => { e.textContent = t; e.hidden = false; };
   if (!nome) return fail("Digite o nome.");
   if (!(q >= 0)) return fail("Quantidade inválida."); if (!(mc >= 0)) return fail("Venda MC inválida."); if (c.lt && !(lt >= 0)) return fail("Litragem inválida.");
-  let id = b.dataset.id;
-  if (!id) { const ja = vendasDoMes(c.k).find(r => semAcento(r.nome) === semAcento(nome)); id = ja ? ja.id : "v" + Date.now().toString(36); }
   b.disabled = true;
-  if (await safe(() => gravaVendas({[c.k]:{[id]:c.lt ? {nome, q, mc, lt, x:0} : {nome, q, mc, x:0}}}), "Lançamento salvo.")) closeSheet(); else b.disabled = false;
-}
-async function salvarMeta(b){
-  const c = rkCat(), campo = $("#mtCampo").value, valor = parse($("#mtValor").value);
-  if (!(valor >= 0)) return toast("Digite o valor da meta. Ex.: 5.000,00");
-  b.disabled = true;
-  await safe(() => gravaVendas({metas:{[c.k]:{campo, valor}}}), valor > 0 ? "Meta salva." : "Meta removida.");
-  b.disabled = false;
+  const ok = await safe(async () => {
+    const ids = await registrarPessoas([nome], c.k), pid = ids[nome];
+    let id = b.dataset.id;
+    if (!id) { const ja = vendasDoMes(c.k).find(r => (pid && r.pid === pid) || semAcento(r.nome) === semAcento(nome)); id = ja ? ja.id : "v" + Date.now().toString(36); }
+    await gravaVendas({[c.k]:{[id]:c.lt ? {nome, pid, q, mc, lt, x:0} : {nome, pid, q, mc, x:0}}});
+  }, "Lançamento salvo.");
+  if (ok) closeSheet(); else b.disabled = false;
 }
 function baixarRanking(b, tipo){
-  const c = rkCat(), lista = vendasDoMes(c.k), meta = metaDe(c.k), pct = r => meta && meta.valor > 0 ? Math.floor(r[meta.campo] / meta.valor * 100) + "%" : "—";
-  const cols = c.lt ? [["#", 0], [c.p, 60], ["Quantidade", 520], ["Venda MC", 700], ["Litragem", 870], ["Meta", 1020]] : [["#", 0], [c.p, 60], ["Quantidade", 620], ["Venda MC", 820], ["Meta", 1020]];
-  const pags = paginasTabela("Ranking de vendas · " + c.t, (S.nomeFilial || "") + " · " + S.rkMes.split("-").reverse().join("/") + (meta ? " · meta " + fmt2(meta.valor) + " em " + CAMPOS[meta.campo] : ""), cols,
-    lista.map((r, i) => c.lt ? [i + 1, r.nome, fmt2(r.q), moeda(r.mc), fmt2(r.lt), pct(r)] : [i + 1, r.nome, fmt2(r.q), moeda(r.mc), pct(r)]));
+  const c = rkCat(), lista = vendasDoMes(c.k), linhas = lista.map(r => { const m = metaDaPessoa(r, c.k, lista); return {...r, m, st:situacao(r, m)}; });
+  const cols = c.lt ? [["#", 0], [c.p, 50], ["Função", 400], ["Litragem", 640], ["Venda MC", 800], ["Meta", 940], ["%", 1060]] : [["#", 0], [c.p, 50], ["Função", 420], ["Qtd.", 640], ["Venda MC", 780], ["Meta", 940], ["%", 1060]];
+  const pags = paginasTabela("Ranking de vendas posto · " + c.t, (S.nomeFilial || "") + " · " + S.rkMes.split("-").reverse().join("/"), cols,
+    linhas.map((r, i) => [i + 1, r.nome, FUNCOES[r.funcao], c.lt ? fmt2(r.lt) : fmt2(r.q), moeda(r.mc), r.m ? fmtCampo(r.m.campo, r.m.valor) : "—", r.st ? r.st.pct + "%" : "—"]));
   exportarPaginas(b, pags, tipo, nomeArquivo("Ranking " + c.t));
 }
 /* importar da imagem: lê a foto do relatório no próprio aparelho (nada é enviado para fora além do leitor baixado na 1ª vez) */
@@ -1010,33 +1177,43 @@ async function importarImagem(arq){
     base.forEach((r, i) => {
       const iguais = leituras.map(L => L.find(x => semAcento(x.nome) === semAcento(r.nome)) || L[i]).filter(Boolean);
       const campos = [0, 1, 2].map(k => { const vs = iguais.map(x => x.v[k]).filter(v => v != null && !isNaN(v)); if (!vs.length) return {v:undefined, ok:true}; const cont = {}; vs.forEach(v => cont[v] = (cont[v] || 0) + 1); const [v, n] = Object.entries(cont).sort((a, b) => b[1] - a[1])[0]; return {v:Number(v), ok:n === vs.length}; });
-      rows.push({nome:r.nome, q:campos[0].v, mc:campos[1].v, lt:c.lt ? campos[2].v : undefined, conferir:!campos.slice(0, c.lt ? 3 : 2).every(x => x.ok)});
+      const p = acharPessoa(r.nome);
+      rows.push({nome:r.nome, cad:p ? p.nome : null, q:campos[0].v, mc:campos[1].v, lt:c.lt ? campos[2].v : undefined, conferir:!campos.slice(0, c.lt ? 3 : 2).every(x => x.ok)});
     });
     S.importa = rows;
     if (!rows.length) { openSheet(`<h2>Nada encontrado</h2><p class="meta">Não achei linhas com nome e números. Use uma foto ou print nítido da tabela, sem cortes, e tente de novo.</p><button class="btn" data-act="fechar">Fechar</button>`); return; }
+    const novos = rows.filter(r => !r.cad).length;
     const inp = (i, k, v, fmtv) => `<input class="inp" data-imp="${i}" data-k="${k}" inputmode="decimal" value="${v == null ? "" : esc(fmtv(v))}" style="padding:6px 8px;min-width:80px">`;
     openSheet(`<h2>Conferir importação · ${c.t}</h2>
-      <p class="meta" style="margin:0 0 8px">Confira os valores lidos. Linhas em <b style="color:var(--warn)">amarelo</b> tiveram leituras diferentes: confira com a imagem. Desmarque o que não quiser lançar.</p>
+      <p class="meta" style="margin:0 0 8px">Confira os valores lidos. Linhas em <b style="color:var(--warn)">amarelo</b> tiveram leituras diferentes: confira com a imagem. Desmarque o que não quiser lançar.${novos ? ` <b>${novos} nome(s) novo(s)</b> serão cadastrados na equipe.` : ""}</p>
       <div style="overflow-x:auto"><table class="tbl"><tr><th></th><th>${c.p}</th><th class="n">Qtd.</th><th class="n">Venda MC</th>${c.lt ? `<th class="n">Litragem</th>` : ""}</tr>
-      ${rows.map((r, i) => `<tr style="${r.conferir ? "background:var(--warn-bg)" : ""}"><td><input type="checkbox" data-imp-ok="${i}" checked></td><td><input class="inp" data-imp="${i}" data-k="nome" value="${esc(r.nome)}" style="padding:6px 8px;min-width:150px"></td><td>${inp(i, "q", r.q, fmt2)}</td><td>${inp(i, "mc", r.mc, moeda)}</td>${c.lt ? `<td>${inp(i, "lt", r.lt, fmt2)}</td>` : ""}</tr>`).join("")}</table></div>
+      ${rows.map((r, i) => `<tr style="${r.conferir ? "background:var(--warn-bg)" : ""}"><td><input type="checkbox" data-imp-ok="${i}" checked></td><td><input class="inp" data-imp="${i}" data-k="nome" value="${esc(r.nome)}" style="padding:6px 8px;min-width:150px">${r.cad ? `<br><span class="meta" style="font-size:11px">cadastrado: ${esc(r.cad)}</span>` : `<br><span class="meta" style="font-size:11px;color:var(--cyan)">novo na equipe</span>`}</td><td>${inp(i, "q", r.q, fmt2)}</td><td>${inp(i, "mc", r.mc, moeda)}</td>${c.lt ? `<td>${inp(i, "lt", r.lt, fmt2)}</td>` : ""}</tr>`).join("")}</table></div>
       <p class="meta">Mês: <b>${S.rkMes.split("-").reverse().join("/")}</b>. Quem já existe no mês é atualizado; os novos são adicionados.</p>
       <div class="row"><button class="btn" data-act="fechar">Cancelar</button><button class="btn pri" data-act="confirmarImport">Lançar ${rows.length}</button></div>`);
   } catch (e) { console.error("Importar imagem:", e); openSheet(`<h2>Não foi possível ler</h2><p class="meta">${esc(e.message || "Erro ao ler a imagem.")}</p><button class="btn" data-act="fechar">Fechar</button>`); }
 }
 async function confirmarImport(b){
-  const c = rkCat(), existentes = vendasDoMes(c.k), patch = {}; let n = 0, erro = "";
+  const c = rkCat(), lidos = []; let erro = "";
   (S.importa || []).forEach((r, i) => {
     if (!(document.querySelector(`[data-imp-ok="${i}"]`) || {}).checked) return;
     const val = k => (document.querySelector(`[data-imp="${i}"][data-k="${k}"]`) || {}).value;
     const nome = String(val("nome") || "").trim(), q = parse(val("q")), mc = parse(val("mc")), lt = c.lt ? parse(val("lt")) : 0;
     if (!nome || !(q >= 0) || !(mc >= 0) || (c.lt && !(lt >= 0))) { erro = erro || "Confira a linha " + (i + 1) + ": nome ou número inválido."; return; }
-    const ja = existentes.find(x => semAcento(x.nome) === semAcento(nome)), id = ja ? ja.id : "v" + Date.now().toString(36) + i;
-    patch[id] = c.lt ? {nome, q, mc, lt, x:0} : {nome, q, mc, x:0}; n++;
+    lidos.push({nome, q, mc, lt});
   });
   if (erro) return toast(erro);
-  if (!n) return toast("Nenhuma linha marcada.");
+  if (!lidos.length) return toast("Nenhuma linha marcada.");
   b.disabled = true;
-  if (await safe(() => gravaVendas({[c.k]:patch}), n + " lançamento(s) importado(s).")) { S.importa = null; closeSheet(); } else b.disabled = false;
+  const ok = await safe(async () => {
+    const ids = await registrarPessoas(lidos.map(r => r.nome), c.k), existentes = vendasDoMes(c.k), patch = {};
+    lidos.forEach((r, i) => {
+      const pid = ids[r.nome], P = pessoasRk()[pid] || {}, nomeCad = P.nome || r.nome;
+      const ja = existentes.find(x => (pid && x.pid === pid) || semAcento(x.nome) === semAcento(r.nome)), id = ja ? ja.id : "v" + Date.now().toString(36) + i;
+      patch[id] = c.lt ? {nome:nomeCad, pid, q:r.q, mc:r.mc, lt:r.lt, x:0} : {nome:nomeCad, pid, q:r.q, mc:r.mc, x:0};
+    });
+    await gravaVendas({[c.k]:patch});
+  }, lidos.length + " lançamento(s) importado(s).");
+  if (ok) { S.importa = null; closeSheet(); } else b.disabled = false;
 }
 
 /* ---------- baixar o estoque em PDF e JPG ---------- */
@@ -1287,7 +1464,26 @@ document.addEventListener("click", async ev => {
   else if (a === "salvarVenda") salvarVenda(b);
   else if (a === "excluirVenda") { if (confirm("Excluir este lançamento do ranking?")) await safe(() => gravaVendas({[S.rkTipo]:{[b.dataset.id]:{x:1}}}), "Lançamento excluído."); }
   else if (a === "rkOrdem") { S.rkOrdem = b.dataset.o; render(); }
-  else if (a === "salvarMeta") salvarMeta(b);
+  else if (a === "rkLayout") { try { localStorage.setItem("estoque.rkLayout", b.dataset.l); } catch (e) {} render(); }
+  else if (a === "rkCfg") go("rkcfg");
+  else if (a === "rkCfgAba") { S.rkCfgAba = b.dataset.a; render(); }
+  else if (a === "salvarMetas") salvarMetas(b);
+  else if (a === "salvarMetasInd") salvarMetasInd(b);
+  else if (a === "salvarEquipe") salvarEquipe(b);
+  else if (a === "novaPessoa") {
+    const nome = (($("#eqNovo") || {}).value || "").trim(), f = ($("#eqNovaFuncao") || {}).value || "loja";
+    if (!nome) return toast("Digite o nome.");
+    if (acharPessoa(nome)) return toast("Essa pessoa já está cadastrada.");
+    const id = "p" + Date.now().toString(36), dado = {nome, funcao:f, chaves:[semAcento(nome).replace(/\s+/g, " ").trim()], x:0};
+    if (await safe(() => S.db.doc("cfg/main").update({rkPessoas:{[id]:dado}}), nome + " cadastrado(a).")) { S.cfg = {...S.cfg, rkPessoas:{...pessoasRk(), [id]:dado}}; render(); }
+  }
+  else if (a === "removerPessoa") {
+    const id = b.dataset.id, p = pessoasRk()[id] || {};
+    if (!confirm("Tirar " + (p.nome || "esta pessoa") + " da equipe? Os lançamentos já feitos continuam.")) return;
+    if (await safe(() => S.db.doc("cfg/main").update({rkPessoas:{[id]:{x:1}}}), "Removido(a) da equipe.")) { S.cfg = {...S.cfg, rkPessoas:deepMerge(pessoasRk(), {[id]:{x:1}})}; render(); }
+  }
+  else if (a === "tirarFotoPessoa") { const id = b.dataset.id; if (await safe(() => S.db.doc("rkfoto/" + id).set({d:""}), "Foto removida.")) { const o = {...(S.rkFotos || {})}; delete o[id]; S.rkFotos = o; render(); } }
+  else if (a === "salvarRkOpcoes") { const on = $("#rkFotosOn").checked; if (await safe(() => S.db.doc("cfg/main").update({rkFotos:on}), "Opções salvas.")) { S.cfg = {...S.cfg, rkFotos:on}; S.rkFotosLidas = false; render(); } }
   else if (a === "confirmarImport") confirmarImport(b);
   else if (a === "salvarRankingAtivo") { const on = $("#rkAtivo").checked; await safe(() => S.db.doc("cfg/main").update({ranking:on}), on ? "Ranking ativado." : "Ranking desativado."); }
   else if (a === "baixarRanking") baixarRanking(b, b.dataset.t);
@@ -1304,7 +1500,7 @@ document.addEventListener("click", async ev => {
     await safe(() => S.db.doc("cfg/main").update({[k]:arr}), nome + " removido.");
   }
 });
-const ADMIN_ACTS = new Set(["aprod","ausers","acfg","rel","addEstoque","confEntrada","novo","salvarNovo","editar","salvarEdit","corrigir","salvarCorr","excluir","confExcluir","foto","mais","addLista","rmLista","salvarLocais","excluirLocal","filtro","periodo","aplicarFiltro","limparFiltro","baixarFiltro","novaVenda","editarVenda","salvarVenda","excluirVenda","salvarMeta","confirmarImport","salvarRankingAtivo","criarLocal","criarLocalTile","tirarFotoLocal","baixarEstoque","gerarPDF","gerarJPG","criarLogin","redefinirSenha","kpiLocal","admLocal"]);
+const ADMIN_ACTS = new Set(["aprod","ausers","acfg","rel","addEstoque","confEntrada","novo","salvarNovo","editar","salvarEdit","corrigir","salvarCorr","excluir","confExcluir","foto","mais","addLista","rmLista","salvarLocais","excluirLocal","filtro","periodo","aplicarFiltro","limparFiltro","baixarFiltro","novaVenda","editarVenda","salvarVenda","excluirVenda","confirmarImport","salvarRankingAtivo","rkCfg","rkCfgAba","salvarMetas","salvarMetasInd","salvarEquipe","novaPessoa","removerPessoa","tirarFotoPessoa","salvarRkOpcoes","criarLocal","criarLocalTile","tirarFotoLocal","baixarEstoque","gerarPDF","gerarJPG","criarLogin","redefinirSenha","kpiLocal","admLocal"]);
 document.addEventListener("input", ev => { if (ev.target.id === "busca") { S.busca = ev.target.value; renderList(); } else if (ev.target.id === "abusca") { S.abusca = ev.target.value; renderAList(); } });
 document.addEventListener("change", ev => {
   const t = ev.target;
