@@ -48,7 +48,7 @@ function rkMesAtual(){ const h = new Date(); return h.getFullYear() + "-" + Stri
 function rkLayout(){ return (S.cfg && S.cfg.rkLayout) || "cartoes"; }
 
 /* equipe: cadastrada automaticamente na importação; o que o administrador muda não é trocado pelas próximas importações */
-const pessoasRk = () => (S.cfg && S.cfg.rkPessoas) || {};
+const pessoasRk = () => Object.fromEntries(Object.entries((S.cfg && S.cfg.rkPessoas) || {}).filter(([id]) => !id.startsWith("c_")));
 function acharPessoa(nome){
   const n = semAcento(nome).replace(/\s+/g, " ").trim(), P = pessoasRk();
   for (const [id, p] of Object.entries(P)) { if (!p || p.x) continue; if (semAcento(p.nome || "") === n || (p.chaves || []).includes(n)) return {id, ...p}; }
@@ -342,7 +342,7 @@ async function fotoPessoaUpload(id, arq){
 }
 function shVenda(idc){
   const [tb, id] = idc ? rkDividir(idc) : [S.rkTipo, null], c = RK.find(x => x.k === tb) || rkCat(), o = ((S.vendas || {})[S.rkMes] || {}), v = id ? ((o[c.k] || {})[id] || (c.k === "diesel" ? (o.frentista || {})[id] : null) || {}) : {};
-  const nomes = [...new Set([...Object.values(pessoasRk()).filter(p => p && !p.x).map(p => p.nome), ...(cfg().colaboradores || []), ...(cfg().usuarios || [])])].sort();
+  const nomes = [...new Set(Object.values(pessoasRk()).filter(p => p && !p.x).map(p => p.nome))].sort();
   openSheet(`<h2>${id ? "Alterar" : "Lançar"} · ${c.t}</h2>
     <label class="f" for="vNome">${c.p}<input id="vNome" class="inp" list="vNomes" value="${esc(v.nome || "")}" autofocus></label><datalist id="vNomes">${nomes.map(n => `<option value="${esc(n)}">`).join("")}</datalist>${botoesFuncao(v, tb)}
     <div class="row"><label class="f" for="vQ" style="flex:1">Quantidade<input id="vQ" class="inp" inputmode="decimal" value="${v.q != null ? esc(fmt2(v.q)) : ""}"></label>
