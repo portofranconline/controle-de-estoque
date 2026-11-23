@@ -1,0 +1,14 @@
+{
+  "name": "Controle de Estoque — Posto & BR Park",
+  "short_name": "Estoque ALDO",
+  "description": "Controle de estoque do POSTO (ALDO) e BR PARK.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "lang": "pt-BR",
+  "icons": [
+    {"src":"dados/logos/aldo.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+    {"src":"dados/logos/aldo.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+  ]
+}
