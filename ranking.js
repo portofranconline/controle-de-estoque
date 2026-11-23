@@ -162,27 +162,59 @@ function vRanking(){
 }
 
 /* ⚙️ configurar: metas por função, metas individuais, equipe e opções */
+/* metas organizadas por setor: gerais, Venda MC por setor, frentistas, loja e caixa */
+function categoriasMeta(){
+  const ativa = k => rkAbas().some(c => c.k === k), extras = g => Object.entries(funcoesExtras()).filter(([, f]) => f.grupo === g);
+  const fr = [], lj = [], cx = [];
+  if (ativa("diesel")) fr.push({t:"Frentista Diesel", alvos:[["diesel", "frentista"]]});
+  if (ativa("gasolina")) fr.push({t:"Frentista Gasolina", alvos:[["gasolina", "frentista"]]});
+  const ambos = f => ["diesel", "gasolina"].filter(ativa).map(t => [t, f]);
+  if (ambos("x").length) { fr.push({t:"Frentista Lubrificador", alvos:ambos("lubrificador")}, {t:"Frentista Madrugada", alvos:ambos("frentista_madrugada")}); extras("frentista").forEach(([k, f]) => fr.push({t:f.nome, alvos:ambos(k)})); }
+  if (ativa("loja")) { lj.push({t:"Vendedor da Loja", alvos:[["loja", "loja"]]}); extras("loja").forEach(([k, f]) => lj.push({t:f.nome, alvos:[["loja", k]]})); }
+  for (const [tab, nome] of [["caixa", "Caixa"], ["opcaixa", "Operações Caixa"]]) if (ativa(tab)) { cx.push({t:nome, alvos:[[tab, "caixa"]]}, {t:nome + " Madrugada", alvos:[[tab, "caixa_madrugada"]]}); extras("caixa").forEach(([k, f]) => cx.push({t:f.nome + (tab === "opcaixa" ? " (Operações)" : ""), alvos:[[tab, k]]})); }
+  return [["⛽ Meta Frentistas", fr, true], ["🛒 Meta Loja", lj, false], ["💵 Meta Caixa", cx, false]].filter(([, l]) => l.length);
+}
+function telaMetasSetores(mg){
+  S.rkCats = [];
+  const v = (x, f) => x ? esc(f(x.valor)) : "", salvar = `<button class="btn pri" style="margin-top:12px" data-act="salvarMetasSetores">💾 Salvar metas</button>`;
+  const campoGeral = (id, rot, x, f, ex) => `<label class="f" style="margin-top:8px">${rot}<input class="inp" data-mgs="${id}" inputmode="decimal" placeholder="${ex}" value="${v(x, f)}"></label>`;
+  const setores = rkAbas().map(c => campoGeral(CAMPO_SETOR[c.k], `${c.ico} ${c.t}`, mg[CAMPO_SETOR[c.k]], moeda, "Ex.: 50.000,00")).join("");
+  const grupos = categoriasMeta().map(([tit, cats, comLt]) => `<div class="card"><h2>${tit} · ${nomeMes(S.rkMes)}</h2>
+      <p class="meta" style="margin:4px 0 6px"><b>Por pessoa:</b> vale para cada um. <b>Total da equipe:</b> dividido entre as pessoas da função. Em branco: sem meta.</p>
+      ${cats.map(cat => { const n = S.rkCats.push(cat) - 1, [t0, f0] = cat.alvos[0], g = metaGrupo(t0, f0) || {};
+        return `<div style="border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-top:8px"><b>${esc(cat.t)}</b>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">
+          <select class="inp" data-cat-campo="${n}" style="padding:8px">${Object.entries(CAMPOS).filter(([k]) => comLt || k !== "lt").map(([k, t]) => `<option value="${k}" ${(g.campo || (comLt ? "lt" : "mc")) === k ? "selected" : ""}>${t}</option>`).join("")}</select>
+          <select class="inp" data-cat-modo="${n}" style="padding:8px"><option value="pessoa" ${g.modo !== "equipe" ? "selected" : ""}>Por pessoa</option><option value="equipe" ${g.modo === "equipe" ? "selected" : ""}>Total da equipe</option></select>
+          <input class="inp" data-cat-valor="${n}" inputmode="decimal" placeholder="Valor da meta" value="${g.valor ? esc(fmt2(g.valor)) : ""}" style="grid-column:1 / -1;padding:8px"></div></div>`; }).join("")}
+      ${salvar}</div>`).join("");
+  return `<div class="card"><h2>🏪 Metas gerais do posto · ${nomeMes(S.rkMes)}</h2>
+      <p class="meta" style="margin:4px 0 0">Escolha o mês e o ano acima. Vale desse mês em diante, até ser trocada.</p>
+      ${rkAbas().some(c => c.lt) ? campoGeral("litros", "⛽ Litros no mês · todos os frentistas", mg.litros, fmt2, "Ex.: 900.000") : ""}
+      ${campoGeral("valor", "💰 Venda MC total do posto (R$)", mg.mc, moeda, "Ex.: 150.000,00")}${salvar}</div>
+    <div class="card"><h2>📊 Meta de Venda MC por setor · ${nomeMes(S.rkMes)}</h2>
+      <p class="meta" style="margin:4px 0 0">Quanto cada setor precisa vender no mês, em R$.</p>${setores}${salvar}</div>
+    ${grupos}`;
+}
+async function salvarMetasSetores(b){
+  const geral = {}, metas2 = {};
+  for (const el of document.querySelectorAll("[data-mgs]")) { const t = el.value.trim(), x = t ? parse(t) : 0; if (t && !(x >= 0)) return toast("Valor inválido. Ex.: 50.000,00"); geral[el.dataset.mgs] = x; }
+  for (const el of document.querySelectorAll("[data-cat-valor]")) {
+    const n = el.dataset.catValor, cat = (S.rkCats || [])[n]; if (!cat) continue;
+    const t = el.value.trim(), valor = t ? parse(t) : 0; if (t && !(valor >= 0)) return toast("Valor inválido em " + cat.t + ". Ex.: 90.000");
+    const campo = (document.querySelector(`[data-cat-campo="${n}"]`) || {}).value, modo = (document.querySelector(`[data-cat-modo="${n}"]`) || {}).value;
+    for (const [tab, f] of cat.alvos) (metas2[tab] = metas2[tab] || {})[f] = {campo, modo, valor};
+  }
+  b.disabled = true; await safe(() => gravaVendas({metaGeral:geral, metas2}), "Metas salvas."); b.disabled = false;
+}
 function vRkCfg(){
   S.rkMes = S.rkMes || rkMesAtual(); S.rkTipo = rkAbas().some(c => c.k === S.rkTipo) ? S.rkTipo : rkAbas()[0].k; S.rkCfgAba = S.rkCfgAba || "metas";
   carregaFotosRk();
   const c = rkCat(), aba = S.rkCfgAba, P = pessoasRk(), lista = vendasDoMes(c.k);
-  const abas = [["metas", "🎯 Metas por função"], ["individual", "👤 Metas individuais"], ["equipe", "👥 Equipe"], ["opcoes", "⚙️ Opções"]];
+  const abas = [["metas", "🎯 Metas"], ["individual", "👤 Metas individuais"], ["equipe", "👥 Equipe"], ["opcoes", "⚙️ Opções"]];
   let corpo = "";
   const mg = metasGerais();
-  if (aba === "metas") corpo = `<div class="card"><h2>🏪 Metas gerais do posto · ${nomeMes(S.rkMes)}</h2>
-      <p class="meta" style="margin:4px 0 8px">Escolha o mês e o ano acima. A meta vale desse mês em diante, até ser trocada. Em branco: sem meta.</p>
-      <label class="f">⛽ Litros · soma de todos os frentistas<input id="mgLitros" class="inp" inputmode="decimal" placeholder="Ex.: 900.000" value="${mg.litros ? esc(fmt2(mg.litros.valor)) : ""}"></label>
-      <label class="f" style="margin-top:8px">🛒 Venda da Loja (R$, Venda MC)<input id="mgLoja" class="inp" inputmode="decimal" placeholder="Ex.: 40.000,00" value="${mg.loja ? esc(moeda(mg.loja.valor)) : ""}"></label>
-      <label class="f" style="margin-top:8px">💰 Venda MC total de todos (R$)<input id="mgGeral" class="inp" inputmode="decimal" placeholder="Ex.: 150.000,00" value="${mg.mc ? esc(moeda(mg.mc.valor)) : ""}"></label>
-      <button class="btn pri" style="margin-top:10px" data-act="salvarMetaGeral">Salvar metas gerais</button></div>
-    <div class="card"><h2>Metas · ${c.t} · ${nomeMes(S.rkMes)}</h2>
-      <p class="meta" style="margin:4px 0 10px"><b>Por pessoa:</b> o valor vale para cada um. <b>Total da equipe:</b> o valor é dividido entre as pessoas da função no mês. Em branco: sem meta. Vale deste mês em diante, até ser trocada.</p>
-      ${funcoesDaAba(c.k).map(f => { const g = metaGrupo(c.k, f) || {}; return `<div style="border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:8px"><b>${nomeFuncao(f)}</b>
-        <div class="row" style="flex-wrap:wrap;margin-top:6px">
-          <label class="f" style="flex:1 1 120px">Meta em<select class="inp" data-mg-campo="${f}">${Object.entries(CAMPOS).filter(([k]) => c.lt || k !== "lt").map(([k, t]) => `<option value="${k}" ${(g.campo || campoPadrao(c.k)) === k ? "selected" : ""}>${t}</option>`).join("")}</select></label>
-          <label class="f" style="flex:1 1 150px">Tipo<select class="inp" data-mg-modo="${f}"><option value="pessoa" ${g.modo !== "equipe" ? "selected" : ""}>Por pessoa</option><option value="equipe" ${g.modo === "equipe" ? "selected" : ""}>Total da equipe (dividida)</option></select></label>
-          <label class="f" style="flex:1 1 120px">Valor<input class="inp" data-mg-valor="${f}" inputmode="decimal" placeholder="Ex.: 90.000" value="${g.valor ? esc(fmt2(g.valor)) : ""}"></label></div></div>`; }).join("")}
-      <button class="btn pri" style="margin-top:12px" data-act="salvarMetas">Salvar metas</button></div>`;
+  if (aba === "metas") corpo = telaMetasSetores(mg);
   else if (aba === "individual") {
     const gente = [...new Map([...lista.map(r => [r.pid || r.nome, r]), ...Object.entries(P).filter(([, p]) => p && !p.x && funcoesDaAba(c.k).includes(p.funcao)).map(([id, p]) => [id, {pid:id, nome:p.nome, funcao:funcaoDe(p, c.k)}])]).values()].filter(r => r.pid);
     corpo = `<div class="card"><h2>Metas individuais · ${c.t} · ${nomeMes(S.rkMes)}</h2>
@@ -219,7 +251,7 @@ function vRkCfg(){
       <button class="btn pri" style="margin-top:12px" data-act="salvarRkOpcoes">Salvar opções</button></div>`;
   return `<div class="top"><button class="back" data-act="ranking">Voltar</button><h1>Configurar ranking</h1></div><div class="pad">
     <div class="chips">${abas.map(([k, t]) => `<button class="chip ${k === aba ? "on" : ""}" data-act="rkCfgAba" data-a="${k}">${t}</button>`).join("")}</div>
-    ${aba === "metas" || aba === "individual" ? `<div class="chips">${rkAbas().map(x => `<button class="chip ${x.k === c.k ? "on" : ""}" data-act="rkTipo" data-t="${x.k}">${x.ico} ${x.t}</button>`).join("")}</div>
+    ${aba === "metas" || aba === "individual" ? `${aba === "individual" ? `<div class="chips">${rkAbas().map(x => `<button class="chip ${x.k === c.k ? "on" : ""}" data-act="rkTipo" data-t="${x.k}">${x.ico} ${x.t}</button>`).join("")}</div>` : ""}
     <label class="f" for="rkMes">Mês e ano<select id="rkMes" class="inp">${[...new Set([proxMes(2), proxMes(1), rkMesAtual(), S.rkMes, ...Object.keys(S.vendas || {}).filter(m => /^\d{4}-\d{2}$/.test(m))])].sort().reverse().map(m => `<option value="${m}" ${m === S.rkMes ? "selected" : ""}>${nomeMes(m)}</option>`).join("")}</select></label>` : ""}
     ${corpo}</div>`;
 }
@@ -451,7 +483,7 @@ async function cartaoGeral(b){
 /* ---------- metas gerais do posto: litros (frentistas), venda da loja e venda MC total, com projeção pelo dia do mês ---------- */
 function metasGerais(){
   const pega = k => { const x = ultimoMes(d => d.metaGeral && num(d.metaGeral[k]) > 0 ? num(d.metaGeral[k]) : null); return x ? {valor:x.v, herdada:x.mes !== S.rkMes} : null; };
-  return {litros:pega("litros"), loja:pega("loja"), mc:pega("valor")};
+  return {litros:pega("litros"), loja:pega("loja"), mc:pega("valor"), mcDiesel:pega("mcDiesel"), mcGasolina:pega("mcGasolina"), mcCaixa:pega("mcCaixa"), mcOpcaixa:pega("mcOpcaixa")};
 }
 function metaGeral(){ return metasGerais().mc; }
 function projecao(real, meta){
@@ -473,11 +505,18 @@ function linhaMetaGeral(icone, titulo, campo, real, meta){
       ${pj ? `<div class="meta" style="margin-top:4px">📈 Projeção (dia ${pj.dia} de ${pj.dias}): <b>${fmtCampo(campo, pj.proj)}</b> = <b style="color:${corPj}">${pj.pct}% da meta</b>${!st.bateu && pj.resta ? ` · precisa de <b>${fmtCampo(campo, pj.porDia)}</b> por dia nos ${pj.resta} dias restantes` : ""}</div>` : `<div class="meta" style="margin-top:4px">Mês fechado.</div>`}`
       : `<div class="meta">Sem meta${S.admin ? " · defina em ⚙️ Configurar → Metas" : ""}</div>`}</div>`;
 }
+const CAMPO_SETOR = {loja:"loja", diesel:"mcDiesel", gasolina:"mcGasolina", caixa:"mcCaixa", opcaixa:"mcOpcaixa"};
 function graficoSetores(partes){
-  const max = Math.max(1, ...partes.map(p => p.mc)), curto = v => v >= 1000 ? "R$ " + (v / 1000).toLocaleString("pt-BR", {maximumFractionDigits:1}) + " mil" : "R$ " + moeda(v);
-  return `<div style="display:flex;align-items:flex-end;gap:8px;height:170px;margin-top:10px">${partes.map(p => `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0">
-    <small style="font-weight:700;white-space:nowrap;font-size:11px">${curto(p.mc)}</small><i style="display:block;width:100%;max-width:60px;height:${Math.max(3, p.mc / max * 115)}px;background:linear-gradient(180deg,${CORES_ABA[p.c.k]},color-mix(in srgb,${CORES_ABA[p.c.k]} 55%,#000));border-radius:8px 8px 0 0"></i>
-    <small class="meta" style="text-align:center;font-size:10.5px;line-height:1.15;margin-top:4px">${p.c.ico}<br>${p.c.t}</small></div>`).join("")}</div>`;
+  const mg = metasGerais(), metaDe = p => (mg[CAMPO_SETOR[p.c.k]] || {}).valor || 0;
+  const max = Math.max(1, ...partes.map(p => Math.max(p.mc, metaDe(p)))), curto = v => v >= 1000 ? "R$ " + (v / 1000).toLocaleString("pt-BR", {maximumFractionDigits:1}) + " mil" : "R$ " + moeda(v);
+  return `<div style="display:flex;align-items:flex-end;gap:8px;height:190px;margin-top:10px">${partes.map(p => { const mt = metaDe(p), pct = mt ? Math.floor(p.mc / mt * 100) : null, cor = pct == null ? "inherit" : pct >= 100 ? "var(--good)" : pct >= 70 ? "var(--warn)" : "var(--crit)";
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0">
+    <small style="font-weight:700;white-space:nowrap;font-size:11px">${curto(p.mc)}</small>${pct != null ? `<small style="font-weight:800;font-size:11px;color:${cor}">${pct}%</small>` : ""}
+    <div style="position:relative;width:100%;max-width:60px;height:${Math.max(3, Math.max(p.mc, mt) / max * 115)}px;display:flex;align-items:flex-end">
+      <i style="display:block;width:100%;height:${Math.max(3, p.mc / Math.max(p.mc, mt || 1) * 100)}%;background:linear-gradient(180deg,${CORES_ABA[p.c.k]},color-mix(in srgb,${CORES_ABA[p.c.k]} 55%,#000));border-radius:8px 8px 0 0"></i>
+      ${mt ? `<span title="meta" style="position:absolute;left:-4px;right:-4px;top:${Math.max(0, 100 - mt / Math.max(p.mc, mt) * 100)}%;border-top:3px dashed var(--ink)"></span>` : ""}</div>
+    <small class="meta" style="text-align:center;font-size:10.5px;line-height:1.15;margin-top:4px">${p.c.ico}<br>${p.c.t}${mt ? `<br>meta ${curto(mt)}` : ""}</small></div>`; }).join("")}</div>
+    <p class="meta" style="font-size:11px;margin:4px 0 0">Linha tracejada = meta de Venda MC do setor.</p>`;
 }
 function cardMetaGeral(){
   const g = resumoGeral(), temLitros = rkAbas().some(c => c.lt), temLoja = rkAbas().some(c => c.k === "loja");
@@ -559,6 +598,7 @@ async function cartaoRanking(b){
 /* ---------- ações do ranking tratadas aqui (o index.html só repassa) ---------- */
 async function rkAcao(a, b){
   if (a === "rkBaixar") { shBaixarRanking(); return true; }
+  if (a === "salvarMetasSetores") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarMetasSetores(b); return true; }
   if (a === "baixarRkImagem") { cartaoRanking(b); return true; }
   const soAdmin = ["rkMadrugada", "novaFuncao", "removerFuncao"];
   if (soAdmin.includes(a) && !S.admin) { toast("Área restrita ao administrador."); return true; }
