@@ -3,8 +3,8 @@
 // Limpeza automática: apaga caches antigos do app e mantém só as cópias mais recentes dos arquivos.
 // Não mexe em nenhum dado salvo no aparelho (filial, login, tema) nem no banco.
 const PREFIX = 'estoque:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v6';
-const CORE = ['./', './index.html', './imagens.js', './ranking.js', './manifest.json', './supabase-config.js'];
+const CACHE = PREFIX + 'v7';
+const CORE = ['./', './index.html', './imagens.js', './ranking.js?v=7', './manifest.json', './supabase-config.js'];
 const MAX_ARQUIVOS = 40;
 self.addEventListener('install', e => e.waitUntil(
   caches.open(CACHE).then(c => Promise.all(CORE.map(u => c.add(u).catch(() => null)))).then(() => self.skipWaiting())
@@ -24,7 +24,7 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET' || url.origin !== self.location.origin) return; // Supabase e outros sites: direto na rede
   if (!req.url.startsWith(self.registration.scope)) return;                // arquivos de outro site do mesmo domínio
   // Arquivos do app: primeiro a rede (versão mais nova); sem internet, usa a cópia guardada.
-  e.respondWith(fetch(req).then(res => {
+  e.respondWith(fetch(req, {cache:'no-cache'}).then(res => {
     if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy).then(() => aparar(c))); }
     return res;
   }).catch(() => caches.match(req).then(r => r || caches.match('./index.html'))));
