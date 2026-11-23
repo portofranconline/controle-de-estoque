@@ -295,10 +295,7 @@ function vRkCfg(){
         <input class="inp" id="novoMembro" placeholder="Nome do colaborador" style="margin-top:6px">
         <div class="row" style="margin-top:6px"><select class="inp" id="novoMembroFuncao" style="flex:1">${Object.entries(FUNCOES_EQUIPE).map(([k, t]) => `<option value="${k}">${t}</option>`).join("")}</select>
         <button class="btn" style="width:auto;margin:0" data-act="addMembro">Adicionar</button></div></div>
-      <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
-      <label class="f" for="eqNovo">Cadastrar pessoa à mão<input id="eqNovo" class="inp" placeholder="Nome completo"></label>
-      <select id="eqNovaFuncao" class="inp" style="margin-top:6px">${Object.entries(funcoesTodas()).map(([k, t]) => `<option value="${k}">${t}</option>`).join("")}</select>
-      <button class="btn brand" style="margin-top:8px" data-act="novaPessoa">➕ Cadastrar</button></div>
+</div>
     <div class="card"><h2>Dividir funções</h2>
       <p class="meta" style="margin:4px 0 8px">Crie funções novas (ex.: <b>Frentista Tarde</b>, <b>Caixa Noite</b>). Cada uma ganha meta própria em <b>Metas por função</b>.</p>
       ${Object.entries(funcoesExtras()).map(([k, f]) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)"><span><b>${esc(f.nome)}</b> <span class="meta">· grupo ${f.grupo === "caixa" ? "Caixa" : f.grupo === "loja" ? "Loja" : "Frentista"}</span></span><button class="btn sm" style="width:auto;color:var(--crit)" data-act="removerFuncao" data-f="${k}">🗑️</button></div>`).join("") || `<p class="meta">Nenhuma função extra.</p>`}
