@@ -13,6 +13,11 @@ const RKV = [
   {k:"madrugada", t:"Frentista Madrugada", ico:"🌙", p:"Frentista", lt:true, fun:"frentista_madrugada"}
 ];
 const rkVirtual = k => RKV.some(v => v.k === k);
+const FRENT = {diesel:"Frentista Diesel", gasolina:"Frentista Gasolina", lubrificador:"Frentista Lubrificador", madrugada:"Frentista Madrugada"};
+const FUNC_SETOR = {diesel:"frentista", gasolina:"frentista", lubrificador:"lubrificador", madrugada:"frentista_madrugada"};
+/* setor escolhido em ⚙️ → Frentistas; sem escolha, vale a função da pessoa ou o relatório de onde veio */
+function setorDe(p, r){ if (p && FRENT[p.setor]) return p.setor; return r.funcao === "lubrificador" ? "lubrificador" : r.funcao === "frentista_madrugada" ? "madrugada" : r.src; }
+function frentistasDe(k){ const ord = S.rkOrdem || "q"; return ["diesel", "gasolina"].filter(t => rkAbas().some(c => c.k === t)).flatMap(t => vendasDoMes(t).map(r => ({...r, id:t + "~" + r.id}))).filter(r => r.setor === k).sort((a, b) => b[ord] - a[ord] || b.q - a.q); }
 /* id "diesel~abc" (vindo das abas Lubrificador/Madrugada) → ["diesel", "abc"] */
 const rkDividir = id => { const s = String(id || ""), i = s.indexOf("~"); return i > 0 ? [s.slice(0, i), s.slice(i + 1)] : [S.rkTipo, s]; };
 /* abas ligadas nesta filial (Configurar → Opções). Operações Caixa vem desligada. */
@@ -26,18 +31,18 @@ const funcoesTodas = () => ({...FUNCOES_BASE, ...Object.fromEntries(Object.entri
 const nomeFuncao = k => funcoesTodas()[k] || FUNCOES_BASE[k] || k;
 const funcoesDaAba = t => [...BASE_GRUPO[GRUPO_ABA[t] || "loja"], ...Object.entries(funcoesExtras()).filter(([, f]) => f.grupo === (GRUPO_ABA[t] || "loja")).map(([k]) => k)];
 const funcaoPadrao = t => BASE_GRUPO[GRUPO_ABA[t] || "loja"][0];
-const campoPadrao = t => (t === "diesel" || t === "gasolina" || rkVirtual(t)) ? "lt" : "mc";
+const campoPadrao = t => (t === "diesel" || t === "gasolina" || rkVirtual(t)) ? "lt" : t === "opcaixa" ? "q" : "mc";
 const CAMPOS = {q:"Quantidade", mc:"Venda MC", lt:"Litragem"};
 const rkCat = () => RK.find(c => c.k === S.rkTipo) || RKV.find(c => c.k === S.rkTipo) || RK[0];
 /* abas do seletor: as ligadas + Lubrificador e Madrugada (se Diesel ou Gasolina estiver ligada) */
 const rkAbasVer = () => { const a = rkAbas(), out = []; for (const c of a) { out.push(c); if (c.k === "gasolina" || (c.k === "diesel" && !a.some(x => x.k === "gasolina"))) out.push(...RKV); } return out; };
 /* lista que aparece na tela: Diesel/Gasolina sem Lubrificador e Madrugada (eles têm aba própria) */
-const listaRk = c => vendasDoMes(c.k).filter(r => !((c.k === "diesel" || c.k === "gasolina") && RKV.some(v => v.fun === r.funcao)));
+const listaRk = c => FRENT[c.k] ? frentistasDe(c.k) : vendasDoMes(c.k);
 const rankingAtivo = () => !!(S.cfg && S.cfg.ranking);
 const rkFotosAtivas = () => !!(S.cfg && S.cfg.rkFotos);
 const moeda = v => num(v).toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2});
 const fmt2 = v => num(v).toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2});
-const fmtCampo = (campo, v) => campo === "mc" ? "R$ " + moeda(v) : campo === "lt" ? fmt2(v) + " L" : fmt2(v);
+const fmtCampo = (campo, v) => campo === "mc" ? "R$ " + moeda(v) : campo === "lt" ? fmt2(v) + " L" : num(v).toLocaleString("pt-BR", {maximumFractionDigits:2});
 function proxMes(n){ const h = new Date(), d = new Date(h.getFullYear(), h.getMonth() + n, 1); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); }
 function rkMesAtual(){ const h = new Date(); return h.getFullYear() + "-" + String(h.getMonth() + 1).padStart(2, "0"); }
 function rkLayout(){ return (S.cfg && S.cfg.rkLayout) || "cartoes"; }
@@ -71,11 +76,13 @@ async function registrarPessoas(nomes, tab){
 /* lançamentos do mês, com a pessoa e a função de cada um */
 function vendasDoMes(tipo){
   const V = RKV.find(v => v.k === tipo);
-  if (V) { const ord = S.rkOrdem || "q"; return ["diesel", "gasolina"].filter(t => rkAbas().some(c => c.k === t)).flatMap(t => vendasDoMes(t).filter(r => r.funcao === V.fun).map(r => ({...r, id:t + "~" + r.id}))).sort((a, b) => b[ord] - a[ord] || b.q - a.q); }
+  if (V) return frentistasDe(V.k);
   const d = (S.vendas || {})[S.rkMes] || {}, o = {...(tipo === "diesel" ? (d.frentista || {}) : {}), ...(d[tipo] || {})}, P = pessoasRk();
   const arr = Object.entries(o).filter(([, v]) => v && !v.x && v.nome).map(([id, v]) => {
     const p = (v.pid && P[v.pid] && !P[v.pid].x) ? {id:v.pid, ...P[v.pid]} : acharPessoa(v.nome);
-    return {id, tab:tipo, pid:p ? p.id : null, nome:p ? p.nome : v.nome, funcao:funcaoDe(p, tipo), q:num(v.q), mc:num(v.mc), lt:num(v.lt)};
+    const r = {id, tab:tipo, src:tipo, pid:p ? p.id : null, nome:p ? p.nome : v.nome, funcao:funcaoDe(p, tipo), q:num(v.q), mc:num(v.mc), lt:num(v.lt)};
+    if (tipo === "diesel" || tipo === "gasolina") { r.setor = setorDe(p, r); r.funcao = FUNC_SETOR[r.setor] === "frentista" && r.funcao !== "lubrificador" && r.funcao !== "frentista_madrugada" ? r.funcao : FUNC_SETOR[r.setor]; if (r.setor === "diesel" || r.setor === "gasolina") r.tab = r.setor; }
+    return r;
   });
   const ord = S.rkOrdem || "q", chaves = [ord, ...["q", "mc", "lt"].filter(k => k !== ord)];
   arr.sort((a, b) => { for (const k of chaves) if (b[k] !== a[k]) return b[k] - a[k]; return a.nome.localeCompare(b.nome, "pt-BR"); });
@@ -89,14 +96,14 @@ function ultimoMes(fn){
   return null;
 }
 function metaGrupo(tab, funcao, campoF){
-  const tem = g => g && (num(g.mc) > 0 || num(g.lt) > 0 || num(g.valor) > 0);
+  const tem = g => g && (num(g.mc) > 0 || num(g.lt) > 0 || num(g.q) > 0 || num(g.valor) > 0);
   const r = ultimoMes(d => { const g = ((d.metas2 || {})[tab] || {})[funcao]; if (tem(g)) return g;
     if (funcao === funcaoPadrao(tab)) { const a = (d.metas || {})[tab]; if (a && num(a.valor) > 0) return {campo:a.campo || "mc", modo:"pessoa", valor:a.valor}; } return null; });
   if (!r) return null;
-  const v = r.v, antigo = k => v.campo === k ? num(v.valor) : 0, mc = num(v.mc) || antigo("mc"), lt = num(v.lt) || antigo("lt"), q = antigo("q");
-  const campo = campoF || (lt > 0 ? "lt" : mc > 0 ? "mc" : "q"), valor = {mc, lt, q}[campo] || 0;
+  const v = r.v, antigo = k => v.campo === k ? num(v.valor) : 0, mc = num(v.mc) || antigo("mc"), lt = num(v.lt) || antigo("lt"), q = num(v.q) || antigo("q");
+  const campo = campoF || (lt > 0 ? "lt" : q > 0 ? "q" : "mc"), valor = {mc, lt, q}[campo] || 0;
   if (!(valor > 0)) return null;
-  return {campo, modo:v.modo || "pessoa", valor, mc, lt, herdada:r.mes !== S.rkMes};
+  return {campo, modo:v.modo || "pessoa", valor, mc, lt, q, herdada:r.mes !== S.rkMes};
 }
 function metaIndividual(tab, pid){
   if (!pid) return null;
@@ -164,7 +171,7 @@ function vRanking(){
     const comMeta = g.filter(r => r.meta); if (!comMeta.length) return `<div style="margin-top:8px"><b>${nomeFuncao(f)}</b> <span class="meta">· ${g.length} pessoa(s) · sem meta</span></div>`;
     const campos = [comMeta[0].meta.campo]; if (campos[0] !== "mc" && g.some(r => metaDaPessoa(r, c.k, lista, "mc"))) campos.push("mc");
     const bat = comMeta.filter(r => r.st && r.st.bateu).length;
-    const rotulo = campo => campo === "lt" ? "⛽ Litragem" : campo === "mc" ? (c.k === "opcaixa" ? "🧾 Operações" : "🛒 Venda da loja") : CAMPOS[campo];
+    const rotulo = campo => campo === "lt" ? "⛽ Litragem" : campo === "mc" ? "🛒 Venda da loja" : c.k === "opcaixa" ? "🧾 Operações" : CAMPOS[campo];
     /* % que passou ou faltou: +12% = passou 12% da meta; -8% = faltou 8% */
     const dif = st => st ? (st.bateu ? `<b style="color:var(--good)">✅ passou ${st.pct - 100}%</b>` : `<b style="color:${st.cor}">faltou ${100 - st.pct}%</b>`) : `<span class="meta">sem meta</span>`;
     let stPrin = null;
@@ -223,13 +230,13 @@ function telaMetasSetores(mg){
         return `<div style="border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-top:8px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc(cat.t)}</b>
           <select class="inp" data-cat-modo="${n}" style="padding:6px;width:auto"><option value="pessoa" ${g.modo !== "equipe" ? "selected" : ""}>Por pessoa</option><option value="equipe" ${g.modo === "equipe" ? "selected" : ""}>Total da equipe</option></select></div>
         <div style="display:grid;grid-template-columns:${comLt ? "1fr 1fr" : "1fr"};gap:6px;margin-top:6px">
-          <label class="meta" style="font-size:11px">${t0 === "opcaixa" ? "🧾 Meta de operações (R$)" : "🛒 Venda da loja (R$)"}<input class="inp" data-cat-mc="${n}" inputmode="decimal" placeholder="Ex.: 9.000,00" value="${g.mc ? esc(moeda(g.mc)) : ""}" style="padding:8px"></label>
+          ${t0 === "opcaixa" ? `<label class="meta" style="font-size:11px">🧾 Meta de operações (quantidade)<input class="inp" data-cat-mc="${n}" data-cat-q="1" inputmode="decimal" placeholder="Ex.: 1.500" value="${g.q ? esc(fmtCampo("q", g.q)) : ""}" style="padding:8px"></label>` : `<label class="meta" style="font-size:11px">🛒 Venda da loja (R$)<input class="inp" data-cat-mc="${n}" inputmode="decimal" placeholder="Ex.: 9.000,00" value="${g.mc ? esc(moeda(g.mc)) : ""}" style="padding:8px"></label>`}
           ${comLt ? `<label class="meta" style="font-size:11px">⛽ Litragem (L)<input class="inp" data-cat-lt="${n}" inputmode="decimal" placeholder="Ex.: 90.000" value="${g.lt ? esc(fmt2(g.lt)) : ""}" style="padding:8px"></label>` : ""}</div></div>`; }).join("")}
       ${salvar}</div>`).join("");
   return `<div class="card"><h2>🏪 Metas gerais do posto · ${nomeMes(S.rkMes)}</h2>
       <p style="margin:4px 0 0;font-size:12px;color:var(--muted);line-height:1.4">Vale desse mês em diante, até ser trocada. A Venda da Loja soma a Venda MC de todos (loja, caixa e frentistas).</p>
       ${rkAbas().some(c => c.lt) ? campoGeral("litros", "⛽ Litros no mês · todos os frentistas", mg.litros, fmt2, "Ex.: 900.000") : ""}
-      ${campoGeral("loja", "🛒 Venda da Loja no mês (R$) · soma de todos", mg.loja, moeda, "Ex.: 129.000,00")}${rkAbas().some(c => c.k === "opcaixa") ? campoGeral("operacoes", "🧾 Operações Caixa no mês (R$) · fora da Venda da Loja", mg.operacoes, moeda, "Ex.: 300.000,00") : ""}${salvar}</div>
+      ${campoGeral("loja", "🛒 Venda da Loja no mês (R$) · soma de todos", mg.loja, moeda, "Ex.: 129.000,00")}${rkAbas().some(c => c.k === "opcaixa") ? campoGeral("operacoes", "🧾 Operações Caixa no mês (quantidade) · meta dos caixas", mg.operacoes, v => fmtCampo("q", v), "Ex.: 6.000") : ""}${salvar}</div>
     ${grupos}`;
 }
 async function salvarMetasSetores(b){
@@ -240,7 +247,8 @@ async function salvarMetasSetores(b){
     const n = el.dataset.catMc, cat = (S.rkCats || [])[n]; if (!cat) continue;
     const mc = ler(el), lt = ler(document.querySelector(`[data-cat-lt="${n}"]`)); if (!(mc >= 0) || !(lt >= 0)) return toast("Valor inválido em " + cat.t + ". Ex.: 9.000,00");
     const modo = (document.querySelector(`[data-cat-modo="${n}"]`) || {}).value || "pessoa";
-    for (const [tab, f] of cat.alvos) (metas2[tab] = metas2[tab] || {})[f] = {modo, mc, lt, campo:"", valor:0};
+    const ehQ = el.dataset.catQ === "1";
+    for (const [tab, f] of cat.alvos) (metas2[tab] = metas2[tab] || {})[f] = ehQ ? {modo, q:mc, mc:0, lt:0, campo:"", valor:0} : {modo, mc, lt, campo:"", valor:0};
   }
   b.disabled = true; await safe(() => gravaVendas({metaGeral:geral, metas2}), "Metas salvas."); b.disabled = false;
 }
@@ -248,10 +256,11 @@ function vRkCfg(){
   S.rkMes = S.rkMes || rkMesAtual(); S.rkTipo = rkAbas().some(c => c.k === S.rkTipo) ? S.rkTipo : rkAbas()[0].k; S.rkCfgAba = S.rkCfgAba || "metas";
   carregaFotosRk();
   const c = rkCat(), aba = S.rkCfgAba, P = pessoasRk(), lista = vendasDoMes(c.k);
-  const abas = [["metas", "🎯 Metas"], ["individual", "👤 Metas individuais"], ["equipe", "👥 Equipe"], ["opcoes", "⚙️ Opções"]];
+  const abas = [["metas", "🎯 Metas"], ...(rkAbas().some(x => x.k === "diesel" || x.k === "gasolina") ? [["setores", "⛽ Frentistas"]] : []), ["individual", "👤 Metas individuais"], ["equipe", "👥 Equipe"], ["opcoes", "⚙️ Opções"]];
   let corpo = "";
   const mg = metasGerais();
   if (aba === "metas") corpo = telaMetasSetores(mg);
+  else if (aba === "setores") corpo = telaSetores();
   else if (aba === "individual") {
     const gente = [...new Map([...lista.map(r => [r.pid || r.nome, r]), ...Object.entries(P).filter(([, p]) => p && !p.x && funcoesDaAba(c.k).includes(p.funcao)).map(([id, p]) => [id, {pid:id, nome:p.nome, funcao:funcaoDe(p, c.k)}])]).values()].filter(r => r.pid);
     corpo = `<div class="card"><h2>Metas individuais · ${c.t} · ${nomeMes(S.rkMes)}</h2>
@@ -313,7 +322,8 @@ async function salvarEquipe(b){
     const id = el.dataset.eqNome, nome = el.value.trim(), f = (document.querySelector(`[data-eq-funcao="${id}"]`) || {}).value, p = pessoasRk()[id] || {};
     if (!nome) return toast("Nome em branco na equipe.");
     const chaves = [...new Set([...(p.chaves || []), semAcento(nome).replace(/\s+/g, " ").trim()])];
-    patch[id] = {nome, funcao:f, chaves};
+    const setor = f === "lubrificador" ? "lubrificador" : f === "frentista_madrugada" ? "madrugada" : (p.setor === "lubrificador" || p.setor === "madrugada") ? "" : (p.setor || "");
+    patch[id] = {nome, funcao:f, chaves, setor};
   }
   b.disabled = true;
   if (await safe(() => S.db.doc("cfg/main").update({rkPessoas:patch}), "Equipe salva.")) { S.cfg = {...S.cfg, rkPessoas:deepMerge(pessoasRk(), patch)}; render(); }
@@ -383,7 +393,7 @@ function destaqueDe(tab){
 
 /* ---------- produtos mais vendidos: foto ou arquivo por pessoa ---------- */
 function shPessoaRk(id){
-  const c = rkCat(), lista = vendasDoMes(c.k), r = lista.find(x => x.id === id); if (!r) return;
+  const c = rkCat(), lista = listaRk(c), r = lista.find(x => x.id === id); if (!r) return;
   const meta = metaDaPessoa(r, c.k, lista), st = situacao(r, meta), pos = lista.indexOf(r) + 1, dq = rkDestaqueAtivo() && destaqueDe(c.k);
   S.rkPessoaAberta = r;
   openSheet(`<div style="display:flex;gap:10px;align-items:center">${fotoPessoa(r, 54) || ""}<div><h2 style="margin:0">${esc(r.nome)}</h2><span class="meta">${nomeFuncao(r.funcao)} · ${c.t} · ${pos}º de ${lista.length}</span></div></div>
@@ -446,7 +456,7 @@ function fundoCartao(g, W, H){
 }
 function cortaCentro(g, t, w){ return cortaTexto(g, t, w); }
 async function cartaoPessoa(id, b){
-  const c = rkCat(), lista = vendasDoMes(c.k), r = lista.find(x => x.id === id); if (!r) return;
+  const c = rkCat(), lista = listaRk(c), r = lista.find(x => x.id === id); if (!r) return;
   if (b) b.disabled = true;
   try {
     const meta = metaDaPessoa(r, c.k, lista), st = situacao(r, meta), pos = lista.indexOf(r) + 1, dq = rkDestaqueAtivo() && destaqueDe(c.k), destaque = dq && dq.r.pid === r.pid;
@@ -486,7 +496,7 @@ async function cartaoGeral(b){
     const gr = resumoGeral(), linhas = [];
     if (rkAbas().some(c => c.lt)) linhas.push(["⛽ LITROS · FRENTISTAS", "lt", gr.litros, gr.m.litros]);
     linhas.push(["🛒 VENDA DA LOJA · TODOS OS SETORES", "mc", gr.total, gr.m.loja]);
-    if (rkAbas().some(c => c.k === "opcaixa")) linhas.push(["🧾 OPERAÇÕES CAIXA", "mc", gr.op, gr.m.operacoes]);
+    if (rkAbas().some(c => c.k === "opcaixa")) linhas.push(["🧾 OPERAÇÕES CAIXA (QUANTIDADE)", "q", gr.op, gr.m.operacoes]);
     const W = 1080, H = 640 + linhas.length * 230 + gr.partes.length * 70, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
     fundoCartao(g, W, H); g.textAlign = "center";
     g.fillStyle = "#ffffff"; g.font = "bold 58px Arial"; g.fillText("METAS GERAIS DO POSTO", W / 2, 220);
@@ -532,7 +542,7 @@ function projecao(real, meta){
 }
 function resumoGeral(){
   const partes = rkAbas().map(c => { const l = vendasDoMes(c.k); return {c, mc:l.reduce((a, r) => a + r.mc, 0), lt:c.lt ? l.reduce((a, r) => a + r.lt, 0) : 0, metaMc:l.reduce((a, r) => a + ((metaMcDaPessoa(r, c.k, l) || {}).valor || 0), 0)}; });
-  const op = (partes.find(p => p.c.k === "opcaixa") || {}).mc || 0, total = partes.filter(p => p.c.k !== "opcaixa").reduce((a, p) => a + p.mc, 0), litros = partes.reduce((a, p) => a + p.lt, 0), m = metasGerais();
+  const pOp = partes.find(p => p.c.k === "opcaixa"), op = pOp ? vendasDoMes("opcaixa").reduce((a, r) => a + r.q, 0) : 0, total = partes.filter(p => p.c.k !== "opcaixa").reduce((a, p) => a + p.mc, 0), litros = partes.reduce((a, p) => a + p.lt, 0), m = metasGerais();
   return {partes, total, litros, op, loja:total, m, meta:m.loja, st:m.loja ? situacao({mc:total}, {campo:"mc", valor:m.loja.valor}) : null};
 }
 const CORES_ABA = {loja:"#22d3ee", diesel:"#f59e0b", gasolina:"#ef4444", caixa:"#10b981", opcaixa:"#a78bfa"};
@@ -570,7 +580,7 @@ function cardMetaGeral(){
   return `<div class="card"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">${logo ? `<img src="${logo}" alt="Aldo" style="height:30px;width:auto;flex:none">` : ""}<h2 style="margin:0;font-size:15px">Metas do posto · ${nomeMes(S.rkMes)}</h2></div>
     <div style="display:grid;grid-template-columns:${temLitros ? "1fr 1fr" : "1fr"};gap:8px">
       ${temLitros ? tileMeta("⛽", "Litros (frentistas)", "lt", g.litros, g.m.litros) : ""}
-      ${tileMeta("🛒", "Venda da Loja (todos)", "mc", g.total, g.m.loja)}${rkAbas().some(c => c.k === "opcaixa") ? tileMeta("🧾", "Operações Caixa", "mc", g.op, g.m.operacoes) : ""}</div>
+      ${tileMeta("🛒", "Venda da Loja (todos)", "mc", g.total, g.m.loja)}${rkAbas().some(c => c.k === "opcaixa") ? tileMeta("🧾", "Operações Caixa (qtd.)", "q", g.op, g.m.operacoes) : ""}</div>
     <details style="margin-top:8px"><summary class="meta" style="cursor:pointer;font-weight:700">📊 Venda MC por setor</summary>${graficoSetores(g.partes.filter(p => p.c.k !== "opcaixa"))}</details></div>`;
 }
 async function salvarMetaGeral(b){
@@ -644,6 +654,7 @@ async function cartaoRanking(b){
 
 /* ---------- ações do ranking tratadas aqui (o index.html só repassa) ---------- */
 async function rkAcao(a, b){
+  if (a === "rkSetor") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarSetor(b); return true; }
   if (a === "salvarProdutos") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarProdutos(b); return true; }
   if (a === "rkBaixar") { shBaixarRanking(); return true; }
   if (a === "salvarMetasSetores") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarMetasSetores(b); return true; }
@@ -688,12 +699,12 @@ async function prepImagem(img, larg, limiar){
   for (let i = 0; i < d.data.length; i += 4) { let y = 0.3 * d.data[i] + 0.59 * d.data[i + 1] + 0.11 * d.data[i + 2]; y = y < limiar ? 0 : 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = y; }
   g.putImageData(d, 0, 0); return cv;
 }
-function linhasDoTexto(txt){
+function linhasDoTexto(txt, solto){
   const out = [];
   for (const bruto of String(txt).split(/\n+/)) {
     const l = bruto.replace(/[|]/g, " ").replace(/(\d)[:;](\d)/g, "$1.$2").replace(/\.,/g, ",").replace(/\s+/g, " ").trim();
-    const nums = l.match(/\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2}/g) || [];
-    if (nums.length < 2) continue;
+    const nums = l.match(solto ? /\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+(?:,\d{2})?/g : /\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2}/g) || [];
+    if (nums.length < (solto ? 1 : 2)) continue;
     const nome = l.slice(0, l.search(/\d/)).replace(/R\$|RS\b/gi, " ").replace(/[^A-Za-zÀ-ÿ' .-]/g, " ").replace(/\s+/g, " ").trim();
     if (nome.replace(/[^A-Za-zÀ-ÿ]/g, "").length < 3 || /vendedor|quantidade|venda mc|litragem/i.test(nome)) continue;
     out.push({nome, v:nums.map(n => parse(n))});
@@ -709,7 +720,7 @@ async function importarImagem(arq){
     const url = await new Promise((ok, erro) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = erro; r.readAsDataURL(arq); });
     const img = await new Promise((ok, erro) => { const i = new Image(); i.onload = () => ok(i); i.onerror = erro; i.src = url; });
     const w = await T.createWorker("por"), leituras = [];
-    try { for (const [larg, lim] of [[1800, 160], [2000, 130], [2400, 170]]) { const {data} = await w.recognize(await prepImagem(img, larg, lim)); leituras.push(linhasDoTexto(data.text)); } }
+    try { for (const [larg, lim] of [[1800, 160], [2000, 130], [2400, 170]]) { const {data} = await w.recognize(await prepImagem(img, larg, lim)); leituras.push(linhasDoTexto(data.text, c.k === "opcaixa")); } }
     finally { await w.terminate(); }
     // junta as 3 leituras: fica o valor que mais se repete; se elas não concordam, a linha fica marcada para conferir
     const base = leituras.reduce((a, b) => b.length > a.length ? b : a, []), rows = [];
@@ -717,7 +728,7 @@ async function importarImagem(arq){
       const iguais = leituras.map(L => L.find(x => semAcento(x.nome) === semAcento(r.nome)) || L[i]).filter(Boolean);
       const campos = [0, 1, 2].map(k => { const vs = iguais.map(x => x.v[k]).filter(v => v != null && !isNaN(v)); if (!vs.length) return {v:undefined, ok:true}; const cont = {}; vs.forEach(v => cont[v] = (cont[v] || 0) + 1); const [v, n] = Object.entries(cont).sort((a, b) => b[1] - a[1])[0]; return {v:Number(v), ok:n === vs.length}; });
       const p = acharPessoa(r.nome);
-      rows.push({nome:r.nome, cad:p ? p.nome : null, q:campos[0].v, mc:campos[1].v, lt:c.lt ? campos[2].v : undefined, conferir:!campos.slice(0, c.lt ? 3 : 2).every(x => x.ok)});
+      rows.push({nome:r.nome, cad:p ? p.nome : null, q:campos[0].v, mc:campos[1].v ?? (c.k === "opcaixa" ? 0 : undefined), lt:c.lt ? campos[2].v : undefined, conferir:!campos.slice(0, c.lt ? 3 : c.k === "opcaixa" ? 1 : 2).every(x => x.ok)});
     });
     S.importa = rows;
     if (!rows.length) { openSheet(`<h2>Nada encontrado</h2><p class="meta">Não achei linhas com nome e números. Use uma foto ou print nítido da tabela, sem cortes, e tente de novo.</p><button class="btn" data-act="fechar">Fechar</button>`); return; }
@@ -812,3 +823,25 @@ async function salvarProdutos(b){
   b.disabled = true; const ok = await safe(() => gravaVendas({produtos:{[L.gp]:{itens, t:Date.now()}}}), "Produtos salvos."); if (ok) closeSheet(); else b.disabled = false;
 }
 document.addEventListener("change", ev => { const t = ev.target; if (t && t.dataset && t.dataset.rkProd) { const f = t.files && t.files[0]; t.value = ""; importarProdutos(f); } });
+
+/* ⛽ ⚙️ → Frentistas: um toque escolhe o setor de cada frentista; venda e meta passam a contar nesse setor */
+function telaSetores(){
+  const P = pessoasRk(), ids = new Set();
+  for (const t of ["diesel", "gasolina"]) for (const r of vendasDoMes(t)) if (r.pid) ids.add(r.pid);
+  for (const [id, p] of Object.entries(P)) if (p && !p.x && (FRENT[p.setor] || BASE_GRUPO.frentista.includes(p.funcao))) ids.add(id);
+  const gente = [...ids].filter(id => P[id] && !P[id].x).map(id => ({id, ...P[id]})).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  const atual = p => FRENT[p.setor] ? p.setor : p.funcao === "lubrificador" ? "lubrificador" : p.funcao === "frentista_madrugada" ? "madrugada" : "";
+  const curto = {diesel:"🛢️ Diesel", gasolina:"⛽ Gasolina", lubrificador:"🔧 Lubrif.", madrugada:"🌙 Madrug."};
+  const cont = k => gente.filter(p => atual(p) === k).length;
+  return `<div class="card"><h2>⛽ Setor de cada frentista</h2>
+    <p style="font-size:12px;color:var(--muted);margin:4px 0 8px;line-height:1.4">Toque no setor de cada um. A venda (litragem e Venda MC) e a meta passam a contar nesse setor, não importa de qual relatório veio. Sem escolha: vale o relatório (Diesel ou Gasolina).</p>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">${Object.keys(FRENT).map(k => `<span class="meta" style="font-size:11px">${curto[k]}: <b>${cont(k)}</b></span>`).join("")}</div>
+    ${gente.length ? gente.map(p => `<div style="border-top:1px solid var(--line);padding:8px 0"><b style="font-size:14px">${esc(p.nome)}</b>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:6px">${Object.keys(FRENT).map(k => `<button class="chip ${atual(p) === k ? "on" : ""}" style="justify-content:center;padding:7px 2px;font-size:12px;margin:0" data-act="rkSetor" data-id="${p.id}" data-s="${k}">${curto[k]}</button>`).join("")}</div></div>`).join("")
+      : `<p class="meta">Nenhum frentista ainda. Importe o relatório de Diesel ou Gasolina primeiro.</p>`}</div>`;
+}
+async function salvarSetor(b){
+  const id = b.dataset.id, k = b.dataset.s, patch = {rkPessoas:{[id]:{setor:k, funcao:FUNC_SETOR[k]}}};
+  b.disabled = true;
+  if (await safe(() => S.db.doc("cfg/main").update(patch), (FRENT[k] || "") + " ✓")) { S.cfg = deepMerge(S.cfg || {}, patch); render(); } else b.disabled = false;
+}
