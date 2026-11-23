@@ -513,7 +513,7 @@ function vHome(){
   return `<div class="top"><div><h1>Controle de estoque</h1><p class="sub">${esc((S.nomeFilial ? S.nomeFilial + " · " : "") + locaisAtivos().map(nomeLocal).join(" & "))}</p></div></div><div class="pad">
     <p class="lead">Selecione o local</p>
     <div class="big">${b}</div>
-    <div class="row" style="justify-content:center"><button class="adm" data-act="admin">⚙️ Administração</button><button class="adm" data-act="ranking">🏆 Ranking</button><button class="adm" data-act="minhaSenha">🔑 Trocar minha senha</button><button class="adm" data-act="meuEmail">📧 Meu e-mail</button><button class="adm" data-act="sair">🚪 Sair</button></div></div>`;
+    <div class="row" style="justify-content:center"><button class="adm" data-act="admin">⚙️ Administração</button><button class="adm" data-act="minhaSenha">🔑 Trocar minha senha</button><button class="adm" data-act="meuEmail">📧 Meu e-mail</button><button class="adm" data-act="sair">🚪 Sair</button></div>${rankingAtivo() ? `<div style="display:flex;justify-content:center;margin-top:26px"><button class="btn brand" style="max-width:340px" data-act="ranking">🏆 Ranking</button></div>` : ""}</div>`;
 }
 function vLocal(){
   const c = cfg(), cats = ["Todos", ...(Array.isArray(c.categorias) ? c.categorias : [])];
@@ -686,7 +686,7 @@ function vAdmin(){
     </div>
     <div class="tiles">
       ${tile("addEstoque","➕","Adicionar estoque","pri")}${tile("novo","🆕","Cadastrar item")}${tile("aprod","✏️","Editar produto")}${tile("aprod","📷","Gerenciar fotos")}
-      ${tile("filtro","🔎","Filtrar relatório (itens que mais saem)","pri")}${tile("ranking","🏆","Ranking de vendas")}${tile("criarLocalTile","🏗️","Criar estoque")}${tile("baixarEstoque","⬇️","Baixar estoque (PDF/JPG)")}${tile("rel","📋","Histórico e relatórios")}${tile("ausers","👥","Usuários")}${tile("acfg","⚙️","Configurações")}${tile("sairAdmin","🚪","Sair da área administrativa")}
+      ${tile("filtro","🔎","Filtrar relatório (itens que mais saem)","pri")}${rankingAtivo() ? tile("ranking","🏆","Ranking de vendas") : ""}${tile("criarLocalTile","🏗️","Criar estoque")}${tile("baixarEstoque","⬇️","Baixar estoque (PDF/JPG)")}${tile("rel","📋","Histórico e relatórios")}${tile("ausers","👥","Usuários")}${tile("acfg","⚙️","Configurações")}${tile("sairAdmin","🚪","Sair da área administrativa")}
     </div></div>`;
 }
 function vAProd(){
@@ -754,12 +754,17 @@ async function fotoLocal(l, arq){
   } catch (e) { console.error("Foto do estoque:", e); toast("Não foi possível usar essa imagem."); }
 }
 document.addEventListener("change", ev => { if (ev.target && ev.target.id === "rkMes") { S.rkMes = ev.target.value; render(); return; }
+  if (ev.target && ev.target.dataset && ev.target.dataset.rkImg) { if (!S.admin) return toast("Área restrita ao administrador."); const f = ev.target.files && ev.target.files[0]; ev.target.value = ""; importarImagem(f); return; }
   const l = ev.target && ev.target.dataset && ev.target.dataset.locFoto; if (l) { if (!S.admin) return toast("Área restrita ao administrador."); fotoLocal(l, ev.target.files && ev.target.files[0]); } });
 function vACfg(){
   return admTop("Configurações", "admin") + `<div class="pad">
     ${listaEdit("Categorias", "categorias", "Aparecem como filtros na lista de produtos.")}
     ${listaEdit("Unidades de medida", "unidades", "Unidade, pacote, caixa, par, rolo, litro…")}
     ${cardLocais()}
+    <div class="card"><h2>🏆 Ranking de vendas</h2>
+    <p class="meta" style="margin:6px 0 10px">Quando ativado, o botão <b>Ranking</b> aparece no fim da tela inicial desta filial (Loja, Frentista Diesel, Frentista Gasolina e Caixa).</p>
+    <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="rkAtivo" ${rankingAtivo() ? "checked" : ""}> Ativar ranking nesta filial</label>
+    <button class="btn pri" style="margin-top:10px" data-act="salvarRankingAtivo">Salvar</button></div>
     </div>`;
 }
 
@@ -864,57 +869,174 @@ function baixarFiltro(b, tipo){
   exportarPaginas(b, pags, tipo, nomeArquivo("Relatorio"));
 }
 
-/* ---------- ranking de vendas: loja e frentista ---------- */
+/* ---------- ranking de vendas: loja, frentista diesel, frentista gasolina e caixa ---------- */
+const RK = [
+  {k:"loja", t:"Loja", ico:"🛒", p:"Vendedor", lt:false},
+  {k:"diesel", t:"Frentista Diesel", ico:"🛢️", p:"Frentista", lt:true},
+  {k:"gasolina", t:"Frentista Gasolina", ico:"⛽", p:"Frentista", lt:true},
+  {k:"caixa", t:"Caixa", ico:"💵", p:"Caixa", lt:false}
+];
+const CAMPOS = {q:"Quantidade", mc:"Venda MC", lt:"Litragem"};
+const rkCat = () => RK.find(c => c.k === S.rkTipo) || RK[0];
+const rankingAtivo = () => !!(S.cfg && S.cfg.ranking);
 const moeda = v => num(v).toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2});
+const fmt2 = v => num(v).toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2});
+async function gravaVendas(patch){
+  await S.db.doc("vendas/" + S.rkMes).update(patch);
+  S.vendas = {...(S.vendas || {}), [S.rkMes]:deepMerge((S.vendas || {})[S.rkMes] || {}, patch)}; S.vendasK = JSON.stringify(S.vendas);
+  if (S.view === "ranking") render();
+}
 function mesAtual(){ const h = new Date(); return h.getFullYear() + "-" + String(h.getMonth() + 1).padStart(2, "0"); }
 function vendasDoMes(tipo){
-  const d = (S.vendas || {})[S.rkMes] || {}, o = d[tipo] || {};
+  const d = (S.vendas || {})[S.rkMes] || {}, o = {...(tipo === "diesel" ? (d.frentista || {}) : {}), ...(d[tipo] || {})};
   const arr = Object.entries(o).filter(([, v]) => v && !v.x && v.nome).map(([id, v]) => ({id, nome:v.nome, q:num(v.q), mc:num(v.mc), lt:num(v.lt)}));
-  arr.sort((a, b) => b.q - a.q || b.mc - a.mc || (tipo === "frentista" ? b.lt - a.lt : 0) || a.nome.localeCompare(b.nome, "pt-BR"));
+  const ord = S.rkOrdem || "q", chaves = [ord, ...["q", "mc", "lt"].filter(k => k !== ord)];
+  arr.sort((a, b) => { for (const k of chaves) if (b[k] !== a[k]) return b[k] - a[k]; return a.nome.localeCompare(b.nome, "pt-BR"); });
   return arr;
 }
+function metaDe(tipo){
+  const meses = Object.keys(S.vendas || {}).filter(m => m <= S.rkMes).sort().reverse();
+  for (const m of meses) { const mt = ((S.vendas[m] || {}).metas || {})[tipo]; if (mt && num(mt.valor) > 0) return {campo:mt.campo || "mc", valor:num(mt.valor), herdada:m !== S.rkMes}; }
+  return null;
+}
+function barraMeta(v, meta){
+  if (!meta) return "";
+  const bateu = meta.valor > 0 && v[meta.campo] >= meta.valor, pct = meta.valor > 0 ? Math.floor(v[meta.campo] / meta.valor * 100) : 0, cor = bateu ? "var(--good)" : pct >= 70 ? "var(--warn)" : "var(--crit)";
+  return `<div style="height:7px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:5px"><i style="display:block;height:100%;width:${Math.min(100, pct)}%;background:${cor}"></i></div><small style="color:${cor};font-weight:700">${pct}% da meta${bateu ? " ✅" : ""}</small>`;
+}
 function vRanking(){
-  S.rkMes = S.rkMes || mesAtual(); S.rkTipo = S.rkTipo || "loja";
-  const fr = S.rkTipo === "frentista", lista = vendasDoMes(S.rkTipo), med = ["🥇", "🥈", "🥉"];
+  S.rkMes = S.rkMes || mesAtual(); S.rkTipo = RK.some(c => c.k === S.rkTipo) ? S.rkTipo : "loja"; S.rkOrdem = S.rkOrdem || "q";
+  const c = rkCat(), lista = vendasDoMes(c.k), meta = metaDe(c.k), med = ["🥇", "🥈", "🥉"];
   const meses = [...new Set([mesAtual(), S.rkMes, ...Object.keys(S.vendas || {})])].sort().reverse();
   const nomeMes = ym => { const [a, m] = ym.split("-"); return MESES[Number(m) - 1] + " de " + a; };
+  const bateram = meta ? lista.filter(r => r[meta.campo] >= meta.valor).length : 0;
+  const total = k => lista.reduce((a, r) => a + r[k], 0);
+  const ordens = [["q", "Quantidade"], ["mc", "Venda MC"], ...(c.lt ? [["lt", "Litragem"]] : [])];
   return `<div class="top"><button class="back" data-act="${S.admin ? "admin" : "home"}">Voltar</button><h1>Ranking de vendas</h1></div><div class="pad">
-    <div class="chips"><button class="chip ${!fr ? "on" : ""}" data-act="rkTipo" data-t="loja">🛒 Loja</button><button class="chip ${fr ? "on" : ""}" data-act="rkTipo" data-t="frentista">⛽ Frentista</button></div>
+    <div class="chips">${RK.map(x => `<button class="chip ${x.k === c.k ? "on" : ""}" data-act="rkTipo" data-t="${x.k}">${x.ico} ${x.t}</button>`).join("")}</div>
     <label class="f" for="rkMes">Mês<select id="rkMes" class="inp">${meses.map(m => `<option value="${m}" ${m === S.rkMes ? "selected" : ""}>${nomeMes(m)}</option>`).join("")}</select></label>
-    <p class="meta">Ordem: ${fr ? "quantidade → venda MC → litragem" : "quantidade → venda MC"}.</p>
-    ${S.admin ? `<div class="row"><button class="btn brand" data-act="novaVenda">➕ Lançar ${fr ? "frentista" : "vendedor"}</button><button class="btn" data-act="baixarRanking" data-t="pdf">⬇️ PDF</button><button class="btn" data-act="baixarRanking" data-t="jpg">⬇️ JPG</button></div>` : ""}
-    <div class="card">${lista.length ? `<table class="tbl"><tr><th>#</th><th>${fr ? "Frentista" : "Vendedor"}</th><th class="n">Quantidade</th><th class="n">Venda MC</th>${fr ? `<th class="n">Litragem</th>` : ""}${S.admin ? "<th></th>" : ""}</tr>
-      ${lista.map((r, i) => `<tr><td>${med[i] || i + 1}</td><td><b>${esc(r.nome)}</b></td><td class="n">${fmt(r.q)}</td><td class="n">${moeda(r.mc)}</td>${fr ? `<td class="n">${fmt(r.lt)} L</td>` : ""}${S.admin ? `<td style="white-space:nowrap"><button class="btn sm" data-act="editarVenda" data-id="${r.id}">✏️</button> <button class="btn sm" data-act="excluirVenda" data-id="${r.id}" style="color:var(--crit)">🗑️</button></td>` : ""}</tr>`).join("")}</table>`
-      : `<p class="meta">Nenhum lançamento em ${nomeMes(S.rkMes)}.${S.admin ? ` Toque em <b>Lançar</b> para adicionar.` : ""}</p>`}</div></div>`;
+    <div class="chips" style="margin-top:6px"><span class="meta" style="align-self:center">Ordenar por:</span>${ordens.map(([k, t]) => `<button class="chip ${k === S.rkOrdem ? "on" : ""}" data-act="rkOrdem" data-o="${k}">${t}</button>`).join("")}</div>
+    <div class="card"><h2>🎯 Meta · ${c.t}</h2>
+      ${meta ? `<p class="meta" style="margin:4px 0">Meta por pessoa: <b>${meta.campo === "mc" ? "R$ " + moeda(meta.valor) : fmt2(meta.valor) + (meta.campo === "lt" ? " L" : "")}</b> em ${CAMPOS[meta.campo]}${meta.herdada ? " (mesma do mês anterior)" : ""} · <b>${bateram} de ${lista.length}</b> bateram a meta.</p>
+        <div style="height:10px;background:var(--line);border-radius:99px;overflow:hidden"><i style="display:block;height:100%;width:${lista.length ? Math.round(bateram / lista.length * 100) : 0}%;background:var(--good)"></i></div>` : `<p class="meta" style="margin:4px 0">Sem meta definida.</p>`}
+      ${S.admin ? `<div class="row" style="flex-wrap:wrap;margin-top:8px;align-items:flex-end">
+        <label class="f" style="flex:1 1 140px">Meta em<select id="mtCampo" class="inp">${Object.entries(CAMPOS).filter(([k]) => c.lt || k !== "lt").map(([k, t]) => `<option value="${k}" ${meta && meta.campo === k ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+        <label class="f" style="flex:1 1 140px">Valor da meta<input id="mtValor" class="inp" inputmode="decimal" placeholder="Ex.: 5.000,00" value="${meta ? esc(fmt2(meta.valor)) : ""}"></label>
+        <button class="btn" style="flex:0 0 auto;width:auto" data-act="salvarMeta">Salvar meta</button></div>` : ""}</div>
+    ${S.admin ? `<div class="row" style="flex-wrap:wrap"><label class="btn brand" style="cursor:pointer">📷 Importar da imagem<input type="file" accept="image/*" data-rk-img="1" hidden></label><button class="btn" data-act="novaVenda">➕ Lançar à mão</button><button class="btn" data-act="baixarRanking" data-t="pdf">⬇️ PDF</button><button class="btn" data-act="baixarRanking" data-t="jpg">⬇️ JPG</button></div>` : ""}
+    <div class="card">${lista.length ? lista.map((r, i) => `<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)">
+        <div style="font-size:20px;min-width:28px;text-align:center;font-weight:800">${med[i] || i + 1}</div>
+        <div style="flex:1;min-width:0"><b style="display:block">${esc(r.nome)}</b>
+          <div class="meta" style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:3px"><span>Qtd. <b>${fmt2(r.q)}</b></span><span>Venda MC <b>R$ ${moeda(r.mc)}</b></span>${c.lt ? `<span>Litragem <b>${fmt2(r.lt)} L</b></span>` : ""}</div>
+          ${barraMeta(r, meta)}</div>
+        ${S.admin ? `<div style="display:flex;flex-direction:column;gap:4px"><button class="btn sm" style="padding:4px 8px;min-width:0;width:auto" data-act="editarVenda" data-id="${r.id}" aria-label="Alterar">✏️</button><button class="btn sm" style="padding:4px 8px;min-width:0;width:auto;color:var(--crit)" data-act="excluirVenda" data-id="${r.id}" aria-label="Excluir">🗑️</button></div>` : ""}
+      </div>`).join("") + `<div class="meta" style="display:flex;flex-wrap:wrap;gap:4px 12px;padding-top:10px"><b>Total</b><span>Qtd. <b>${fmt2(total("q"))}</b></span><span>Venda MC <b>R$ ${moeda(total("mc"))}</b></span>${c.lt ? `<span>Litragem <b>${fmt2(total("lt"))} L</b></span>` : ""}</div>`
+      : `<p class="meta">Nenhum lançamento em ${c.t} · ${nomeMes(S.rkMes)}.${S.admin ? " Use <b>Importar da imagem</b> ou <b>Lançar à mão</b>." : ""}</p>`}</div></div>`;
 }
 function shVenda(id){
-  const fr = S.rkTipo === "frentista", v = id ? (((S.vendas || {})[S.rkMes] || {})[S.rkTipo] || {})[id] || {} : {};
+  const c = rkCat(), o = ((S.vendas || {})[S.rkMes] || {}), v = id ? ((o[c.k] || {})[id] || (c.k === "diesel" ? (o.frentista || {})[id] : null) || {}) : {};
   const nomes = [...new Set([...(cfg().colaboradores || []), ...(cfg().usuarios || [])])].sort();
-  openSheet(`<h2>${id ? "Alterar" : "Lançar"} ${fr ? "frentista" : "vendedor"}</h2>
-    <label class="f" for="vNome">${fr ? "Frentista" : "Vendedor"}<input id="vNome" class="inp" list="vNomes" value="${esc(v.nome || "")}" autofocus></label><datalist id="vNomes">${nomes.map(n => `<option value="${esc(n)}">`).join("")}</datalist>
-    <div class="row"><label class="f" for="vQ" style="flex:1">Quantidade<input id="vQ" class="inp" inputmode="decimal" value="${v.q != null ? esc(fmt(v.q)) : ""}"></label>
+  openSheet(`<h2>${id ? "Alterar" : "Lançar"} · ${c.t}</h2>
+    <label class="f" for="vNome">${c.p}<input id="vNome" class="inp" list="vNomes" value="${esc(v.nome || "")}" autofocus></label><datalist id="vNomes">${nomes.map(n => `<option value="${esc(n)}">`).join("")}</datalist>
+    <div class="row"><label class="f" for="vQ" style="flex:1">Quantidade<input id="vQ" class="inp" inputmode="decimal" value="${v.q != null ? esc(fmt2(v.q)) : ""}"></label>
     <label class="f" for="vMc" style="flex:1">Venda MC<input id="vMc" class="inp" inputmode="decimal" value="${v.mc != null ? esc(moeda(v.mc)) : ""}"></label>
-    ${fr ? `<label class="f" for="vLt" style="flex:1">Litragem (L)<input id="vLt" class="inp" inputmode="decimal" value="${v.lt != null ? esc(fmt(v.lt)) : ""}"></label>` : ""}</div>
+    ${c.lt ? `<label class="f" for="vLt" style="flex:1">Litragem<input id="vLt" class="inp" inputmode="decimal" value="${v.lt != null ? esc(fmt2(v.lt)) : ""}"></label>` : ""}</div>
     <div id="err" class="note crit" hidden></div>
     <div class="row"><button class="btn" data-act="fechar">Cancelar</button><button class="btn pri" data-act="salvarVenda" data-id="${id || ""}">Salvar</button></div>`);
 }
 async function salvarVenda(b){
-  const fr = S.rkTipo === "frentista", nome = $("#vNome").value.trim(), q = parse($("#vQ").value), mc = parse($("#vMc").value), lt = fr ? parse($("#vLt").value) : 0, e = $("#err");
+  const c = rkCat(), nome = $("#vNome").value.trim(), q = parse($("#vQ").value), mc = parse($("#vMc").value), lt = c.lt ? parse($("#vLt").value) : 0, e = $("#err");
   const fail = t => { e.textContent = t; e.hidden = false; };
   if (!nome) return fail("Digite o nome.");
-  if (!(q >= 0)) return fail("Quantidade inválida."); if (!(mc >= 0)) return fail("Venda MC inválida."); if (fr && !(lt >= 0)) return fail("Litragem inválida.");
+  if (!(q >= 0)) return fail("Quantidade inválida."); if (!(mc >= 0)) return fail("Venda MC inválida."); if (c.lt && !(lt >= 0)) return fail("Litragem inválida.");
   let id = b.dataset.id;
-  if (!id) { const ja = vendasDoMes(S.rkTipo).find(r => semAcento(r.nome) === semAcento(nome)); id = ja ? ja.id : "v" + Date.now().toString(36); }
+  if (!id) { const ja = vendasDoMes(c.k).find(r => semAcento(r.nome) === semAcento(nome)); id = ja ? ja.id : "v" + Date.now().toString(36); }
   b.disabled = true;
-  const dado = fr ? {nome, q, mc, lt, x:0} : {nome, q, mc, x:0};
-  if (await safe(() => S.db.doc("vendas/" + S.rkMes).update({[S.rkTipo]:{[id]:dado}}), "Lançamento salvo.")) closeSheet(); else b.disabled = false;
+  if (await safe(() => gravaVendas({[c.k]:{[id]:c.lt ? {nome, q, mc, lt, x:0} : {nome, q, mc, x:0}}}), "Lançamento salvo.")) closeSheet(); else b.disabled = false;
+}
+async function salvarMeta(b){
+  const c = rkCat(), campo = $("#mtCampo").value, valor = parse($("#mtValor").value);
+  if (!(valor >= 0)) return toast("Digite o valor da meta. Ex.: 5.000,00");
+  b.disabled = true;
+  await safe(() => gravaVendas({metas:{[c.k]:{campo, valor}}}), valor > 0 ? "Meta salva." : "Meta removida.");
+  b.disabled = false;
 }
 function baixarRanking(b, tipo){
-  const fr = S.rkTipo === "frentista", lista = vendasDoMes(S.rkTipo);
-  const cols = fr ? [["#", 0], ["Frentista", 70], ["Quantidade", 600], ["Venda MC", 800], ["Litragem", 980]] : [["#", 0], ["Vendedor", 70], ["Quantidade", 700], ["Venda MC", 920]];
-  const pags = paginasTabela("Ranking de vendas · " + (fr ? "Frentista" : "Loja"), (S.nomeFilial || "") + " · " + S.rkMes.split("-").reverse().join("/"), cols,
-    lista.map((r, i) => fr ? [i + 1, r.nome, fmt(r.q), moeda(r.mc), fmt(r.lt) + " L"] : [i + 1, r.nome, fmt(r.q), moeda(r.mc)]));
-  exportarPaginas(b, pags, tipo, nomeArquivo("Ranking " + (fr ? "frentista" : "loja")));
+  const c = rkCat(), lista = vendasDoMes(c.k), meta = metaDe(c.k), pct = r => meta && meta.valor > 0 ? Math.floor(r[meta.campo] / meta.valor * 100) + "%" : "—";
+  const cols = c.lt ? [["#", 0], [c.p, 60], ["Quantidade", 520], ["Venda MC", 700], ["Litragem", 870], ["Meta", 1020]] : [["#", 0], [c.p, 60], ["Quantidade", 620], ["Venda MC", 820], ["Meta", 1020]];
+  const pags = paginasTabela("Ranking de vendas · " + c.t, (S.nomeFilial || "") + " · " + S.rkMes.split("-").reverse().join("/") + (meta ? " · meta " + fmt2(meta.valor) + " em " + CAMPOS[meta.campo] : ""), cols,
+    lista.map((r, i) => c.lt ? [i + 1, r.nome, fmt2(r.q), moeda(r.mc), fmt2(r.lt), pct(r)] : [i + 1, r.nome, fmt2(r.q), moeda(r.mc), pct(r)]));
+  exportarPaginas(b, pags, tipo, nomeArquivo("Ranking " + c.t));
+}
+/* importar da imagem: lê a foto do relatório no próprio aparelho (nada é enviado para fora além do leitor baixado na 1ª vez) */
+let tessP = null;
+function carregaLeitor(){
+  if (window.Tesseract) return Promise.resolve(window.Tesseract);
+  if (!tessP) tessP = new Promise((ok, erro) => { const sc = document.createElement("script"); sc.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"; sc.onload = () => ok(window.Tesseract); sc.onerror = () => { tessP = null; erro(new Error("Sem internet para carregar o leitor de imagens.")); }; document.head.appendChild(sc); });
+  return tessP;
+}
+async function prepImagem(img, larg, limiar){
+  const k = Math.max(1, larg / img.width), cv = document.createElement("canvas"); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+  const g = cv.getContext("2d"); g.imageSmoothingQuality = "high"; g.drawImage(img, 0, 0, cv.width, cv.height);
+  const d = g.getImageData(0, 0, cv.width, cv.height);
+  for (let i = 0; i < d.data.length; i += 4) { let y = 0.3 * d.data[i] + 0.59 * d.data[i + 1] + 0.11 * d.data[i + 2]; y = y < limiar ? 0 : 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = y; }
+  g.putImageData(d, 0, 0); return cv;
+}
+function linhasDoTexto(txt){
+  const out = [];
+  for (const bruto of String(txt).split(/\n+/)) {
+    const l = bruto.replace(/[|]/g, " ").replace(/(\d)[:;](\d)/g, "$1.$2").replace(/\.,/g, ",").replace(/\s+/g, " ").trim();
+    const nums = l.match(/\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2}/g) || [];
+    if (nums.length < 2) continue;
+    const nome = l.slice(0, l.search(/\d/)).replace(/R\$|RS\b/gi, " ").replace(/[^A-Za-zÀ-ÿ' .-]/g, " ").replace(/\s+/g, " ").trim();
+    if (nome.replace(/[^A-Za-zÀ-ÿ]/g, "").length < 3 || /vendedor|quantidade|venda mc|litragem/i.test(nome)) continue;
+    out.push({nome, v:nums.map(n => parse(n))});
+  }
+  return out;
+}
+async function importarImagem(arq){
+  if (!arq) return;
+  const c = rkCat();
+  openSheet(`<h2>Lendo a imagem…</h2><p class="meta">Na primeira vez, o leitor é baixado (alguns segundos). Depois é rápido.</p>`);
+  try {
+    const T = await carregaLeitor();
+    const url = await new Promise((ok, erro) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = erro; r.readAsDataURL(arq); });
+    const img = await new Promise((ok, erro) => { const i = new Image(); i.onload = () => ok(i); i.onerror = erro; i.src = url; });
+    const w = await T.createWorker("por"), leituras = [];
+    try { for (const [larg, lim] of [[1800, 160], [2000, 130], [2400, 170]]) { const {data} = await w.recognize(await prepImagem(img, larg, lim)); leituras.push(linhasDoTexto(data.text)); } }
+    finally { await w.terminate(); }
+    // junta as 3 leituras: fica o valor que mais se repete; se elas não concordam, a linha fica marcada para conferir
+    const base = leituras.reduce((a, b) => b.length > a.length ? b : a, []), rows = [];
+    base.forEach((r, i) => {
+      const iguais = leituras.map(L => L.find(x => semAcento(x.nome) === semAcento(r.nome)) || L[i]).filter(Boolean);
+      const campos = [0, 1, 2].map(k => { const vs = iguais.map(x => x.v[k]).filter(v => v != null && !isNaN(v)); if (!vs.length) return {v:undefined, ok:true}; const cont = {}; vs.forEach(v => cont[v] = (cont[v] || 0) + 1); const [v, n] = Object.entries(cont).sort((a, b) => b[1] - a[1])[0]; return {v:Number(v), ok:n === vs.length}; });
+      rows.push({nome:r.nome, q:campos[0].v, mc:campos[1].v, lt:c.lt ? campos[2].v : undefined, conferir:!campos.slice(0, c.lt ? 3 : 2).every(x => x.ok)});
+    });
+    S.importa = rows;
+    if (!rows.length) { openSheet(`<h2>Nada encontrado</h2><p class="meta">Não achei linhas com nome e números. Use uma foto ou print nítido da tabela, sem cortes, e tente de novo.</p><button class="btn" data-act="fechar">Fechar</button>`); return; }
+    const inp = (i, k, v, fmtv) => `<input class="inp" data-imp="${i}" data-k="${k}" inputmode="decimal" value="${v == null ? "" : esc(fmtv(v))}" style="padding:6px 8px;min-width:80px">`;
+    openSheet(`<h2>Conferir importação · ${c.t}</h2>
+      <p class="meta" style="margin:0 0 8px">Confira os valores lidos. Linhas em <b style="color:var(--warn)">amarelo</b> tiveram leituras diferentes: confira com a imagem. Desmarque o que não quiser lançar.</p>
+      <div style="overflow-x:auto"><table class="tbl"><tr><th></th><th>${c.p}</th><th class="n">Qtd.</th><th class="n">Venda MC</th>${c.lt ? `<th class="n">Litragem</th>` : ""}</tr>
+      ${rows.map((r, i) => `<tr style="${r.conferir ? "background:var(--warn-bg)" : ""}"><td><input type="checkbox" data-imp-ok="${i}" checked></td><td><input class="inp" data-imp="${i}" data-k="nome" value="${esc(r.nome)}" style="padding:6px 8px;min-width:150px"></td><td>${inp(i, "q", r.q, fmt2)}</td><td>${inp(i, "mc", r.mc, moeda)}</td>${c.lt ? `<td>${inp(i, "lt", r.lt, fmt2)}</td>` : ""}</tr>`).join("")}</table></div>
+      <p class="meta">Mês: <b>${S.rkMes.split("-").reverse().join("/")}</b>. Quem já existe no mês é atualizado; os novos são adicionados.</p>
+      <div class="row"><button class="btn" data-act="fechar">Cancelar</button><button class="btn pri" data-act="confirmarImport">Lançar ${rows.length}</button></div>`);
+  } catch (e) { console.error("Importar imagem:", e); openSheet(`<h2>Não foi possível ler</h2><p class="meta">${esc(e.message || "Erro ao ler a imagem.")}</p><button class="btn" data-act="fechar">Fechar</button>`); }
+}
+async function confirmarImport(b){
+  const c = rkCat(), existentes = vendasDoMes(c.k), patch = {}; let n = 0, erro = "";
+  (S.importa || []).forEach((r, i) => {
+    if (!(document.querySelector(`[data-imp-ok="${i}"]`) || {}).checked) return;
+    const val = k => (document.querySelector(`[data-imp="${i}"][data-k="${k}"]`) || {}).value;
+    const nome = String(val("nome") || "").trim(), q = parse(val("q")), mc = parse(val("mc")), lt = c.lt ? parse(val("lt")) : 0;
+    if (!nome || !(q >= 0) || !(mc >= 0) || (c.lt && !(lt >= 0))) { erro = erro || "Confira a linha " + (i + 1) + ": nome ou número inválido."; return; }
+    const ja = existentes.find(x => semAcento(x.nome) === semAcento(nome)), id = ja ? ja.id : "v" + Date.now().toString(36) + i;
+    patch[id] = c.lt ? {nome, q, mc, lt, x:0} : {nome, q, mc, x:0}; n++;
+  });
+  if (erro) return toast(erro);
+  if (!n) return toast("Nenhuma linha marcada.");
+  b.disabled = true;
+  if (await safe(() => gravaVendas({[c.k]:patch}), n + " lançamento(s) importado(s).")) { S.importa = null; closeSheet(); } else b.disabled = false;
 }
 
 /* ---------- baixar o estoque em PDF e JPG ---------- */
@@ -1158,12 +1280,16 @@ document.addEventListener("click", async ev => {
   else if (a === "aplicarFiltro") { S.flt = lerFiltro(); render(); }
   else if (a === "limparFiltro") { S.flt = filtroPadrao(); render(); }
   else if (a === "baixarFiltro") baixarFiltro(b, b.dataset.t);
-  else if (a === "ranking") go("ranking");
+  else if (a === "ranking") { if (rankingAtivo() || S.admin) go("ranking"); else toast("O ranking não está ativado nesta filial."); }
   else if (a === "rkTipo") { S.rkTipo = b.dataset.t; render(); }
   else if (a === "novaVenda") shVenda(null);
   else if (a === "editarVenda") shVenda(b.dataset.id);
   else if (a === "salvarVenda") salvarVenda(b);
-  else if (a === "excluirVenda") { if (confirm("Excluir este lançamento do ranking?")) await safe(() => S.db.doc("vendas/" + S.rkMes).update({[S.rkTipo]:{[b.dataset.id]:{x:1}}}), "Lançamento excluído."); }
+  else if (a === "excluirVenda") { if (confirm("Excluir este lançamento do ranking?")) await safe(() => gravaVendas({[S.rkTipo]:{[b.dataset.id]:{x:1}}}), "Lançamento excluído."); }
+  else if (a === "rkOrdem") { S.rkOrdem = b.dataset.o; render(); }
+  else if (a === "salvarMeta") salvarMeta(b);
+  else if (a === "confirmarImport") confirmarImport(b);
+  else if (a === "salvarRankingAtivo") { const on = $("#rkAtivo").checked; await safe(() => S.db.doc("cfg/main").update({ranking:on}), on ? "Ranking ativado." : "Ranking desativado."); }
   else if (a === "baixarRanking") baixarRanking(b, b.dataset.t);
   else if (a === "tirarFotoLocal") await safe(() => S.db.doc("cfg/main").update({locais:{[b.dataset.l]:{foto:""}}}), "Foto removida.");
   else if (a === "baixarEstoque") shBaixar();
@@ -1178,7 +1304,7 @@ document.addEventListener("click", async ev => {
     await safe(() => S.db.doc("cfg/main").update({[k]:arr}), nome + " removido.");
   }
 });
-const ADMIN_ACTS = new Set(["aprod","ausers","acfg","rel","addEstoque","confEntrada","novo","salvarNovo","editar","salvarEdit","corrigir","salvarCorr","excluir","confExcluir","foto","mais","addLista","rmLista","salvarLocais","excluirLocal","filtro","periodo","aplicarFiltro","limparFiltro","baixarFiltro","novaVenda","editarVenda","salvarVenda","excluirVenda","criarLocal","criarLocalTile","tirarFotoLocal","baixarEstoque","gerarPDF","gerarJPG","criarLogin","redefinirSenha","kpiLocal","admLocal"]);
+const ADMIN_ACTS = new Set(["aprod","ausers","acfg","rel","addEstoque","confEntrada","novo","salvarNovo","editar","salvarEdit","corrigir","salvarCorr","excluir","confExcluir","foto","mais","addLista","rmLista","salvarLocais","excluirLocal","filtro","periodo","aplicarFiltro","limparFiltro","baixarFiltro","novaVenda","editarVenda","salvarVenda","excluirVenda","salvarMeta","confirmarImport","salvarRankingAtivo","criarLocal","criarLocalTile","tirarFotoLocal","baixarEstoque","gerarPDF","gerarJPG","criarLogin","redefinirSenha","kpiLocal","admLocal"]);
 document.addEventListener("input", ev => { if (ev.target.id === "busca") { S.busca = ev.target.value; renderList(); } else if (ev.target.id === "abusca") { S.abusca = ev.target.value; renderAList(); } });
 document.addEventListener("change", ev => {
   const t = ev.target;
