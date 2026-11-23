@@ -278,15 +278,18 @@ function vRkCfg(){
     }
     const ORD = Object.keys(grupoOpcoes()), grupoP = p => { const i = ORD.indexOf(grupoKey(p)); return i < 0 ? ORD.length : i; };
     const gente = [...Object.entries(P).filter(([, p]) => p && !p.x), ...puxados].sort((a, b) => grupoP(a[1]) - grupoP(b[1]) || a[1].nome.localeCompare(b[1].nome, "pt-BR"));
-    corpo = `<div class="card"><h2>Equipe do ranking</h2>
-      <p class="meta" style="margin:4px 0 10px">Cadastrada automaticamente na primeira importação. Escolha a função de cada um (ex.: quem é <b>Frentista Madrugada</b>, <b>Lubrificador</b> ou <b>Caixa Madrugada</b>). As próximas importações não mudam o que você salvar aqui.</p>
+    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 8</small></h2>
+      <input class="inp" id="eqBusca" placeholder="🔎 Buscar nome (equipe e relatórios)" autocomplete="off" style="margin:6px 0">
+      <div id="eqNada" hidden style="font-size:12px;color:var(--muted);margin-bottom:6px">Nome não encontrado. Use <b>➕ Adicionar membro</b> no fim da tela.</div>
+      <p style="margin:4px 0 10px;font-size:12px;color:var(--muted);line-height:1.4">Toque no grupo de cada pessoa: salva na hora, e a venda e a meta passam a ser desse grupo. Os nomes vêm dos relatórios do ranking.</p>
       ${puxados.size ? `<p class="note" style="margin:0 0 8px">${puxados.size} nome(s) dos lançamentos do ranking ainda não estavam na equipe. Confira a função e toque em <b>Salvar equipe</b>.</p>` : ""}
-      ${gente.length ? gente.map(([id, p], i) => `${i === 0 || grupoP(gente[i - 1][1]) !== grupoP(p) ? `<h3 style="margin:14px 0 0;font-size:15px">${grupoOpcoes()[grupoKey(p)] || "Outros"}</h3>` : ""}<div style="border:1px solid var(--line);border-radius:12px;padding:8px;margin-top:8px"><div style="display:flex;gap:8px;align-items:center">${fotoPessoa({pid:id, nome:p.nome}, 40)}<input class="inp" data-eq-nome="${id}" value="${esc(p.nome)}" style="flex:1"></div>
-        <div class="row" style="flex-wrap:wrap;margin-top:6px;align-items:center"><select class="inp" data-eq-funcao="${id}" style="flex:1 1 180px">${Object.entries(grupoOpcoes()).map(([k, t]) => `<option value="${k}" ${grupoKey(p) === k ? "selected" : ""}>${t}</option>`).join("")}</select>
+      ${gente.length ? gente.map(([id, p], i) => `${i === 0 || grupoP(gente[i - 1][1]) !== grupoP(p) ? `<h3 style="margin:14px 0 0;font-size:15px">${grupoOpcoes()[grupoKey(p)] || "Outros"}</h3>` : ""}<div data-eq-row="${esc(semAcento(p.nome))}" style="border:1px solid var(--line);border-radius:12px;padding:8px;margin-top:8px"><div style="display:flex;gap:8px;align-items:center">${fotoPessoa({pid:id, nome:p.nome}, 40)}<input class="inp" data-eq-nome="${id}" value="${esc(p.nome)}" style="flex:1"></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">Função (toque para trocar · salva na hora):</div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px;margin-top:4px">${Object.entries(grupoOpcoes()).filter(([k]) => k !== "frentista").map(([k, t]) => `<button class="chip ${grupoKey(p) === k && P[id] ? "on" : ""}" style="justify-content:flex-start;padding:7px 8px;font-size:12px;margin:0" data-act="rkGrupo" data-id="${id}" data-g="${k}" data-n="${esc(p.nome)}">${t}</button>`).join("")}</div>
+        <div class="row" style="flex-wrap:wrap;margin-top:6px;align-items:center">
         ${rkFotosAtivas() ? `<label class="btn" style="width:auto;margin:0;cursor:pointer;padding:8px 10px">📷 Foto<input type="file" accept="image/*" data-rk-foto="${id}" hidden></label>${(S.rkFotos || {})[id] ? `<button class="btn" style="width:auto;margin:0;padding:8px 10px" data-act="tirarFotoPessoa" data-id="${id}">Tirar foto</button>` : ""}` : ""}
-        ${["frentista", "frentista_madrugada", "caixa", "caixa_madrugada"].includes(p.funcao) ? `<button class="btn" style="width:auto;margin:0;padding:8px 10px" data-act="rkMadrugada" data-id="${id}">${/madrugada/.test(p.funcao) ? "☀️ Tirar da madrugada" : "🌙 Mudar p/ madrugada"}</button>` : ""}
         <button class="btn" style="width:auto;margin:0;padding:8px 10px;color:var(--crit)" data-act="removerPessoa" data-id="${id}">🗑️</button></div></div>`).join("") : `<p class="meta">Ninguém cadastrado ainda. Importe a primeira imagem no ranking.</p>`}
-      ${gente.length ? `<button class="btn pri" style="margin-top:12px" data-act="salvarEquipe">Salvar equipe</button>` : ""}
+      ${gente.length ? `<button class="btn pri" style="margin-top:12px" data-act="salvarEquipe">Salvar nomes</button>` : ""}
       <details style="border:1px dashed var(--line);border-radius:12px;padding:10px;margin-top:14px"><summary style="cursor:pointer;font-weight:800">📋 Colar lista da equipe (nome = grupo)</summary>
         <p style="font-size:12px;color:var(--muted);margin:6px 0">Um por linha ou separados por vírgula. Grupos: frentista diesel, frentista gasolina, frentista lubrificador, frentista madrugada, caixa, caixa madrugada, vendedor(a). Quem já está na equipe só muda de grupo (o nome do relatório é reconhecido mesmo com pequenas diferenças).</p>
         <textarea class="inp" id="listaEquipe" rows="6" placeholder="sergio silva araujo = frentista diesel"></textarea>
@@ -336,7 +339,7 @@ async function salvarEquipe(b){
     const id = el.dataset.eqNome, nome = el.value.trim(), f = (document.querySelector(`[data-eq-funcao="${id}"]`) || {}).value, p = pessoasRk()[id] || {};
     if (!nome) return toast("Nome em branco na equipe.");
     const chaves = [...new Set([...(p.chaves || []), semAcento(nome).replace(/\s+/g, " ").trim()])];
-    patch[id] = {nome, chaves, ...grupoParaFuncao(f)};
+    patch[id] = f ? {nome, chaves, ...grupoParaFuncao(f)} : {nome, chaves, x:0};
   }
   b.disabled = true;
   if (await safe(() => S.db.doc("cfg/main").update({rkPessoas:patch}), "Equipe salva.")) { S.cfg = {...S.cfg, rkPessoas:deepMerge(pessoasRk(), patch)}; render(); }
@@ -668,6 +671,7 @@ async function cartaoRanking(b){
 /* ---------- ações do ranking tratadas aqui (o index.html só repassa) ---------- */
 async function rkAcao(a, b){
   if (a === "aplicarListaEquipe") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } aplicarListaEquipe(b); return true; }
+  if (a === "rkGrupo") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarGrupo(b); return true; }
   if (a === "addMembro") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } addMembro(b); return true; }
   if (a === "rkSetor") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarSetor(b); return true; }
   if (a === "salvarProdutos") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarProdutos(b); return true; }
@@ -933,3 +937,19 @@ async function aplicarListaEquipe(b){
   b.disabled = true;
   if (await safe(() => S.db.doc("cfg/main").update({rkPessoas:patch}), `${Object.keys(patch).length} na equipe (${novos} novos)${erros.length ? " · sem grupo: " + erros.join(", ") : ""}`)) { S.cfg = deepMerge(S.cfg || {}, {rkPessoas:patch}); render(); } else b.disabled = false;
 }
+
+/* toque no grupo da pessoa (Equipe): salva na hora; quem veio só do relatório entra na equipe */
+async function salvarGrupo(b){
+  const id = b.dataset.id, k = b.dataset.g, p = pessoasRk()[id], nome = b.dataset.n || "";
+  const dado = p ? {...grupoParaFuncao(k), x:0} : {nome, chaves:[semAcento(nome).replace(/\s+/g, " ").trim()], x:0, ...grupoParaFuncao(k)};
+  b.disabled = true;
+  if (await safe(() => S.db.doc("cfg/main").update({rkPessoas:{[id]:dado}}), (nome || (p && p.nome) || "") + " → " + (grupoOpcoes()[k] || k))) {
+    S.cfg = deepMerge(S.cfg || {}, {rkPessoas:{[id]:dado}}); const y = window.scrollY; render(); window.scrollTo(0, y);
+  } else b.disabled = false;
+}
+/* busca na Equipe: esconde quem não combina, sem redesenhar */
+document.addEventListener("input", ev => { const t = ev.target; if (!t || t.id !== "eqBusca") return;
+  const q = semAcento(t.value).trim(); let n = 0;
+  document.querySelectorAll("[data-eq-row]").forEach(el => { const ok = !q || q.split(/\s+/).every(w => el.dataset.eqRow.includes(w)); el.hidden = !ok; if (ok) n++; });
+  const nada = document.getElementById("eqNada"); if (nada) nada.hidden = n > 0;
+  const nv = document.getElementById("novoMembro"); if (nv && !n) nv.value = t.value; });
