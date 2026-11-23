@@ -269,10 +269,19 @@ function vRkCfg(){
       ${gente.length ? `<button class="btn pri" style="margin-top:12px" data-act="salvarMetasInd">Salvar metas individuais</button>` : ""}</div>`;
   }
   else if (aba === "equipe") {
-    const gente = Object.entries(P).filter(([, p]) => p && !p.x).sort((a, b) => a[1].nome.localeCompare(b[1].nome, "pt-BR"));
+    /* puxa os nomes de todos os lançamentos do ranking (todos os meses: frentistas, caixa e loja) que ainda não estão na equipe */
+    const ABAS_V = {loja:"loja", diesel:"diesel", gasolina:"gasolina", frentista:"diesel", caixa:"caixa", opcaixa:"opcaixa"}, puxados = new Map();
+    for (const d of Object.values(S.vendas || {})) for (const [ab, tab] of Object.entries(ABAS_V)) for (const v of Object.values((d && d[ab]) || {})) {
+      if (!v || v.x || !v.nome || (v.pid && P[v.pid]) || acharPessoa(v.nome)) continue;
+      const id = "p_" + semAcento(v.nome).replace(/[^a-z0-9]/gi, "").toLowerCase();
+      if (!puxados.has(id)) puxados.set(id, {nome:String(v.nome).trim(), funcao:funcaoPadrao(tab)});
+    }
+    const grupoP = p => (FRENT[p.setor] || BASE_GRUPO.frentista.includes(p.funcao)) ? 0 : BASE_GRUPO.caixa.includes(p.funcao) ? 1 : 2;
+    const gente = [...Object.entries(P).filter(([, p]) => p && !p.x), ...puxados].sort((a, b) => grupoP(a[1]) - grupoP(b[1]) || a[1].nome.localeCompare(b[1].nome, "pt-BR"));
     corpo = `<div class="card"><h2>Equipe do ranking</h2>
       <p class="meta" style="margin:4px 0 10px">Cadastrada automaticamente na primeira importação. Escolha a função de cada um (ex.: quem é <b>Frentista Madrugada</b>, <b>Lubrificador</b> ou <b>Caixa Madrugada</b>). As próximas importações não mudam o que você salvar aqui.</p>
-      ${gente.length ? gente.map(([id, p]) => `<div style="border:1px solid var(--line);border-radius:12px;padding:8px;margin-top:8px"><div style="display:flex;gap:8px;align-items:center">${fotoPessoa({pid:id, nome:p.nome}, 40)}<input class="inp" data-eq-nome="${id}" value="${esc(p.nome)}" style="flex:1"></div>
+      ${puxados.size ? `<p class="note" style="margin:0 0 8px">${puxados.size} nome(s) dos lançamentos do ranking ainda não estavam na equipe. Confira a função e toque em <b>Salvar equipe</b>.</p>` : ""}
+      ${gente.length ? gente.map(([id, p], i) => `${i === 0 || grupoP(gente[i - 1][1]) !== grupoP(p) ? `<h3 style="margin:14px 0 0;font-size:15px">${["⛽ Frentistas", "💵 Caixa", "🛒 Loja"][grupoP(p)]}</h3>` : ""}<div style="border:1px solid var(--line);border-radius:12px;padding:8px;margin-top:8px"><div style="display:flex;gap:8px;align-items:center">${fotoPessoa({pid:id, nome:p.nome}, 40)}<input class="inp" data-eq-nome="${id}" value="${esc(p.nome)}" style="flex:1"></div>
         <div class="row" style="flex-wrap:wrap;margin-top:6px;align-items:center"><select class="inp" data-eq-funcao="${id}" style="flex:1 1 180px">${Object.entries(funcoesTodas()).map(([k, t]) => `<option value="${k}" ${p.funcao === k ? "selected" : ""}>${t}</option>`).join("")}</select>
         ${rkFotosAtivas() ? `<label class="btn" style="width:auto;margin:0;cursor:pointer;padding:8px 10px">📷 Foto<input type="file" accept="image/*" data-rk-foto="${id}" hidden></label>${(S.rkFotos || {})[id] ? `<button class="btn" style="width:auto;margin:0;padding:8px 10px" data-act="tirarFotoPessoa" data-id="${id}">Tirar foto</button>` : ""}` : ""}
         ${["frentista", "frentista_madrugada", "caixa", "caixa_madrugada"].includes(p.funcao) ? `<button class="btn" style="width:auto;margin:0;padding:8px 10px" data-act="rkMadrugada" data-id="${id}">${/madrugada/.test(p.funcao) ? "☀️ Tirar da madrugada" : "🌙 Mudar p/ madrugada"}</button>` : ""}
