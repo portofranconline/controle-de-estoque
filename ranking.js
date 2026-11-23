@@ -344,7 +344,7 @@ function shVenda(idc){
   const [tb, id] = idc ? rkDividir(idc) : [S.rkTipo, null], c = RK.find(x => x.k === tb) || rkCat(), o = ((S.vendas || {})[S.rkMes] || {}), v = id ? ((o[c.k] || {})[id] || (c.k === "diesel" ? (o.frentista || {})[id] : null) || {}) : {};
   const nomes = [...new Set([...Object.values(pessoasRk()).filter(p => p && !p.x).map(p => p.nome), ...(cfg().colaboradores || []), ...(cfg().usuarios || [])])].sort();
   openSheet(`<h2>${id ? "Alterar" : "Lançar"} · ${c.t}</h2>
-    <label class="f" for="vNome">${c.p}<input id="vNome" class="inp" list="vNomes" value="${esc(v.nome || "")}" autofocus></label><datalist id="vNomes">${nomes.map(n => `<option value="${esc(n)}">`).join("")}</datalist>
+    <label class="f" for="vNome">${c.p}<input id="vNome" class="inp" list="vNomes" value="${esc(v.nome || "")}" autofocus></label><datalist id="vNomes">${nomes.map(n => `<option value="${esc(n)}">`).join("")}</datalist>${botoesFuncao(v, tb)}
     <div class="row"><label class="f" for="vQ" style="flex:1">Quantidade<input id="vQ" class="inp" inputmode="decimal" value="${v.q != null ? esc(fmt2(v.q)) : ""}"></label>
     <label class="f" for="vMc" style="flex:1">Venda MC<input id="vMc" class="inp" inputmode="decimal" value="${v.mc != null ? esc(moeda(v.mc)) : ""}"></label>
     ${c.lt ? `<label class="f" for="vLt" style="flex:1">Litragem<input id="vLt" class="inp" inputmode="decimal" value="${v.lt != null ? esc(fmt2(v.lt)) : ""}"></label>` : ""}</div>
@@ -841,7 +841,19 @@ function telaSetores(){
       : `<p class="meta">Nenhum frentista ainda. Importe o relatório de Diesel ou Gasolina primeiro.</p>`}</div>`;
 }
 async function salvarSetor(b){
-  const id = b.dataset.id, k = b.dataset.s, patch = {rkPessoas:{[id]:{setor:k, funcao:FUNC_SETOR[k]}}};
+  const id = b.dataset.id, k = b.dataset.s, f = b.dataset.f, patch = {rkPessoas:{[id]:f ? {funcao:f} : {setor:k, funcao:FUNC_SETOR[k]}}};
   b.disabled = true;
-  if (await safe(() => S.db.doc("cfg/main").update(patch), (FRENT[k] || "") + " ✓")) { S.cfg = deepMerge(S.cfg || {}, patch); render(); } else b.disabled = false;
+  if (await safe(() => S.db.doc("cfg/main").update(patch), (f ? nomeFuncao(f) : FRENT[k] || "") + " ✓")) { S.cfg = deepMerge(S.cfg || {}, patch); render(); b.parentElement.querySelectorAll(".chip").forEach(x => x.classList.toggle("on", x === b)); } b.disabled = false;
+}
+
+/* ✏️ Alterar: trocar a função do colaborador com um toque; a meta passa a ser a da nova função */
+function botoesFuncao(v, tb){
+  const P = pessoasRk(), pid = (v.pid && P[v.pid]) ? v.pid : (v.nome && (acharPessoa(v.nome) || {}).id);
+  if (!pid || !S.admin) return "";
+  const p = P[pid] || {}, fr = tb === "diesel" || tb === "gasolina";
+  const curto = {diesel:"🛢️ Diesel", gasolina:"⛽ Gasolina", lubrificador:"🔧 Lubrif.", madrugada:"🌙 Madrug."};
+  const atual = fr ? setorDe(p, {funcao:funcaoDe(p, tb), src:tb}) : funcaoDe(p, tb);
+  const bts = fr ? Object.keys(FRENT).map(k => `<button class="chip ${atual === k ? "on" : ""}" style="justify-content:center;padding:7px 2px;font-size:12px;margin:0" data-act="rkSetor" data-id="${pid}" data-s="${k}">${curto[k]}</button>`)
+    : funcoesDaAba(tb).map(f => `<button class="chip ${atual === f ? "on" : ""}" style="justify-content:center;padding:7px 4px;font-size:12px;margin:0" data-act="rkSetor" data-id="${pid}" data-f="${f}">${esc(nomeFuncao(f))}</button>`);
+  return `<div style="margin:8px 0 4px"><div class="meta" style="font-size:11px;font-weight:700">FUNÇÃO (toque para trocar · a meta segue a função)</div><div style="display:grid;grid-template-columns:repeat(${fr ? 4 : Math.min(3, bts.length)},1fr);gap:4px;margin-top:4px">${bts.join("")}</div></div>`;
 }
