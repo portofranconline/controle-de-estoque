@@ -269,7 +269,10 @@ function vRkCfg(){
       ${gente.length ? `<button class="btn pri" style="margin-top:12px" data-act="salvarMetasInd">Salvar metas individuais</button>` : ""}</div>`;
   }
   else if (aba === "equipe") {
-    const gente = Object.entries(P).filter(([, p]) => p && !p.x).sort((a, b) => a[1].nome.localeCompare(b[1].nome, "pt-BR"));
+    /* todos os colaboradores cadastrados no app (Colaboradores e Usuários) entram na lista; os novos são gravados ao salvar */
+    const extras = [...new Set([...(cfg().colaboradores || []), ...(cfg().usuarios || [])].map(n => String(n || "").trim()).filter(Boolean))].filter(n => !acharPessoa(n))
+      .map(n => ["c_" + semAcento(n).replace(/[^a-z0-9]/gi, "").toLowerCase(), {nome:n, funcao:"loja", novo:1}]);
+    const gente = [...Object.entries(P).filter(([, p]) => p && !p.x), ...extras].sort((a, b) => a[1].nome.localeCompare(b[1].nome, "pt-BR"));
     corpo = `<div class="card"><h2>Equipe do ranking</h2>
       <p class="meta" style="margin:4px 0 10px">Cadastrada automaticamente na primeira importação. Escolha a função de cada um (ex.: quem é <b>Frentista Madrugada</b>, <b>Lubrificador</b> ou <b>Caixa Madrugada</b>). As próximas importações não mudam o que você salvar aqui.</p>
       ${gente.length ? gente.map(([id, p]) => `<div style="border:1px solid var(--line);border-radius:12px;padding:8px;margin-top:8px"><div style="display:flex;gap:8px;align-items:center">${fotoPessoa({pid:id, nome:p.nome}, 40)}<input class="inp" data-eq-nome="${id}" value="${esc(p.nome)}" style="flex:1"></div>
