@@ -162,10 +162,16 @@ const LOCAIS = ["POSTO","BR PARK"];
 /* nomes e locais por unidade (cfg/main → locais). A chave interna continua POSTO / BR PARK. */
 function cfgLocais(){ return (typeof S !== "undefined" && S.cfg && S.cfg.locais) || {}; }
 function nomeLocal(l){ const o = cfgLocais()[l]; return (o && o.nome) || l; }
-function logoLocal(l){ const o = cfgLocais()[l]; return (o && o.nome) ? "" : LOGO[l]; }
-function locaisAtivos(){ const o = cfgLocais()["BR PARK"]; return (o && o.oculto) ? ["POSTO"] : LOCAIS; }
+function logoLocal(l){ const o = cfgLocais()[l] || {}; if (o.foto) return o.foto; return (o.nome || !LOGO[l]) ? "" : LOGO[l]; }
+/* todos os estoques da filial: os dois padrão + os criados pelo administrador (ex.: Pista) */
+function todosLocais(){
+  const o = cfgLocais(), v = [...LOCAIS, ...Object.keys(o).filter(k => o[k] && o[k].extra).sort()];
+  if (typeof S !== "undefined" && S.prod) v.forEach(l => { if (!S.prod[l]) S.prod[l] = {}; });
+  return v;
+}
+function locaisAtivos(){ const o = cfgLocais(), v = todosLocais().filter(l => !(o[l] && o[l].oculto)); return v.length ? v : ["POSTO"]; }
 const BASECATS = ["Material de limpeza","Material de escritório","Copa/cozinha","Outros"];
-const KEY = l => l === "POSTO" ? "POSTO" : "BRPARK";
+const KEY = l => l === "BR PARK" ? "BRPARK" : l;
 const now = new Date();
 const S = { db:null, state:"boot", cfg:null, prod:{"POSTO":{}, "BR PARK":{}}, fotos:{}, movs:{}, got:{cfg:false, prod:false},
   view:"home", local:"POSTO", busca:"", cat:"Todos", oper:"", admin:false, adminNome:"", admLocal:"POSTO", kpiLocal:"Todos",
@@ -589,13 +595,13 @@ async function salvarNovo(btn){
   const fail = t => { err.textContent = t; err.hidden = false; };
   if (!n) return fail("Digite o nome do produto.");
   if (!(q >= 0)) return fail("Quantidade inicial inválida.");
-  if (itens(l).some(([,it]) => semAcento(it.n) === semAcento(n))) return fail("Já existe um produto com esse nome em " + l + ".");
+  if (itens(l).some(([,it]) => semAcento(it.n) === semAcento(n))) return fail("Já existe um produto com esse nome em " + nomeLocal(l) + ".");
   const pid = (l === "POSTO" ? "P" : "B") + Date.now().toString(36);
   btn.disabled = true;
   const ok = await safe(async () => {
     await S.db.doc("prod/" + KEY(l)).update({itens:{[pid]:{n, c:$("#nCat").value, u:$("#nUni").value, m: m >= 0 ? m : 0, e:q}}});
     await addMov({t:Date.now(), l, p:pid, n, tp:"C", q, a:0, d:q, u:S.adminNome || "Administrador", c:""});
-  }, n + " cadastrado em " + l + ".");
+  }, n + " cadastrado em " + nomeLocal(l) + ".");
   if (ok) { closeSheet(); go("aprod", {admLocal:l, abusca:""}); } else btn.disabled = false;
 }
 function shMais(pid){
@@ -680,7 +686,7 @@ function vAdmin(){
     </div>
     <div class="tiles">
       ${tile("addEstoque","➕","Adicionar estoque","pri")}${tile("novo","🆕","Cadastrar item")}${tile("aprod","✏️","Editar produto")}${tile("aprod","📷","Gerenciar fotos")}
-      ${tile("rel","📋","Histórico e relatórios")}${tile("ausers","👥","Usuários")}${tile("acfg","⚙️","Configurações")}${tile("sairAdmin","🚪","Sair da área administrativa")}
+      ${tile("criarLocalTile","🏗️","Criar estoque")}${tile("baixarEstoque","⬇️","Baixar estoque (PDF/JPG)")}${tile("rel","📋","Histórico e relatórios")}${tile("ausers","👥","Usuários")}${tile("acfg","⚙️","Configurações")}${tile("sairAdmin","🚪","Sair da área administrativa")}
     </div></div>`;
 }
 function vAProd(){
@@ -706,17 +712,142 @@ function vAUsers(){
     ${secaoLogins()}
     ${listaEdit("Colaboradores", "colaboradores", "Quem recebe os produtos retirados.")}</div>`;
 }
+function cardLocais(){
+  const o = cfgLocais();
+  const linhas = todosLocais().map((l, i) => {
+    const c = o[l] || {}, padrao = l === "POSTO" || l === "BR PARK", lg = logoLocal(l);
+    return `<div style="border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:10px">
+      <div style="display:flex;gap:10px;align-items:center">
+        <span style="width:56px;height:56px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:none;font-size:26px">${lg ? `<img src="${lg}" alt="" style="max-width:100%;max-height:100%;object-fit:contain">` : "📦"}</span>
+        <label class="f" style="flex:1;margin:0">Estoque ${i + 1}<input class="inp" data-loc-nome="${l}" placeholder="${padrao ? l : "Nome do estoque"}" value="${esc(c.nome || "")}"></label></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;align-items:center">
+        <label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" data-loc-usa="${l}" ${c.oculto ? "" : "checked"}> Mostrar</label>
+        <label class="btn" style="width:auto;margin:0;cursor:pointer;padding:8px 12px">📷 ${c.foto ? "Trocar foto" : "Colocar foto"}<input type="file" accept="image/*" data-loc-foto="${l}" hidden></label>
+        ${c.foto ? `<button class="btn" style="width:auto;margin:0;padding:8px 12px" data-act="tirarFotoLocal" data-l="${l}">Tirar foto</button>` : ""}
+      </div></div>`;
+  }).join("");
+  return `<div class="card"><h2>Estoques da filial</h2>
+    <p class="meta" style="margin:6px 0 4px">Nome, foto e quais estoques aparecem na tela inicial. Em branco, fica o nome padrão.</p>
+    ${linhas}
+    <button class="btn pri" style="margin-top:12px" data-act="salvarLocais">Salvar estoques</button>
+    <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
+    <label class="f" for="novoLocal">Criar novo estoque<input id="novoLocal" class="inp" placeholder="Ex.: Pista"></label>
+    <button class="btn brand" style="margin-top:8px" data-act="criarLocal">➕ Criar estoque</button></div>`;
+}
+function shCriarLocal(){
+  openSheet(`<h2>Criar estoque</h2>
+    <p class="meta" style="margin:0 0 10px">Crie um estoque novo nesta filial, por exemplo <b>Pista</b>. Depois, cadastre os produtos dele em <b>Cadastrar item</b>, escolhendo esse estoque.</p>
+    <label class="f" for="novoLocal">Nome do estoque<input id="novoLocal" class="inp" placeholder="Ex.: Pista" autofocus></label>
+    <div class="row"><button class="btn" data-act="fechar">Cancelar</button><button class="btn pri" data-act="criarLocal">Criar estoque</button></div>`);
+}
+async function fotoLocal(l, arq){
+  if (!arq) return;
+  try {
+    const url = await new Promise((ok, erro) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = erro; r.readAsDataURL(arq); });
+    const img = await new Promise((ok, erro) => { const i = new Image(); i.onload = () => ok(i); i.onerror = erro; i.src = url; });
+    const k = Math.min(1, 480 / Math.max(img.width, img.height)), cv = document.createElement("canvas");
+    cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+    const g = cv.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(img, 0, 0, cv.width, cv.height);
+    const foto = cv.toDataURL("image/jpeg", 0.82);
+    await safe(() => S.db.doc("cfg/main").update({locais:{[l]:{foto}}}), "Foto do estoque salva.");
+  } catch (e) { console.error("Foto do estoque:", e); toast("Não foi possível usar essa imagem."); }
+}
+document.addEventListener("change", ev => { const l = ev.target && ev.target.dataset && ev.target.dataset.locFoto; if (l) { if (!S.admin) return toast("Área restrita ao administrador."); fotoLocal(l, ev.target.files && ev.target.files[0]); } });
 function vACfg(){
   return admTop("Configurações", "admin") + `<div class="pad">
     ${listaEdit("Categorias", "categorias", "Aparecem como filtros na lista de produtos.")}
     ${listaEdit("Unidades de medida", "unidades", "Unidade, pacote, caixa, par, rolo, litro…")}
-    <div class="card"><h2>Locais de estoque</h2>
-    <p class="meta" style="margin:6px 0 10px">Nome dos locais desta unidade. Em branco, fica o nome padrão.</p>
-    <label class="f" for="loc1">Local 1<input id="loc1" class="inp" placeholder="POSTO" value="${esc((cfgLocais()["POSTO"] || {}).nome || "")}"></label>
-    <label class="f" for="loc2" style="margin-top:8px">Local 2<input id="loc2" class="inp" placeholder="BR PARK" value="${esc((cfgLocais()["BR PARK"] || {}).nome || "")}"></label>
-    <label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="loc2on" ${(cfgLocais()["BR PARK"] || {}).oculto ? "" : "checked"}> Usar o segundo local</label>
-    <button class="btn pri" style="margin-top:12px" data-act="salvarLocais">Salvar locais</button></div>
+    ${cardLocais()}
     </div>`;
+}
+
+/* ---------- baixar o estoque em PDF e JPG ---------- */
+function shBaixar(){
+  openSheet(`<h2>Baixar estoque</h2>
+    <p class="meta" style="margin:0 0 10px">Gera a lista de produtos com as quantidades de agora.</p>
+    <label class="f" for="bxLocal">Estoque<select id="bxLocal" class="inp">${["Todos", ...locaisAtivos()].map(l => `<option value="${l}">${esc(l === "Todos" ? "Todos os estoques" : nomeLocal(l))}</option>`).join("")}</select></label>
+    <div class="row" style="margin-top:10px"><button class="btn pri" data-act="gerarPDF">⬇️ PDF</button><button class="btn brand" data-act="gerarJPG">⬇️ JPG</button></div>
+    <button class="btn" data-act="fechar">Fechar</button>`);
+}
+function cortaTexto(g, t, w){ t = String(t); if (g.measureText(t).width <= w) return t; while (t.length > 1 && g.measureText(t + "…").width > w) t = t.slice(0, -1); return t + "…"; }
+function paginasEstoque(local){
+  const W = 1240, H = 1754, M = 70, LH = 44, TOPO = 270, BASE = 120;
+  const todos = local === "Todos", linhas = [];
+  for (const l of (todos ? locaisAtivos() : [local])) for (const [, it] of itens(l)) linhas.push({l:nomeLocal(l), n:it.n, c:it.c || "", u:it.u || "", e:num(it.e), m:num(it.m)});
+  const cols = todos ? [["Estoque", M], ["Produto", M + 190], ["Categoria", M + 600], ["Unid.", M + 830], ["Qtd.", M + 960], ["Mín.", M + 1060]]
+                     : [["Produto", M], ["Categoria", M + 520], ["Unidade", M + 770], ["Qtd.", M + 950], ["Mín.", M + 1060]];
+  const porPag = Math.floor((H - TOPO - BASE) / LH), total = Math.max(1, Math.ceil(linhas.length / porPag)), pags = [];
+  const quando = new Date().toLocaleString("pt-BR");
+  for (let p = 0; p < total; p++) {
+    const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
+    g.fillStyle = "#ffffff"; g.fillRect(0, 0, W, H);
+    g.fillStyle = "#0a1a33"; g.fillRect(0, 0, W, 160);
+    g.fillStyle = "#22d3ee"; g.fillRect(0, 160, W, 6);
+    g.fillStyle = "#ffffff"; g.font = "bold 46px Arial"; g.fillText("Controle de Estoque", M, 75);
+    g.font = "26px Arial"; g.fillText(cortaTexto(g, (S.nomeFilial || "") + " · filial " + (S.filial || "") + " · " + (todos ? "Todos os estoques" : nomeLocal(local)), W - 2 * M), M, 122);
+    g.fillStyle = "#5a6b82"; g.font = "22px Arial"; g.fillText("Gerado em " + quando + " · página " + (p + 1) + " de " + total + " · " + linhas.length + " produtos", M, 215);
+    let y = TOPO;
+    g.fillStyle = "#e2eaf4"; g.fillRect(M - 12, y - 31, W - 2 * M + 24, LH);
+    g.fillStyle = "#0b1626"; g.font = "bold 22px Arial"; cols.forEach(([t, x]) => g.fillText(t, x, y));
+    y += LH; g.font = "22px Arial";
+    linhas.slice(p * porPag, (p + 1) * porPag).forEach((r, i) => {
+      if (i % 2) { g.fillStyle = "#f3f7fc"; g.fillRect(M - 12, y - 31, W - 2 * M + 24, LH); }
+      g.fillStyle = r.e <= 0 ? "#c2281f" : (r.m > 0 && r.e <= r.m) ? "#a15c00" : "#0b1626";
+      const v = todos ? [r.l, r.n, r.c, r.u, fmt(r.e), fmt(r.m)] : [r.n, r.c, r.u, fmt(r.e), fmt(r.m)];
+      v.forEach((t, k) => g.fillText(cortaTexto(g, t, (k + 1 < cols.length ? cols[k + 1][1] : W - M + 10) - cols[k][1] - 14), cols[k][1], y));
+      y += LH;
+    });
+    if (!linhas.length) { g.fillStyle = "#5a6b82"; g.fillText("Nenhum produto cadastrado neste estoque.", M, y); }
+    g.font = "19px Arial"; g.fillStyle = "#a15c00"; g.fillText("Laranja: abaixo do mínimo", M, H - 78);
+    g.fillStyle = "#c2281f"; g.fillText("Vermelho: sem estoque", M + 290, H - 78);
+    g.fillStyle = "#8a99ad"; g.fillText("Desenvolvido por Luís Ricardo Menezes · Aldo Porto Franco", M, H - 40);
+    pags.push(cv);
+  }
+  return pags;
+}
+const jpegDe = cv => new Promise((ok, erro) => cv.toBlob(b => b ? ok(b) : erro(new Error("Não foi possível gerar a imagem.")), "image/jpeg", 0.9));
+async function pdfDePaginas(pags){
+  const enc = new TextEncoder(), partes = [], offs = []; let tam = 0;
+  const add = x => { const b = typeof x === "string" ? enc.encode(x) : x; partes.push(b); tam += b.length; };
+  const obj = (id, corpo) => { offs[id] = tam; add(id + " 0 obj\n"); corpo(); add("\nendobj\n"); };
+  const jpgs = []; for (const c of pags) jpgs.push(new Uint8Array(await (await jpegDe(c)).arrayBuffer()));
+  const PW = 595.28, PH = 841.89, n = pags.length, total = 3 + 3 * n;
+  add("%PDF-1.4\n%\u00e2\u00e3\u00cf\u00d3\n");
+  obj(1, () => add("<< /Type /Catalog /Pages 2 0 R >>"));
+  obj(2, () => add("<< /Type /Pages /Kids [" + pags.map((_, i) => (3 + 3 * i) + " 0 R").join(" ") + "] /Count " + n + " >>"));
+  pags.forEach((c, i) => {
+    const pg = 3 + 3 * i, ct = 4 + 3 * i, im = 5 + 3 * i, cmd = "q " + PW + " 0 0 " + PH + " 0 0 cm /Im" + i + " Do Q";
+    obj(pg, () => add("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + PW + " " + PH + "] /Resources << /XObject << /Im" + i + " " + im + " 0 R >> >> /Contents " + ct + " 0 R >>"));
+    obj(ct, () => add("<< /Length " + cmd.length + " >>\nstream\n" + cmd + "\nendstream"));
+    obj(im, () => { add("<< /Type /XObject /Subtype /Image /Width " + c.width + " /Height " + c.height + " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " + jpgs[i].length + " >>\nstream\n"); add(jpgs[i]); add("\nendstream"); });
+  });
+  const xref = tam;
+  add("xref\n0 " + total + "\n0000000000 65535 f \n");
+  for (let id = 1; id < total; id++) add(String(offs[id]).padStart(10, "0") + " 00000 n \n");
+  add("trailer\n<< /Size " + total + " /Root 1 0 R >>\nstartxref\n" + xref + "\n%%EOF\n");
+  return new Blob(partes, {type:"application/pdf"});
+}
+function baixarArquivo(blob, nome){
+  const u = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = u; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 8000);
+}
+async function gerarArquivo(b, tipo){
+  const l = ($("#bxLocal") || {}).value || "Todos";
+  const nome = "Estoque - " + semAcento(S.nomeFilial || "filial").replace(/[^a-z0-9]+/gi, " ").trim() + " - " + semAcento(l === "Todos" ? "todos" : nomeLocal(l)).replace(/[^a-z0-9]+/gi, " ").trim() + " - " + new Date().toISOString().slice(0, 10);
+  b.disabled = true;
+  try {
+    const pags = paginasEstoque(l);
+    if (tipo === "pdf") baixarArquivo(await pdfDePaginas(pags), nome + ".pdf");
+    else if (pags.length === 1) baixarArquivo(await jpegDe(pags[0]), nome + ".jpg");
+    else if (pags.length <= 8) {
+      const cv = document.createElement("canvas"); cv.width = pags[0].width; cv.height = pags[0].height * pags.length;
+      const g = cv.getContext("2d"); pags.forEach((p, i) => g.drawImage(p, 0, i * p.height));
+      baixarArquivo(await jpegDe(cv), nome + ".jpg");
+    } else for (let i = 0; i < pags.length; i++) baixarArquivo(await jpegDe(pags[i]), nome + " - parte " + (i + 1) + ".jpg");
+    toast("Arquivo " + tipo.toUpperCase() + " gerado.");
+  } catch (e) { console.error("Baixar estoque:", e); toast("Não foi possível gerar o arquivo."); }
+  b.disabled = false;
 }
 
 /* ---------- relatórios ---------- */
@@ -841,11 +972,27 @@ document.addEventListener("click", async ev => {
     if (await safe(async () => { await S.db.doc("prod/" + KEY(S.admLocal)).update({itens:{[pid]:{x:1}}}); await addMov({t:Date.now(), l:S.admLocal, p:pid, n:it.n, tp:"D", q:0, a:num(it.e), d:0, u:S.adminNome || "Administrador", c:""}); }, it.n + " excluído.")) closeSheet(); else b.disabled = false;
   }
   else if (a === "salvarLocais") {
-    const n1 = $("#loc1").value.trim(), n2 = $("#loc2").value.trim(), usa2 = $("#loc2on").checked;
-    if (!usa2 && S.admLocal === "BR PARK") S.admLocal = "POSTO";
-    if (!usa2 && S.kpiLocal === "BR PARK") S.kpiLocal = "Todos";
-    await safe(() => S.db.doc("cfg/main").update({locais:{"POSTO":{nome:n1}, "BR PARK":{nome:n2, oculto:!usa2}}}), "Locais salvos.");
+    const patch = {}; let algum = false;
+    for (const l of todosLocais()) {
+      const nome = (document.querySelector(`[data-loc-nome="${l}"]`) || {}).value, usa = (document.querySelector(`[data-loc-usa="${l}"]`) || {}).checked;
+      patch[l] = {nome:String(nome || "").trim(), oculto:!usa}; if (usa) algum = true;
+    }
+    if (!algum) return toast("Deixe pelo menos um estoque aparecendo.");
+    if (patch[S.admLocal] && patch[S.admLocal].oculto) S.admLocal = "POSTO";
+    if (patch[S.kpiLocal] && patch[S.kpiLocal].oculto) S.kpiLocal = "Todos";
+    await safe(() => S.db.doc("cfg/main").update({locais:patch}), "Estoques salvos.");
   }
+  else if (a === "criarLocal") {
+    const v = (($("#novoLocal") || {}).value || "").trim();
+    if (!v) return toast("Digite o nome do estoque. Ex.: Pista");
+    if (todosLocais().some(l => semAcento(nomeLocal(l)) === semAcento(v))) return toast("Já existe um estoque com esse nome.");
+    const k = "L" + Date.now().toString(36).toUpperCase();
+    if (await safe(() => S.db.doc("cfg/main").update({locais:{[k]:{nome:v, extra:true, oculto:false}}}), "Estoque " + v + " criado.")) { if ($("#veil").classList.contains("open")) closeSheet(); render(); }
+  }
+  else if (a === "criarLocalTile") shCriarLocal();
+  else if (a === "tirarFotoLocal") await safe(() => S.db.doc("cfg/main").update({locais:{[b.dataset.l]:{foto:""}}}), "Foto removida.");
+  else if (a === "baixarEstoque") shBaixar();
+  else if (a === "gerarPDF" || a === "gerarJPG") gerarArquivo(b, a === "gerarPDF" ? "pdf" : "jpg");
   else if (a === "addLista") {
     const k = b.dataset.k, i = $("#add_" + k), v = i.value.trim(); if (!v) return;
     if ((cfg()[k] || []).some(x => semAcento(x) === semAcento(v))) return toast("Esse nome já está na lista.");
@@ -856,7 +1003,7 @@ document.addEventListener("click", async ev => {
     await safe(() => S.db.doc("cfg/main").update({[k]:arr}), nome + " removido.");
   }
 });
-const ADMIN_ACTS = new Set(["aprod","ausers","acfg","rel","addEstoque","confEntrada","novo","salvarNovo","editar","salvarEdit","corrigir","salvarCorr","excluir","confExcluir","foto","mais","addLista","rmLista","salvarLocais","criarLogin","redefinirSenha","kpiLocal","admLocal"]);
+const ADMIN_ACTS = new Set(["aprod","ausers","acfg","rel","addEstoque","confEntrada","novo","salvarNovo","editar","salvarEdit","corrigir","salvarCorr","excluir","confExcluir","foto","mais","addLista","rmLista","salvarLocais","criarLocal","criarLocalTile","tirarFotoLocal","baixarEstoque","gerarPDF","gerarJPG","criarLogin","redefinirSenha","kpiLocal","admLocal"]);
 document.addEventListener("input", ev => { if (ev.target.id === "busca") { S.busca = ev.target.value; renderList(); } else if (ev.target.id === "abusca") { S.abusca = ev.target.value; renderAList(); } });
 document.addEventListener("change", ev => {
   const t = ev.target;
@@ -922,7 +1069,7 @@ function iniciarDados(){
     console.log("[ESTOQUE] prod: registros encontrados em public.app_docs:", q.docs.map(d => d.id));
     if (!q.docs.some(d => d.id === "POSTO")) console.error("[ESTOQUE] ERRO AO CARREGAR produtos do POSTO: prod/POSTO não encontrado em public.app_docs");
     for (const d of q.docs) {
-      const l = d.id === "POSTO" ? "POSTO" : d.id === "BRPARK" ? "BR PARK" : null;
+      const l = d.id === "BRPARK" ? "BR PARK" : d.id;
       if (!l) continue;
       const src = (d.data() || {}).itens || {}, out = {};
       for (const [id, it] of Object.entries(src)) {
@@ -1027,16 +1174,17 @@ async function copiarSql(){
 <script>if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js?v=3').catch(()=>{});</script>
 <style>
 .cantinho{position:fixed;right:10px;bottom:10px;z-index:15;display:flex;gap:6px}
-.cantinho button{width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--muted);font:700 12px var(--body);line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;opacity:.8;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.cantinho button{width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--muted);font:700 12px var(--body);line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;opacity:.85;box-shadow:0 2px 6px rgba(0,0,0,.18)}
 .cantinho button:hover,.cantinho button:focus-visible{opacity:1;color:var(--ink)}
-.dev-pop{position:fixed;right:10px;bottom:46px;z-index:16;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:9px 12px;font:12px/1.4 var(--body);box-shadow:0 8px 20px rgba(0,0,0,.25);max-width:240px}
-.dev-pop small{display:block;color:var(--muted);font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
+.credito{position:fixed;left:10px;bottom:13px;z-index:15;max-width:calc(100% - 64px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font:10.5px/1.2 var(--body);color:var(--muted);background:color-mix(in srgb,var(--surface) 82%,transparent);border:1px solid var(--line);border-radius:999px;padding:4px 10px;pointer-events:none}
+.credito b{color:var(--ink);font-weight:600}
+body::after{content:"";display:block;height:46px}
 </style>
-<div class="cantinho"><button id="btTema" type="button" aria-label="Trocar tema">🌙</button><button id="btDev" type="button" aria-label="Sobre o desenvolvedor">i</button></div>
-<div class="dev-pop" id="devPop" hidden><small>Desenvolvido por</small><b>Luís Ricardo Menezes</b><br>Aldo Porto Franco</div>
+<div class="credito">Desenvolvido por <b>Luís Ricardo Menezes</b> · Aldo Porto Franco</div>
+<div class="cantinho"><button id="btTema" type="button" aria-label="Trocar tema">🌙</button></div>
 <script>
 (function(){
-  const raiz = document.documentElement, bt = document.getElementById("btTema"), pop = document.getElementById("devPop");
+  const raiz = document.documentElement, bt = document.getElementById("btTema");
   const atual = () => raiz.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
   const marca = () => {
     const t = atual(); bt.textContent = t === "dark" ? "☀️" : "🌙";
@@ -1044,8 +1192,6 @@ async function copiarSql(){
     const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t === "dark" ? "#0b1220" : "#eef3f9";
   };
   bt.addEventListener("click", () => { const n = atual() === "dark" ? "light" : "dark"; raiz.setAttribute("data-theme", n); try { localStorage.setItem("estoque.tema", n); } catch (e) {} marca(); });
-  document.getElementById("btDev").addEventListener("click", e => { e.stopPropagation(); pop.hidden = !pop.hidden; });
-  document.addEventListener("click", e => { if (!pop.hidden && !pop.contains(e.target)) pop.hidden = true; });
   marca();
 })();
 </script>
