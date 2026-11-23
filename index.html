@@ -165,7 +165,7 @@ function nomeLocal(l){ const o = cfgLocais()[l]; return (o && o.nome) || l; }
 function logoLocal(l){ const o = cfgLocais()[l] || {}; if (o.foto) return o.foto; return (o.nome || !LOGO[l]) ? "" : LOGO[l]; }
 /* todos os estoques da filial: os dois padrão + os criados pelo administrador (ex.: Pista) */
 function todosLocais(){
-  const o = cfgLocais(), v = [...LOCAIS, ...Object.keys(o).filter(k => o[k] && o[k].extra).sort()];
+  const o = cfgLocais(), v = [...LOCAIS, ...Object.keys(o).filter(k => o[k] && o[k].extra && !o[k].excluido).sort()];
   if (typeof S !== "undefined" && S.prod) v.forEach(l => { if (!S.prod[l]) S.prod[l] = {}; });
   return v;
 }
@@ -187,7 +187,7 @@ const parseQ = s => { s = String(s ?? "").trim().replace(",", "."); if (s === ""
 const semAcento = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const status = it => num(it.e) <= 0 ? "crit" : (num(it.e) <= num(it.m) ? "warn" : "good");
 const STXT = {crit:"🔴 Sem estoque", warn:"🟡 Estoque baixo", good:"🟢 Disponível"};
-const ADMIN_VIEWS = ["admin","aprod","ausers","acfg","rel"];
+const ADMIN_VIEWS = ["admin","aprod","ausers","acfg","rel","filtro"];
 const itens = l => Object.entries(S.prod[l] || {}).filter(([,it]) => it && !it.x && it.n).sort((a,b) => a[1].n.localeCompare(b[1].n, "pt-BR"));
 const cfg = () => S.cfg || {usuarios:[], colaboradores:[], categorias:[], unidades:[], senha:"1234"};
 
@@ -487,7 +487,7 @@ function render(){
   if (S.state === "setup") { app.innerHTML = vSetup(); return; }
   if (S.state !== "ok") { app.innerHTML = `<div class="top"><div><h1>Controle de estoque</h1><p class="sub">${esc((S.nomeFilial ? S.nomeFilial + " · " : "") + locaisAtivos().map(nomeLocal).join(" & "))}</p></div></div><div class="pad">${bootMsg()}</div>`; return; }
   if (ADMIN_VIEWS.includes(S.view) && !S.admin) S.view = "home";
-  const V = {local:vLocal, rel:vRel, admin:vAdmin, aprod:vAProd, ausers:vAUsers, acfg:vACfg};
+  const V = {local:vLocal, rel:vRel, admin:vAdmin, aprod:vAProd, ausers:vAUsers, acfg:vACfg, filtro:vFiltro, ranking:vRanking};
   app.innerHTML = (V[S.view] || vHome)();
   if (S.view === "local") { const sel = $("#oper"); console.log("[ESTOQUE] opções finais do select:", sel ? Array.from(sel.options).map(o => o.textContent) : "select #oper não encontrado na tela"); }
   if (S.view === "local") renderList();
@@ -513,7 +513,7 @@ function vHome(){
   return `<div class="top"><div><h1>Controle de estoque</h1><p class="sub">${esc((S.nomeFilial ? S.nomeFilial + " · " : "") + locaisAtivos().map(nomeLocal).join(" & "))}</p></div></div><div class="pad">
     <p class="lead">Selecione o local</p>
     <div class="big">${b}</div>
-    <div class="row" style="justify-content:center"><button class="adm" data-act="admin">⚙️ Administração</button><button class="adm" data-act="minhaSenha">🔑 Trocar minha senha</button><button class="adm" data-act="meuEmail">📧 Meu e-mail</button><button class="adm" data-act="sair">🚪 Sair</button></div></div>`;
+    <div class="row" style="justify-content:center"><button class="adm" data-act="admin">⚙️ Administração</button><button class="adm" data-act="ranking">🏆 Ranking</button><button class="adm" data-act="minhaSenha">🔑 Trocar minha senha</button><button class="adm" data-act="meuEmail">📧 Meu e-mail</button><button class="adm" data-act="sair">🚪 Sair</button></div></div>`;
 }
 function vLocal(){
   const c = cfg(), cats = ["Todos", ...(Array.isArray(c.categorias) ? c.categorias : [])];
@@ -686,7 +686,7 @@ function vAdmin(){
     </div>
     <div class="tiles">
       ${tile("addEstoque","➕","Adicionar estoque","pri")}${tile("novo","🆕","Cadastrar item")}${tile("aprod","✏️","Editar produto")}${tile("aprod","📷","Gerenciar fotos")}
-      ${tile("criarLocalTile","🏗️","Criar estoque")}${tile("baixarEstoque","⬇️","Baixar estoque (PDF/JPG)")}${tile("rel","📋","Histórico e relatórios")}${tile("ausers","👥","Usuários")}${tile("acfg","⚙️","Configurações")}${tile("sairAdmin","🚪","Sair da área administrativa")}
+      ${tile("filtro","🔎","Filtrar relatório (itens que mais saem)","pri")}${tile("ranking","🏆","Ranking de vendas")}${tile("criarLocalTile","🏗️","Criar estoque")}${tile("baixarEstoque","⬇️","Baixar estoque (PDF/JPG)")}${tile("rel","📋","Histórico e relatórios")}${tile("ausers","👥","Usuários")}${tile("acfg","⚙️","Configurações")}${tile("sairAdmin","🚪","Sair da área administrativa")}
     </div></div>`;
 }
 function vAProd(){
@@ -703,7 +703,7 @@ function renderAList(){
   el.innerHTML = arr.length ? arr.map(([pid,it]) => { const st = status(it); return `<div class="item ${st}">
       <button class="ph" data-act="foto" data-p="${pid}" aria-label="Trocar a foto de ${esc(it.n)}">${photo(pid,it)}</button>
       <div><h3>${esc(it.n)}</h3><div class="meta"><span class="qty">${fmt(it.e)}</span><span>${esc(it.u || "")}</span><span class="pill ${st}">${STXT[st]}</span><span>mín. ${fmt(it.m)} · ${esc(it.c)}</span></div></div>
-      <div class="acts"><button class="btn good" data-act="addEstoque" data-p="${pid}">Adicionar</button><button class="btn" data-act="editar" data-p="${pid}">Editar</button><button class="btn more" data-act="mais" data-p="${pid}" aria-label="Mais opções de ${esc(it.n)}">⋯</button></div></div>`; }).join("")
+      <div class="acts"><button class="btn good" data-act="addEstoque" data-p="${pid}">Adicionar</button><button class="btn" data-act="editar" data-p="${pid}">✏️ Alterar</button><button class="btn" data-act="excluir" data-p="${pid}" style="color:var(--crit)">🗑️ Excluir</button><button class="btn more" data-act="mais" data-p="${pid}" aria-label="Mais opções de ${esc(it.n)}">⋯</button></div></div>`; }).join("")
     : `<div class="card empty">Nenhum produto encontrado.</div>`;
 }
 function vAUsers(){
@@ -724,6 +724,7 @@ function cardLocais(){
         <label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" data-loc-usa="${l}" ${c.oculto ? "" : "checked"}> Mostrar</label>
         <label class="btn" style="width:auto;margin:0;cursor:pointer;padding:8px 12px">📷 ${c.foto ? "Trocar foto" : "Colocar foto"}<input type="file" accept="image/*" data-loc-foto="${l}" hidden></label>
         ${c.foto ? `<button class="btn" style="width:auto;margin:0;padding:8px 12px" data-act="tirarFotoLocal" data-l="${l}">Tirar foto</button>` : ""}
+        ${c.extra ? `<button class="btn" style="width:auto;margin:0;padding:8px 12px;color:var(--crit)" data-act="excluirLocal" data-l="${l}">🗑️ Excluir estoque</button>` : ""}
       </div></div>`;
   }).join("");
   return `<div class="card"><h2>Estoques da filial</h2>
@@ -752,13 +753,168 @@ async function fotoLocal(l, arq){
     await safe(() => S.db.doc("cfg/main").update({locais:{[l]:{foto}}}), "Foto do estoque salva.");
   } catch (e) { console.error("Foto do estoque:", e); toast("Não foi possível usar essa imagem."); }
 }
-document.addEventListener("change", ev => { const l = ev.target && ev.target.dataset && ev.target.dataset.locFoto; if (l) { if (!S.admin) return toast("Área restrita ao administrador."); fotoLocal(l, ev.target.files && ev.target.files[0]); } });
+document.addEventListener("change", ev => { if (ev.target && ev.target.id === "rkMes") { S.rkMes = ev.target.value; render(); return; }
+  const l = ev.target && ev.target.dataset && ev.target.dataset.locFoto; if (l) { if (!S.admin) return toast("Área restrita ao administrador."); fotoLocal(l, ev.target.files && ev.target.files[0]); } });
 function vACfg(){
   return admTop("Configurações", "admin") + `<div class="pad">
     ${listaEdit("Categorias", "categorias", "Aparecem como filtros na lista de produtos.")}
     ${listaEdit("Unidades de medida", "unidades", "Unidade, pacote, caixa, par, rolo, litro…")}
     ${cardLocais()}
     </div>`;
+}
+
+/* ---------- relatório com filtros: itens que mais saem ---------- */
+const dataISO = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+const dataBR = iso => iso ? iso.split("-").reverse().join("/") : "";
+function filtroPadrao(){ const h = new Date(); return {ini:dataISO(new Date(h.getFullYear(), h.getMonth(), 1)), fim:dataISO(h), local:"Todos", cat:"Todas", tipo:"R", colab:"Todos", oper:"Todos", busca:"", ordem:"qtd", top:"20"}; }
+function lerFiltro(){
+  const v = id => (($("#" + id) || {}).value || "");
+  return {ini:v("fIni"), fim:v("fFim"), local:v("fLocal") || "Todos", cat:v("fCat") || "Todas", tipo:v("fTipo") || "R", colab:v("fColab") || "Todos", oper:v("fOper") || "Todos", busca:v("fBusca").trim(), ordem:v("fOrdem") || "qtd", top:v("fTop") || "20"};
+}
+function todosMovs(){ const out = []; for (const d of Object.values(S.movs || {})) for (const m of Object.values(d.itens || {})) if (m && m.t) out.push(m); return out; }
+function catDe(m){ const it = (S.prod[m.l] || {})[m.p]; return (it && it.c) || m.cat || "Outros"; }
+function movsFiltrados(f){
+  const t0 = f.ini ? new Date(f.ini + "T00:00:00").getTime() : 0, t1 = f.fim ? new Date(f.fim + "T23:59:59").getTime() : Infinity, b = semAcento(f.busca || "");
+  const tipoOk = m => f.tipo === "todos" ? true : f.tipo === "E" ? (m.tp === "E" || m.tp === "C") : m.tp === f.tipo;
+  return todosMovs().filter(m => m.t >= t0 && m.t <= t1 && tipoOk(m)
+    && (f.local === "Todos" || m.l === f.local) && (f.cat === "Todas" || catDe(m) === f.cat)
+    && (f.colab === "Todos" || (m.c || "—") === f.colab) && (f.oper === "Todos" || (m.e || m.u || "—") === f.oper)
+    && (!b || semAcento(m.n || "").includes(b)));
+}
+function rankingItens(f){
+  const o = {};
+  for (const m of movsFiltrados(f)) { const k = m.l + "|" + m.p; const r = o[k] || (o[k] = {n:m.n, l:m.l, q:0, vezes:0, ult:0}); r.q += num(m.q); r.vezes++; if (m.t > r.ult) { r.ult = m.t; r.n = m.n; } }
+  const arr = Object.values(o);
+  arr.sort(f.ordem === "vezes" ? (a, b) => b.vezes - a.vezes || b.q - a.q : f.ordem === "nome" ? (a, b) => a.n.localeCompare(b.n, "pt-BR") : (a, b) => b.q - a.q || b.vezes - a.vezes);
+  return f.top === "todos" ? arr : arr.slice(0, Number(f.top) || 20);
+}
+function vFiltro(){
+  const f = S.flt || (S.flt = filtroPadrao()), movs = movsFiltrados(f), lista = rankingItens(f);
+  const cats = [...new Set([...(cfg().categorias || []), ...todosMovs().map(catDe)])].filter(Boolean).sort();
+  const colabs = [...new Set(todosMovs().map(m => m.c).filter(Boolean))].sort(), opers = [...new Set(todosMovs().map(m => m.e || m.u).filter(Boolean))].sort();
+  const sel = (id, atual, opts) => `<select id="${id}" class="inp">${opts.map(([v, t]) => `<option value="${esc(v)}" ${v === atual ? "selected" : ""}>${esc(t)}</option>`).join("")}</select>`;
+  const total = movs.reduce((a, m) => a + num(m.q), 0), nomeTipo = {R:"retirado", E:"entrou", X:"corrigido", todos:"movimentado"}[f.tipo] || "movimentado";
+  const porColab = {}; for (const m of movs) porColab[m.c || "—"] = (porColab[m.c || "—"] || 0) + num(m.q);
+  const colabRank = Object.entries(porColab).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  return admTop("Relatório filtrado", "admin") + `<div class="pad">
+    <div class="card"><h2>🔎 Filtros</h2>
+      <div class="chips" style="margin:6px 0 4px"><button class="chip" data-act="periodo" data-d="7">Últimos 7 dias</button><button class="chip" data-act="periodo" data-d="30">Últimos 30 dias</button><button class="chip" data-act="periodo" data-m="mes">Este mês</button><button class="chip" data-act="periodo" data-m="ano">Este ano</button></div>
+      <div class="row" style="flex-wrap:wrap">
+        <label class="f" style="flex:1 1 140px">De<input id="fIni" type="date" class="inp" value="${esc(f.ini)}"></label>
+        <label class="f" style="flex:1 1 140px">Até<input id="fFim" type="date" class="inp" value="${esc(f.fim)}"></label>
+        <label class="f" style="flex:1 1 140px">Movimento${sel("fTipo", f.tipo, [["R","Saídas (retiradas)"],["E","Entradas"],["X","Correções"],["todos","Todos"]])}</label>
+        <label class="f" style="flex:1 1 140px">Estoque${sel("fLocal", f.local, [["Todos","Todos os estoques"], ...todosLocais().map(l => [l, nomeLocal(l)])])}</label>
+        <label class="f" style="flex:1 1 140px">Categoria${sel("fCat", f.cat, [["Todas","Todas"], ...cats.map(c => [c, c])])}</label>
+        <label class="f" style="flex:1 1 140px">Quem recebeu${sel("fColab", f.colab, [["Todos","Todos"], ...colabs.map(c => [c, c])])}</label>
+        <label class="f" style="flex:1 1 140px">Quem entregou${sel("fOper", f.oper, [["Todos","Todos"], ...opers.map(c => [c, c])])}</label>
+        <label class="f" style="flex:1 1 140px">Ordenar por${sel("fOrdem", f.ordem, [["qtd","Maior quantidade"],["vezes","Mais vezes"],["nome","Nome (A-Z)"]])}</label>
+        <label class="f" style="flex:1 1 140px">Mostrar${sel("fTop", f.top, [["10","Top 10"],["20","Top 20"],["50","Top 50"],["todos","Todos"]])}</label>
+        <label class="f" style="flex:2 1 200px">Produto contém<input id="fBusca" class="inp" type="search" value="${esc(f.busca)}" placeholder="Ex.: luva"></label>
+      </div>
+      <div class="row" style="margin-top:10px"><button class="btn pri" data-act="aplicarFiltro">🔎 Filtrar</button><button class="btn" data-act="limparFiltro">Limpar filtros</button></div></div>
+    <div class="kpis">
+      <div class="kpi"><span>Total ${nomeTipo}</span><b>${fmt(total)}</b><em>${dataBR(f.ini)} a ${dataBR(f.fim)}</em></div>
+      <div class="kpi"><span>Movimentações</span><b>${movs.length}</b></div>
+      <div class="kpi"><span>Produtos diferentes</span><b>${new Set(movs.map(m => m.l + "|" + m.p)).size}</b></div>
+    </div>
+    <div class="card"><h2>${f.tipo === "R" ? "Itens que mais saem" : "Itens do filtro"}</h2>
+      ${lista.length ? `<table class="tbl"><tr><th>#</th><th>Produto</th><th>Estoque</th><th class="n">Quantidade</th><th class="n">Vezes</th><th>Último</th></tr>${lista.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.n)}</td><td>${esc(nomeLocal(r.l))}</td><td class="n">${fmt(r.q)}</td><td class="n">${r.vezes}</td><td>${new Date(r.ult).toLocaleDateString("pt-BR")}</td></tr>`).join("")}</table>` : `<p class="meta">Nenhuma movimentação com esses filtros.</p>`}
+      <div class="row" style="margin-top:10px"><button class="btn" data-act="baixarFiltro" data-t="pdf">⬇️ PDF</button><button class="btn" data-act="baixarFiltro" data-t="jpg">⬇️ JPG</button></div></div>
+    ${f.tipo === "R" && colabRank.length ? `<div class="card"><h2>Quem mais recebeu</h2><table class="tbl"><tr><th>Colaborador</th><th class="n">Quantidade</th></tr>${colabRank.map(([k, v]) => `<tr><td>${esc(k)}</td><td class="n">${fmt(v)}</td></tr>`).join("")}</table></div>` : ""}
+    </div>`;
+}
+function paginasTabela(titulo, sub, cols, linhas){
+  const W = 1240, H = 1754, M = 70, LH = 44, TOPO = 270, BASE = 120;
+  const porPag = Math.floor((H - TOPO - BASE) / LH), total = Math.max(1, Math.ceil(linhas.length / porPag)), pags = [], quando = new Date().toLocaleString("pt-BR");
+  for (let p = 0; p < total; p++) {
+    const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
+    g.fillStyle = "#ffffff"; g.fillRect(0, 0, W, H); g.fillStyle = "#0a1a33"; g.fillRect(0, 0, W, 160); g.fillStyle = "#22d3ee"; g.fillRect(0, 160, W, 6);
+    g.fillStyle = "#ffffff"; g.font = "bold 46px Arial"; g.fillText(cortaTexto(g, titulo, W - 2 * M), M, 75);
+    g.font = "26px Arial"; g.fillText(cortaTexto(g, sub, W - 2 * M), M, 122);
+    g.fillStyle = "#5a6b82"; g.font = "22px Arial"; g.fillText("Gerado em " + quando + " · página " + (p + 1) + " de " + total, M, 215);
+    let y = TOPO; g.fillStyle = "#e2eaf4"; g.fillRect(M - 12, y - 31, W - 2 * M + 24, LH);
+    g.fillStyle = "#0b1626"; g.font = "bold 22px Arial"; cols.forEach(([t, x]) => g.fillText(t, M + x, y)); y += LH; g.font = "22px Arial";
+    linhas.slice(p * porPag, (p + 1) * porPag).forEach((r, i) => {
+      if (i % 2) { g.fillStyle = "#f3f7fc"; g.fillRect(M - 12, y - 31, W - 2 * M + 24, LH); }
+      g.fillStyle = "#0b1626"; r.forEach((t, k) => g.fillText(cortaTexto(g, t, (k + 1 < cols.length ? cols[k + 1][1] : W - 2 * M + 10) - cols[k][1] - 14), M + cols[k][1], y)); y += LH;
+    });
+    if (!linhas.length) { g.fillStyle = "#5a6b82"; g.fillText("Nada encontrado.", M, y); }
+    g.font = "19px Arial"; g.fillStyle = "#8a99ad"; g.fillText("Desenvolvido por Luís Ricardo Menezes · Aldo Porto Franco", M, H - 40);
+    pags.push(cv);
+  }
+  return pags;
+}
+async function exportarPaginas(b, pags, tipo, nome){
+  b.disabled = true;
+  try {
+    if (tipo === "pdf") baixarArquivo(await pdfDePaginas(pags), nome + ".pdf");
+    else if (pags.length === 1) baixarArquivo(await jpegDe(pags[0]), nome + ".jpg");
+    else { const cv = document.createElement("canvas"); cv.width = pags[0].width; cv.height = pags[0].height * Math.min(pags.length, 8); const g = cv.getContext("2d"); pags.slice(0, 8).forEach((p, i) => g.drawImage(p, 0, i * p.height)); baixarArquivo(await jpegDe(cv), nome + ".jpg"); }
+    toast("Arquivo " + tipo.toUpperCase() + " gerado.");
+  } catch (e) { console.error("Exportar:", e); toast("Não foi possível gerar o arquivo."); }
+  b.disabled = false;
+}
+const nomeArquivo = t => (t + " - " + semAcento(S.nomeFilial || "filial") + " - " + new Date().toISOString().slice(0, 10)).replace(/[^a-z0-9 -]+/gi, " ").replace(/\s+/g, " ").trim();
+function baixarFiltro(b, tipo){
+  const f = S.flt || filtroPadrao(), lista = rankingItens(f);
+  const pags = paginasTabela("Relatório: " + ({R:"itens que mais saem", E:"entradas", X:"correções", todos:"movimentações"}[f.tipo] || "itens"),
+    (S.nomeFilial || "") + " · " + dataBR(f.ini) + " a " + dataBR(f.fim) + " · " + (f.local === "Todos" ? "todos os estoques" : nomeLocal(f.local)),
+    [["#", 0], ["Produto", 60], ["Estoque", 560], ["Quantidade", 760], ["Vezes", 920], ["Último", 1010]],
+    lista.map((r, i) => [i + 1, r.n, nomeLocal(r.l), fmt(r.q), r.vezes, new Date(r.ult).toLocaleDateString("pt-BR")]));
+  exportarPaginas(b, pags, tipo, nomeArquivo("Relatorio"));
+}
+
+/* ---------- ranking de vendas: loja e frentista ---------- */
+const moeda = v => num(v).toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2});
+function mesAtual(){ const h = new Date(); return h.getFullYear() + "-" + String(h.getMonth() + 1).padStart(2, "0"); }
+function vendasDoMes(tipo){
+  const d = (S.vendas || {})[S.rkMes] || {}, o = d[tipo] || {};
+  const arr = Object.entries(o).filter(([, v]) => v && !v.x && v.nome).map(([id, v]) => ({id, nome:v.nome, q:num(v.q), mc:num(v.mc), lt:num(v.lt)}));
+  arr.sort((a, b) => b.q - a.q || b.mc - a.mc || (tipo === "frentista" ? b.lt - a.lt : 0) || a.nome.localeCompare(b.nome, "pt-BR"));
+  return arr;
+}
+function vRanking(){
+  S.rkMes = S.rkMes || mesAtual(); S.rkTipo = S.rkTipo || "loja";
+  const fr = S.rkTipo === "frentista", lista = vendasDoMes(S.rkTipo), med = ["🥇", "🥈", "🥉"];
+  const meses = [...new Set([mesAtual(), S.rkMes, ...Object.keys(S.vendas || {})])].sort().reverse();
+  const nomeMes = ym => { const [a, m] = ym.split("-"); return MESES[Number(m) - 1] + " de " + a; };
+  return `<div class="top"><button class="back" data-act="${S.admin ? "admin" : "home"}">Voltar</button><h1>Ranking de vendas</h1></div><div class="pad">
+    <div class="chips"><button class="chip ${!fr ? "on" : ""}" data-act="rkTipo" data-t="loja">🛒 Loja</button><button class="chip ${fr ? "on" : ""}" data-act="rkTipo" data-t="frentista">⛽ Frentista</button></div>
+    <label class="f" for="rkMes">Mês<select id="rkMes" class="inp">${meses.map(m => `<option value="${m}" ${m === S.rkMes ? "selected" : ""}>${nomeMes(m)}</option>`).join("")}</select></label>
+    <p class="meta">Ordem: ${fr ? "quantidade → venda MC → litragem" : "quantidade → venda MC"}.</p>
+    ${S.admin ? `<div class="row"><button class="btn brand" data-act="novaVenda">➕ Lançar ${fr ? "frentista" : "vendedor"}</button><button class="btn" data-act="baixarRanking" data-t="pdf">⬇️ PDF</button><button class="btn" data-act="baixarRanking" data-t="jpg">⬇️ JPG</button></div>` : ""}
+    <div class="card">${lista.length ? `<table class="tbl"><tr><th>#</th><th>${fr ? "Frentista" : "Vendedor"}</th><th class="n">Quantidade</th><th class="n">Venda MC</th>${fr ? `<th class="n">Litragem</th>` : ""}${S.admin ? "<th></th>" : ""}</tr>
+      ${lista.map((r, i) => `<tr><td>${med[i] || i + 1}</td><td><b>${esc(r.nome)}</b></td><td class="n">${fmt(r.q)}</td><td class="n">${moeda(r.mc)}</td>${fr ? `<td class="n">${fmt(r.lt)} L</td>` : ""}${S.admin ? `<td style="white-space:nowrap"><button class="btn sm" data-act="editarVenda" data-id="${r.id}">✏️</button> <button class="btn sm" data-act="excluirVenda" data-id="${r.id}" style="color:var(--crit)">🗑️</button></td>` : ""}</tr>`).join("")}</table>`
+      : `<p class="meta">Nenhum lançamento em ${nomeMes(S.rkMes)}.${S.admin ? ` Toque em <b>Lançar</b> para adicionar.` : ""}</p>`}</div></div>`;
+}
+function shVenda(id){
+  const fr = S.rkTipo === "frentista", v = id ? (((S.vendas || {})[S.rkMes] || {})[S.rkTipo] || {})[id] || {} : {};
+  const nomes = [...new Set([...(cfg().colaboradores || []), ...(cfg().usuarios || [])])].sort();
+  openSheet(`<h2>${id ? "Alterar" : "Lançar"} ${fr ? "frentista" : "vendedor"}</h2>
+    <label class="f" for="vNome">${fr ? "Frentista" : "Vendedor"}<input id="vNome" class="inp" list="vNomes" value="${esc(v.nome || "")}" autofocus></label><datalist id="vNomes">${nomes.map(n => `<option value="${esc(n)}">`).join("")}</datalist>
+    <div class="row"><label class="f" for="vQ" style="flex:1">Quantidade<input id="vQ" class="inp" inputmode="decimal" value="${v.q != null ? esc(fmt(v.q)) : ""}"></label>
+    <label class="f" for="vMc" style="flex:1">Venda MC<input id="vMc" class="inp" inputmode="decimal" value="${v.mc != null ? esc(moeda(v.mc)) : ""}"></label>
+    ${fr ? `<label class="f" for="vLt" style="flex:1">Litragem (L)<input id="vLt" class="inp" inputmode="decimal" value="${v.lt != null ? esc(fmt(v.lt)) : ""}"></label>` : ""}</div>
+    <div id="err" class="note crit" hidden></div>
+    <div class="row"><button class="btn" data-act="fechar">Cancelar</button><button class="btn pri" data-act="salvarVenda" data-id="${id || ""}">Salvar</button></div>`);
+}
+async function salvarVenda(b){
+  const fr = S.rkTipo === "frentista", nome = $("#vNome").value.trim(), q = parse($("#vQ").value), mc = parse($("#vMc").value), lt = fr ? parse($("#vLt").value) : 0, e = $("#err");
+  const fail = t => { e.textContent = t; e.hidden = false; };
+  if (!nome) return fail("Digite o nome.");
+  if (!(q >= 0)) return fail("Quantidade inválida."); if (!(mc >= 0)) return fail("Venda MC inválida."); if (fr && !(lt >= 0)) return fail("Litragem inválida.");
+  let id = b.dataset.id;
+  if (!id) { const ja = vendasDoMes(S.rkTipo).find(r => semAcento(r.nome) === semAcento(nome)); id = ja ? ja.id : "v" + Date.now().toString(36); }
+  b.disabled = true;
+  const dado = fr ? {nome, q, mc, lt, x:0} : {nome, q, mc, x:0};
+  if (await safe(() => S.db.doc("vendas/" + S.rkMes).update({[S.rkTipo]:{[id]:dado}}), "Lançamento salvo.")) closeSheet(); else b.disabled = false;
+}
+function baixarRanking(b, tipo){
+  const fr = S.rkTipo === "frentista", lista = vendasDoMes(S.rkTipo);
+  const cols = fr ? [["#", 0], ["Frentista", 70], ["Quantidade", 600], ["Venda MC", 800], ["Litragem", 980]] : [["#", 0], ["Vendedor", 70], ["Quantidade", 700], ["Venda MC", 920]];
+  const pags = paginasTabela("Ranking de vendas · " + (fr ? "Frentista" : "Loja"), (S.nomeFilial || "") + " · " + S.rkMes.split("-").reverse().join("/"), cols,
+    lista.map((r, i) => fr ? [i + 1, r.nome, fmt(r.q), moeda(r.mc), fmt(r.lt) + " L"] : [i + 1, r.nome, fmt(r.q), moeda(r.mc)]));
+  exportarPaginas(b, pags, tipo, nomeArquivo("Ranking " + (fr ? "frentista" : "loja")));
 }
 
 /* ---------- baixar o estoque em PDF e JPG ---------- */
@@ -918,7 +1074,7 @@ document.addEventListener("click", async ev => {
   if (ADMIN_ACTS.has(a) && !S.admin) { toast("Área restrita ao administrador."); closeSheet(); return; }
   if (a === "home") go("home");
   else if (a === "admin") { if (S.admin) go("admin"); else toast("Área restrita ao administrador."); }
-  else if (a === "sairAdmin") { S.admin = false; S.adminNome = ""; closeSheet(); go("home"); }
+  else if (a === "sairAdmin") { closeSheet(); go("home"); }
   else if (a === "aprod") go("aprod");
   else if (a === "ausers") { go("ausers"); carregaLogins(); }
   else if (a === "acfg") go("acfg");
@@ -990,6 +1146,25 @@ document.addEventListener("click", async ev => {
     if (await safe(() => S.db.doc("cfg/main").update({locais:{[k]:{nome:v, extra:true, oculto:false}}}), "Estoque " + v + " criado.")) { if ($("#veil").classList.contains("open")) closeSheet(); render(); }
   }
   else if (a === "criarLocalTile") shCriarLocal();
+  else if (a === "excluirLocal") {
+    const l = b.dataset.l, n = itens(l).length;
+    if (n) return toast("Este estoque ainda tem " + n + " produto(s). Exclua ou mude os produtos antes de excluir o estoque.");
+    if (!confirm("Excluir o estoque " + nomeLocal(l) + "? O histórico dele continua guardado.")) return;
+    if (S.admLocal === l) S.admLocal = "POSTO"; if (S.kpiLocal === l) S.kpiLocal = "Todos";
+    await safe(() => S.db.doc("cfg/main").update({locais:{[l]:{excluido:true, oculto:true}}}), "Estoque excluído.");
+  }
+  else if (a === "filtro") go("filtro");
+  else if (a === "periodo") { const d = Number(b.dataset.d), hj = new Date(); const ini = d ? new Date(hj.getTime() - (d - 1) * 864e5) : new Date(hj.getFullYear(), b.dataset.m === "ano" ? 0 : hj.getMonth(), 1); S.flt = {...filtroPadrao(), ...(S.flt || {}), ini:dataISO(ini), fim:dataISO(hj)}; render(); }
+  else if (a === "aplicarFiltro") { S.flt = lerFiltro(); render(); }
+  else if (a === "limparFiltro") { S.flt = filtroPadrao(); render(); }
+  else if (a === "baixarFiltro") baixarFiltro(b, b.dataset.t);
+  else if (a === "ranking") go("ranking");
+  else if (a === "rkTipo") { S.rkTipo = b.dataset.t; render(); }
+  else if (a === "novaVenda") shVenda(null);
+  else if (a === "editarVenda") shVenda(b.dataset.id);
+  else if (a === "salvarVenda") salvarVenda(b);
+  else if (a === "excluirVenda") { if (confirm("Excluir este lançamento do ranking?")) await safe(() => S.db.doc("vendas/" + S.rkMes).update({[S.rkTipo]:{[b.dataset.id]:{x:1}}}), "Lançamento excluído."); }
+  else if (a === "baixarRanking") baixarRanking(b, b.dataset.t);
   else if (a === "tirarFotoLocal") await safe(() => S.db.doc("cfg/main").update({locais:{[b.dataset.l]:{foto:""}}}), "Foto removida.");
   else if (a === "baixarEstoque") shBaixar();
   else if (a === "gerarPDF" || a === "gerarJPG") gerarArquivo(b, a === "gerarPDF" ? "pdf" : "jpg");
@@ -1003,7 +1178,7 @@ document.addEventListener("click", async ev => {
     await safe(() => S.db.doc("cfg/main").update({[k]:arr}), nome + " removido.");
   }
 });
-const ADMIN_ACTS = new Set(["aprod","ausers","acfg","rel","addEstoque","confEntrada","novo","salvarNovo","editar","salvarEdit","corrigir","salvarCorr","excluir","confExcluir","foto","mais","addLista","rmLista","salvarLocais","criarLocal","criarLocalTile","tirarFotoLocal","baixarEstoque","gerarPDF","gerarJPG","criarLogin","redefinirSenha","kpiLocal","admLocal"]);
+const ADMIN_ACTS = new Set(["aprod","ausers","acfg","rel","addEstoque","confEntrada","novo","salvarNovo","editar","salvarEdit","corrigir","salvarCorr","excluir","confExcluir","foto","mais","addLista","rmLista","salvarLocais","excluirLocal","filtro","periodo","aplicarFiltro","limparFiltro","baixarFiltro","novaVenda","editarVenda","salvarVenda","excluirVenda","criarLocal","criarLocalTile","tirarFotoLocal","baixarEstoque","gerarPDF","gerarJPG","criarLogin","redefinirSenha","kpiLocal","admLocal"]);
 document.addEventListener("input", ev => { if (ev.target.id === "busca") { S.busca = ev.target.value; renderList(); } else if (ev.target.id === "abusca") { S.abusca = ev.target.value; renderAList(); } });
 document.addEventListener("change", ev => {
   const t = ev.target;
@@ -1085,23 +1260,27 @@ function iniciarDados(){
   }, falhou);
   db.collection("foto").onSnapshot(q => { const o = {...localPhotoMap}; for (const d of q.docs) { const v = d.data(); if (v && typeof v.d === "string" && v.d.startsWith("data:image/")) o[d.id] = v.d; } S.fotos = o; if (S.state === "ok") refresh(); }, () => {});
   db.collection("movs").onSnapshot(q => { const o = {}; for (const d of q.docs) o[d.id] = d.data() || {}; S.movs = o; if (S.state === "ok") refresh(); }, () => {});
+  db.collection("vendas").onSnapshot(q => { const o = {}; for (const d of q.docs) o[d.id] = d.data() || {}; const k = JSON.stringify(o); if (k !== S.vendasK) { S.vendasK = k; S.vendas = o; if (S.view === "ranking") render(); } }, () => {});
 }
 
 const SQL_INSTALACAO = "-- INSTALAÇÃO DE UMA UNIDADE NOVA (projeto Supabase vazio)\n-- Rode inteiro no SQL Editor do projeto. Pode rodar uma vez só.\n-- Depois, abra o app, informe a URL e a chave publicável e crie o administrador.\n\ncreate table if not exists public.app_docs (\n  id text primary key,\n  data jsonb not null default '{}'::jsonb,\n  updated_at timestamptz not null default now()\n);\n\n-- 01 — PREPARAÇÃO DOS LOGINS\n-- Não bloqueia o app: a tabela public.app_docs continua como está.\n-- Rode no SQL Editor do projeto Supabase da unidade nova.\n\nbegin;\n\ncreate extension if not exists pgcrypto with schema extensions;\n\n-- perfis de acesso: um por usuário do Supabase Auth\ncreate table if not exists public.perfis (\n  user_id uuid primary key references auth.users(id) on delete cascade,\n  login text not null,\n  papel text not null check (papel in ('admin','operador')),\n  criado_em timestamptz not null default now()\n);\ncreate unique index if not exists perfis_login_unico on public.perfis (lower(login));\nalter table public.perfis enable row level security;\n\ndrop policy if exists perfis_ler on public.perfis;\n-- (a política usa eh_admin, criada abaixo)\n\n-- o usuário logado é administrador?\ncreate or replace function public.eh_admin() returns boolean\nlanguage sql stable security definer set search_path = public as $$\n  select exists (select 1 from public.perfis where user_id = auth.uid() and papel = 'admin');\n$$;\n\n-- já existe administrador? (usado na primeira abertura do app)\ncreate or replace function public.tem_admin() returns boolean\nlanguage sql stable security definer set search_path = public as $$\n  select exists (select 1 from public.perfis where papel = 'admin');\n$$;\n\n-- transforma o login em e-mail interno: \"Inácio\" -> inacio@estoque.local\ncreate or replace function public.email_do_login(p_login text) returns text\nlanguage sql immutable as $$\n  select regexp_replace(lower(translate(trim(p_login),\n    'áàâãäéèêëíìîïóòôõöúùûüçñÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇÑ',\n    'aaaaaeeeeiiiiooooouuuucnaaaaaeeeeiiiiooooouuuucn')), '[^a-z0-9]', '', 'g') || '@estoque.local';\n$$;\n\n-- cria a conta no Supabase Auth com senha (uso interno das funções abaixo)\ncreate or replace function public.criar_usuario_auth(p_email text, p_senha text) returns uuid\nlanguage plpgsql security definer set search_path = public, auth, extensions as $$\ndeclare v_id uuid := gen_random_uuid();\nbegin\n  if length(coalesce(p_senha,'')) < 6 then raise exception 'Use uma senha com pelo menos 6 caracteres.'; end if;\n  if exists (select 1 from auth.users where email = p_email) then raise exception 'Esse login já existe.'; end if;\n  insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,\n      raw_app_meta_data, raw_user_meta_data, created_at, updated_at,\n      confirmation_token, recovery_token, email_change_token_new, email_change)\n  values ('00000000-0000-0000-0000-000000000000', v_id, 'authenticated', 'authenticated', p_email,\n      extensions.crypt(p_senha, extensions.gen_salt('bf')), now(),\n      '{\"provider\":\"email\",\"providers\":[\"email\"]}'::jsonb, '{}'::jsonb, now(), now(), '', '', '', '');\n  insert into auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)\n  values (gen_random_uuid(), v_id,\n      jsonb_build_object('sub', v_id::text, 'email', p_email, 'email_verified', true, 'phone_verified', false),\n      'email', v_id::text, now(), now(), now());\n  return v_id;\nend $$;\n\n-- primeiro administrador (só funciona se ainda não houver nenhum)\ncreate or replace function public.criar_primeiro_admin(p_login text, p_email text, p_senha text) returns void\nlanguage plpgsql security definer set search_path = public, auth, extensions as $$\ndeclare v_id uuid;\nbegin\n  if public.tem_admin() then raise exception 'Já existe um administrador.'; end if;\n  v_id := public.criar_usuario_auth(lower(trim(p_email)), p_senha);\n  insert into public.perfis (user_id, login, papel) values (v_id, trim(p_login), 'admin');\nend $$;\n\n-- administrador cria login de operador (ex.: Kaliel)\ncreate or replace function public.criar_operador(p_login text, p_senha text) returns void\nlanguage plpgsql security definer set search_path = public, auth, extensions as $$\ndeclare v_id uuid;\nbegin\n  if not public.eh_admin() then raise exception 'Apenas o administrador cria logins.'; end if;\n  if trim(coalesce(p_login,'')) = '' then raise exception 'Digite o nome do login.'; end if;\n  if exists (select 1 from public.perfis where lower(login) = lower(trim(p_login))) then raise exception 'Esse login já existe.'; end if;\n  v_id := public.criar_usuario_auth(public.email_do_login(p_login), p_senha);\n  insert into public.perfis (user_id, login, papel) values (v_id, trim(p_login), 'operador');\nend $$;\n\n-- administrador redefine a senha de um operador\ncreate or replace function public.redefinir_senha(p_login text, p_senha text) returns void\nlanguage plpgsql security definer set search_path = public, auth, extensions as $$\ndeclare v_id uuid;\nbegin\n  if not public.eh_admin() then raise exception 'Apenas o administrador redefine senhas.'; end if;\n  if length(coalesce(p_senha,'')) < 6 then raise exception 'Use uma senha com pelo menos 6 caracteres.'; end if;\n  select user_id into v_id from public.perfis where lower(login) = lower(trim(p_login));\n  if v_id is null then raise exception 'Login não encontrado.'; end if;\n  update auth.users set encrypted_password = extensions.crypt(p_senha, extensions.gen_salt('bf')), updated_at = now()\n   where id = v_id;\nend $$;\n\n-- quem vê a própria linha; o administrador vê todas (para a lista de logins)\ncreate policy perfis_ler on public.perfis for select to authenticated\n  using (user_id = auth.uid() or public.eh_admin());\n\n-- permissões das funções\nrevoke all on function public.criar_usuario_auth(text,text) from public, anon, authenticated;\nrevoke all on function public.eh_admin() from public, anon;\nrevoke all on function public.tem_admin() from public;\nrevoke all on function public.criar_primeiro_admin(text,text,text) from public;\nrevoke all on function public.criar_operador(text,text) from public, anon;\nrevoke all on function public.redefinir_senha(text,text) from public, anon;\ngrant execute on function public.eh_admin() to authenticated;\ngrant execute on function public.tem_admin() to anon, authenticated;\ngrant execute on function public.criar_primeiro_admin(text,text,text) to anon, authenticated;\ngrant execute on function public.criar_operador(text,text) to authenticated;\ngrant execute on function public.redefinir_senha(text,text) to authenticated;\n\ncommit;\n\n-- conferência (somente leitura)\nselect 'funções criadas' as item, count(*) from pg_proc\n where pronamespace = 'public'::regnamespace and proname in ('eh_admin','tem_admin','criar_primeiro_admin','criar_operador','redefinir_senha');\n\n-- 02 — BLOQUEIO: só quem entrou com login acessa os dados.\n-- RODE SOMENTE DEPOIS que o administrador criou a conta e entrou no app novo.\n-- Depois disso, o app antigo (sem login) deixa de funcionar — é o esperado.\n\nbegin;\n\nalter table public.app_docs enable row level security;\n\n-- remove as políticas antigas (eram abertas para o público)\ndo $$ declare r record; begin\n  for r in select policyname from pg_policies where schemaname = 'public' and tablename = 'app_docs' loop\n    execute format('drop policy %I on public.app_docs', r.policyname);\n  end loop;\nend $$;\n\n-- qualquer usuário logado lê\ncreate policy docs_ler_logado on public.app_docs for select to authenticated using (true);\n\n-- administrador: cadastro, edição de produtos, fotos, configurações\ncreate policy docs_admin_inserir on public.app_docs for insert to authenticated with check (public.eh_admin());\ncreate policy docs_admin_atualizar on public.app_docs for update to authenticated\n  using (public.eh_admin()) with check (public.eh_admin());\n\n-- operador: só grava estoque (prod/) e histórico (movs/), para retirada\ncreate policy docs_operador_inserir on public.app_docs for insert to authenticated\n  with check (id like 'prod/%' or id like 'movs/%');\ncreate policy docs_operador_atualizar on public.app_docs for update to authenticated\n  using (id like 'prod/%' or id like 'movs/%') with check (id like 'prod/%' or id like 'movs/%');\n\n-- sem política de exclusão: ninguém apaga linhas pela API\n\ncommit;\n";
 const CFG_KEY = LS_NS + ".config";
 const urlValida = s => /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(String(s || "").trim());
 function configAtual(){
-  try { const s = JSON.parse(localStorage.getItem(CFG_KEY) || "null"); if (s && s.url && s.anonKey) return s; } catch(e) {}
-  return window.ESTOQUE_SUPABASE || {};
+  const fixo = window.ESTOQUE_SUPABASE || {};
+  try { const s = JSON.parse(localStorage.getItem(CFG_KEY) || "null"); if (s && s.url && s.anonKey) return s; if (s && s.filial && fixo.url && fixo.anonKey) return {...s, url:fixo.url, anonKey:fixo.anonKey}; } catch(e) {}
+  return fixo;
 }
+const bancoFixo = () => { const f = window.ESTOQUE_SUPABASE || {}; return !!(f.url && f.anonKey); };
 function cfgPadrao(){ return {usuarios:[], colaboradores:[], categorias:[...BASECATS], unidades:["Unidade","Pacote","Caixa","Par","Rolo","Litro"], locais:{"BR PARK":{nome:"", oculto:true}}}; }
 function vSetup(){
   const c0 = configAtual();
   return `<div class="top"><div><h1>Controle de estoque</h1><p class="sub">Conectar a filial</p></div></div><div class="pad">
     <div class="card"><h2>Conectar a filial</h2>
-    <p class="meta" style="margin:6px 0 10px">Cole a URL e a chave do banco e digite o código da sua filial. Ficam salvos só neste aparelho.</p>
+    <p class="meta" style="margin:6px 0 10px">${bancoFixo() ? "Digite o código da sua filial. Fica salvo neste aparelho." : "Cole a URL e a chave do banco e digite o código da sua filial. Ficam salvos só neste aparelho."}</p>
+    <details ${bancoFixo() ? "" : "open"} style="margin-bottom:8px"><summary class="meta" style="cursor:pointer">${bancoFixo() ? "Banco de dados já configurado (toque para ver)" : "Banco de dados"}</summary>
     <label class="f" for="sUrl">Project URL<input id="sUrl" class="inp" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="https://xxxxx.supabase.co" value="${esc(c0.url || "")}"></label>
-    <label class="f" for="sKey" style="margin-top:8px">Chave publicável<input id="sKey" class="inp" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="sb_publishable_..." value="${esc(c0.anonKey || "")}"></label>
+    <label class="f" for="sKey" style="margin-top:8px">Chave publicável<input id="sKey" class="inp" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="sb_publishable_..." value="${esc(c0.anonKey || "")}"></label></details>
     <label class="f" for="sFil" style="margin-top:8px">Código da filial<input id="sFil" class="inp" inputmode="numeric" autocomplete="off" placeholder="Ex.: 020201"></label>
     <div id="sErr" class="note crit" hidden style="margin-top:10px"></div>
     <button class="btn pri" style="margin-top:12px" data-act="salvarBanco">Conectar</button>
@@ -1128,7 +1307,7 @@ async function salvarBanco(b){
     e.hidden = false; b.disabled = false;
   }
 }
-function trocarBanco(){ try { localStorage.removeItem(CFG_KEY); } catch(e) {} gravaSessao(null); location.reload(); }
+function trocarBanco(){ try { const c = configAtual(); if (c.url && c.anonKey) localStorage.setItem(CFG_KEY, JSON.stringify({url:c.url, anonKey:c.anonKey})); else localStorage.removeItem(CFG_KEY); } catch(e) {} gravaSessao(null); location.reload(); }
 async function copiarSql(){
   try { await navigator.clipboard.writeText(SQL_INSTALACAO); toast("SQL copiado. Cole no SQL Editor do Supabase."); }
   catch (e) {
@@ -1139,6 +1318,7 @@ async function copiarSql(){
 }
 (async function start(){
   render();
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
   try {
     const qs = new URLSearchParams(location.search), qb = qs.get("b"), qk = qs.get("k"), qf = qs.get("f");
     if (qb && qk && qf && urlValida(qb)) {
@@ -1171,7 +1351,7 @@ async function copiarSql(){
   S.state = "login"; render();
 })();
 </script>
-<script>if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js?v=3').catch(()=>{});</script>
+<script>if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js?v=4').catch(()=>{});</script>
 <style>
 .cantinho{position:fixed;right:10px;bottom:10px;z-index:15;display:flex;gap:6px}
 .cantinho button{width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--muted);font:700 12px var(--body);line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;opacity:.85;box-shadow:0 2px 6px rgba(0,0,0,.18)}

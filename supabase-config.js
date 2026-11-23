@@ -1,4 +1,4 @@
-// CONFIGURAÇÃO DO BANCO — deixe vazio.
-// Cada aparelho informa a URL e a chave publicável do banco da sua unidade na primeira abertura
-// (fica salvo só neste aparelho). Não coloque aqui dados de uma unidade específica.
-window.ESTOQUE_SUPABASE = { url: "", anonKey: "", pollMs: 5000 };
+// BANCO ÚNICO DE TODAS AS FILIAIS — já configurado.
+// A URL e a chave publicável são públicas por desenho (as regras do banco protegem os dados).
+// Cada aparelho só precisa digitar o código da filial. NUNCA coloque aqui a chave secreta (sb_secret_).
+window.ESTOQUE_SUPABASE = { url: "https://nbxculupvmgwmjjbabrt.supabase.co", anonKey: "sb_publishable_mSD1P-KjRb9TMbFvXPa-bg_3lC6szDx", pollMs: 5000 };
