@@ -12,7 +12,8 @@ const RKV = [
   {k:"lubrificador", t:"Frentista Lubrificador", ico:"🔧", p:"Frentista", lt:true, fun:"lubrificador"},
   {k:"madrugada", t:"Frentista Madrugada", ico:"🌙", p:"Frentista", lt:true, fun:"frentista_madrugada"}
 ];
-const rkVirtual = k => RKV.some(v => v.k === k);
+const RKT = {k:"todos", t:"Todos", ico:"👥", p:"Colaborador", lt:true, fun:null};
+const rkVirtual = k => k === "todos" || RKV.some(v => v.k === k);
 const FRENT = {diesel:"Frentista Diesel", gasolina:"Frentista Gasolina", lubrificador:"Frentista Lubrificador", madrugada:"Frentista Madrugada"};
 const FUNC_SETOR = {diesel:"frentista", gasolina:"frentista", lubrificador:"lubrificador", madrugada:"frentista_madrugada"};
 /* setor escolhido em ⚙️ → Frentistas; sem escolha, vale a função da pessoa ou o relatório de onde veio */
@@ -33,9 +34,9 @@ const funcoesDaAba = t => [...BASE_GRUPO[GRUPO_ABA[t] || "loja"], ...Object.entr
 const funcaoPadrao = t => BASE_GRUPO[GRUPO_ABA[t] || "loja"][0];
 const campoPadrao = t => (t === "diesel" || t === "gasolina" || rkVirtual(t)) ? "lt" : t === "opcaixa" ? "q" : "mc";
 const CAMPOS = {q:"Quantidade", mc:"Venda MC", lt:"Litragem"};
-const rkCat = () => RK.find(c => c.k === S.rkTipo) || RKV.find(c => c.k === S.rkTipo) || RK[0];
+const rkCat = () => RK.find(c => c.k === S.rkTipo) || RKV.find(c => c.k === S.rkTipo) || (S.rkTipo === "todos" ? RKT : RK[0]);
 /* abas do seletor: as ligadas + Lubrificador e Madrugada (se Diesel ou Gasolina estiver ligada) */
-const rkAbasVer = () => { const a = rkAbas(), out = []; for (const c of a) { out.push(c); if (c.k === "gasolina" || (c.k === "diesel" && !a.some(x => x.k === "gasolina"))) out.push(...RKV); } return out; };
+const rkAbasVer = () => { const a = rkAbas(), out = [RKT]; for (const c of a) { out.push(c); if (c.k === "gasolina" || (c.k === "diesel" && !a.some(x => x.k === "gasolina"))) out.push(...RKV); } return out; };
 /* lista que aparece na tela: Diesel/Gasolina sem Lubrificador e Madrugada (eles têm aba própria) */
 const listaRk = c => FRENT[c.k] ? frentistasDe(c.k) : vendasDoMes(c.k);
 const rankingAtivo = () => !!(S.cfg && S.cfg.ranking);
@@ -77,8 +78,11 @@ async function registrarPessoas(nomes, tab){
 function vendasDoMes(tipo){
   const V = RKV.find(v => v.k === tipo);
   if (V) return frentistasDe(V.k);
-  const d = (S.vendas || {})[S.rkMes] || {}, o = {...(tipo === "diesel" ? (d.frentista || {}) : {}), ...(d[tipo] || {})}, P = pessoasRk();
-  const arr = Object.entries(o).filter(([, v]) => v && !v.x && v.nome).map(([id, v]) => {
+  if (tipo === "todos") { const ord = S.rkOrdem || "q", ativa = t => rkAbas().some(c => c.k === t);
+    return ["diesel", "gasolina", "loja", "caixa"].filter(ativa).flatMap(t => vendasDoMes(t).map(r => ({...r, id:t + "~" + r.id}))).sort((a, b) => b[ord] - a[ord] || b.q - a.q); }
+  const d = (S.vendas || {})[S.rkMes] || {}, P = pessoasRk(), venc = DEDUP_TABS.includes(tipo) ? rkVencedores() : null;
+  const ents = new Map([...(tipo === "diesel" ? Object.entries(d.frentista || {}).map(([id, v]) => [id, ["frentista", v]]) : []), ...Object.entries(d[tipo] || {}).map(([id, v]) => [id, [tipo, v]])]);
+  const arr = [...ents].filter(([id, [tb, v]]) => v && !v.x && v.nome && (!venc || venc.has(tb + "/" + id))).map(([id, [, v]]) => {
     const p = (v.pid && P[v.pid] && !P[v.pid].x) ? {id:v.pid, ...P[v.pid]} : acharPessoa(v.nome);
     const r = {id, tab:tipo, src:tipo, pid:p ? p.id : null, nome:p ? p.nome : v.nome, funcao:funcaoDe(p, tipo), q:num(v.q), mc:num(v.mc), lt:num(v.lt)};
     if (tipo === "diesel" || tipo === "gasolina") { r.setor = setorDe(p, r); r.funcao = FUNC_SETOR[r.setor] === "frentista" && r.funcao !== "lubrificador" && r.funcao !== "frentista_madrugada" ? r.funcao : FUNC_SETOR[r.setor]; if (r.setor === "diesel" || r.setor === "gasolina") r.tab = r.setor; }
@@ -166,7 +170,7 @@ function vRanking(){
   const ordens = [["q", "Quantidade"], ["mc", "Venda MC"], ...(c.lt ? [["lt", "Litragem"]] : [])];
   const linhas = lista.map(r => ({...r, meta:metaDaPessoa(r, c.k, lista)})).map(r => { const st = situacao(r, r.meta), mm = r.meta && r.meta.campo !== "mc" ? metaDaPessoa(r, c.k, lista, "mc") : null; return {...r, st, mcSt:situacao(r, mm), mcMeta:mm}; });
   // resumo por função: realizado x meta total (soma das metas de cada um)
-  const resumo = (rkVirtual(c.k) ? [c.fun] : funcoesDaAba(c.k)).map(f => {
+  const resumo = (c.k === "todos" ? [] : rkVirtual(c.k) ? [c.fun] : funcoesDaAba(c.k)).map(f => {
     const g = linhas.filter(r => r.funcao === f); if (!g.length) return "";
     const comMeta = g.filter(r => r.meta); if (!comMeta.length) return `<div style="margin-top:8px"><b>${nomeFuncao(f)}</b> <span class="meta">· ${g.length} pessoa(s) · sem meta</span></div>`;
     const campos = [comMeta[0].meta.campo]; if (campos[0] !== "mc" && g.some(r => metaDaPessoa(r, c.k, lista, "mc"))) campos.push("mc");
@@ -192,7 +196,7 @@ function vRanking(){
         <div style="font-size:20px;min-width:28px;text-align:center;font-weight:800">${med[i] || i + 1}</div>
         <div style="flex:1;min-width:0">${nomeL(r)}
           <div class="meta" style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:4px"><span>Qtd. <b>${fmt2(r.q)}</b></span><span>Venda MC <b>R$ ${moeda(r.mc)}</b></span>${c.lt ? `<span>Litragem <b>${fmt2(r.lt)} L</b></span>` : ""}${r.meta ? `<span>Meta <b>${fmtCampo(r.meta.campo, r.meta.valor)}</b></span>` : ""}</div>
-          ${barra(r.st)}${r.mcSt ? `<div class="meta" style="font-size:11px;margin-top:4px">🛒 Venda da loja · meta R$ ${moeda(r.mcMeta.valor)}</div>${barra(r.mcSt, 6)}` : ""}</div>${acoes(r)}</div>`).join("");
+          ${barra(r.st)}${r.mcSt ? `<div class="meta" style="font-size:11px;margin-top:4px">🛒 Venda da loja · meta R$ ${moeda(r.mcMeta.valor)}</div>${barra(r.mcSt, 6)}` : ""}${opDaPessoa(r)}</div>${acoes(r)}</div>`).join("");
   const total = k => lista.reduce((a, r) => a + r[k], 0);
   return `<div class="top"><button class="back" data-act="${S.admin ? "admin" : "home"}">Voltar</button><h1>Ranking de vendas posto</h1></div><div class="pad">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
@@ -200,10 +204,11 @@ function vRanking(){
       <select id="rkMes" class="inp" aria-label="Mês">${meses.map(m => `<option value="${m}" ${m === S.rkMes ? "selected" : ""}>${MESES[Number(m.slice(5)) - 1].slice(0, 3)}/${m.slice(0, 4)}</option>`).join("")}</select></div>
     <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
       <select id="rkOrdemSel" class="inp" aria-label="Ordenar" style="flex:1;min-width:0">${ordens.map(([k, t]) => `<option value="${k}" ${k === S.rkOrdem ? "selected" : ""}>↕ ${({q:"Qtd.", mc:"Venda MC", lt:"Litros"})[k] || t}</option>`).join("")}</select>
-      ${S.admin ? `<button class="btn" style="width:auto;flex:none;padding:8px 11px;margin:0" data-act="rkCfg" title="Configurar metas" aria-label="Configurar">⚙️</button>${junta ? "" : `<label class="btn brand" style="width:auto;flex:none;padding:8px 11px;margin:0;cursor:pointer" title="Importar da imagem" aria-label="Importar">📷<input type="file" accept="image/*" data-rk-img="1" hidden></label><button class="btn" style="width:auto;flex:none;padding:8px 11px;margin:0" data-act="novaVenda" title="Lançar à mão" aria-label="Lançar">➕</button>`}` : ""}<button class="btn" style="width:auto;flex:none;padding:8px 11px;margin:0" data-act="rkBaixar" title="Baixar e enviar" aria-label="Baixar">⬇️</button></div>
+      ${S.admin ? `<button class="btn" style="width:auto;flex:none;padding:8px 11px;margin:0" data-act="rkCfg" title="Configurar metas" aria-label="Configurar">⚙️</button><label class="btn brand" style="width:auto;flex:none;padding:8px 11px;margin:0;cursor:pointer" title="Importar da imagem" aria-label="Importar">📷<input type="file" accept="image/*" data-rk-img="1" hidden></label>${junta ? "" : `<button class="btn" style="width:auto;flex:none;padding:8px 11px;margin:0" data-act="novaVenda" title="Lançar à mão" aria-label="Lançar">➕</button>`}` : ""}<button class="btn" style="width:auto;flex:none;padding:8px 11px;margin:0" data-act="rkBaixar" title="Baixar e enviar" aria-label="Baixar">⬇️</button><button class="btn" style="width:auto;flex:none;padding:8px 11px;margin:0" data-act="rkRecarregar" title="Atualizar página" aria-label="Atualizar">🔄</button></div>
+    ${c.k === "caixa" && S.admin ? cardOperacoes() : ""}
     ${cardMetaGeral()}
     ${dq ? `<div class="card" style="border:1px solid #fbbf24"><h2>⭐ Destaque do mês · ${c.t}</h2><div style="display:flex;gap:10px;align-items:center;margin-top:6px">${fotoPessoa(dq.r, 46)}<div><b>${esc(dq.r.nome)}</b><br><span class="meta">Primeiro a bater a meta · ${new Date(dq.t).toLocaleDateString("pt-BR")}</span></div></div></div>` : ""}
-    <details class="card"><summary style="cursor:pointer;font-weight:800">🎯 Metas por função · ${c.t}</summary>${resumo || `<p class="meta" style="margin:4px 0">Sem lançamentos neste mês.</p>`}</details>
+    ${c.k === "todos" ? "" : `<details class="card"><summary style="cursor:pointer;font-weight:800">🎯 Metas por função · ${c.t}</summary>${resumo || `<p class="meta" style="margin:4px 0">Sem lançamentos neste mês.</p>`}</details>`}
     <div class="card">${corpo}${linhas.length ? `<div class="meta" style="display:flex;flex-wrap:wrap;gap:4px 12px;padding-top:10px"><b>Total</b><span>Qtd. <b>${fmt2(total("q"))}</b></span><span>Venda MC <b>R$ ${moeda(total("mc"))}</b></span>${c.lt ? `<span>Litragem <b>${fmt2(total("lt"))} L</b></span>` : ""}</div>` : ""}</div>${cardProdutos(c)}</div>`;
 }
 
@@ -278,7 +283,7 @@ function vRkCfg(){
     }
     const ORD = Object.keys(grupoOpcoes()), grupoP = p => { const i = ORD.indexOf(grupoKey(p)); return i < 0 ? ORD.length : i; };
     const gente = [...Object.entries(P).filter(([, p]) => p && !p.x), ...puxados].sort((a, b) => grupoP(a[1]) - grupoP(b[1]) || a[1].nome.localeCompare(b[1].nome, "pt-BR"));
-    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 8</small></h2>
+    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 10</small></h2>
       <input class="inp" id="eqBusca" placeholder="🔎 Buscar nome (equipe e relatórios)" autocomplete="off" style="margin:6px 0">
       <div id="eqNada" hidden style="font-size:12px;color:var(--muted);margin-bottom:6px">Nome não encontrado. Use <b>➕ Adicionar membro</b> no fim da tela.</div>
       <p style="margin:4px 0 10px;font-size:12px;color:var(--muted);line-height:1.4">Toque no grupo de cada pessoa: salva na hora, e a venda e a meta passam a ser desse grupo. Os nomes vêm dos relatórios do ranking.</p>
@@ -361,14 +366,14 @@ function shVenda(idc){
   const nomes = [...new Set(Object.values(pessoasRk()).filter(p => p && !p.x).map(p => p.nome))].sort();
   openSheet(`<h2>${id ? "Alterar" : "Lançar"} · ${c.t}</h2>
     <label class="f" for="vNome">${c.p}<input id="vNome" class="inp" list="vNomes" value="${esc(v.nome || "")}" autofocus></label><datalist id="vNomes">${nomes.map(n => `<option value="${esc(n)}">`).join("")}</datalist>${botoesFuncao(v, tb)}
-    <div class="row"><label class="f" for="vQ" style="flex:1">Quantidade<input id="vQ" class="inp" inputmode="decimal" value="${v.q != null ? esc(fmt2(v.q)) : ""}"></label>
+    <div class="row"><label class="f" for="vQ" style="flex:1">${c.k === "opcaixa" ? "Operações (qtd.)" : "Quantidade"}<input id="vQ" class="inp" inputmode="decimal" value="${v.q != null ? esc(fmt2(v.q)) : ""}"></label>
     <label class="f" for="vMc" style="flex:1">Venda MC<input id="vMc" class="inp" inputmode="decimal" value="${v.mc != null ? esc(moeda(v.mc)) : ""}"></label>
     ${c.lt ? `<label class="f" for="vLt" style="flex:1">Litragem<input id="vLt" class="inp" inputmode="decimal" value="${v.lt != null ? esc(fmt2(v.lt)) : ""}"></label>` : ""}</div>
     <div id="err" class="note crit" hidden></div>
     <div class="row"><button class="btn" data-act="fechar">Cancelar</button><button class="btn pri" data-act="salvarVenda" data-id="${idc || ""}">Salvar</button></div>`);
 }
 async function salvarVenda(b){
-  const [tb] = rkDividir(b.dataset.id), c = RK.find(x => x.k === tb) || rkCat(), nome = $("#vNome").value.trim(), q = parse($("#vQ").value), mc = parse($("#vMc").value), lt = c.lt ? parse($("#vLt").value) : 0, e = $("#err");
+  const [tb] = rkDividir(b.dataset.id), c = RK.find(x => x.k === tb) || rkCat(), nome = $("#vNome").value.trim(), q = parse($("#vQ").value), mc = c.k === "opcaixa" ? (parse($("#vMc").value) || 0) : parse($("#vMc").value), lt = c.lt ? parse($("#vLt").value) : 0, e = $("#err");
   const fail = t => { e.textContent = t; e.hidden = false; };
   if (!nome) return fail("Digite o nome.");
   if (!(q >= 0)) return fail("Quantidade inválida."); if (!(mc >= 0)) return fail("Venda MC inválida."); if (c.lt && !(lt >= 0)) return fail("Litragem inválida.");
@@ -377,7 +382,7 @@ async function salvarVenda(b){
     const ids = await registrarPessoas([nome], c.k), pid = ids[nome];
     let id = b.dataset.id ? rkDividir(b.dataset.id)[1] : "";
     if (!id) { const ja = vendasDoMes(c.k).find(r => (pid && r.pid === pid) || semAcento(r.nome) === semAcento(nome)); id = ja ? ja.id : "v" + Date.now().toString(36); }
-    await gravaVendas({[c.k]:{[id]:c.lt ? {nome, pid, q, mc, lt, x:0} : {nome, pid, q, mc, x:0}}});
+    await gravaVendas({[c.k]:{[id]:c.lt ? {nome, pid, q, mc, lt, x:0, t:Date.now()} : {nome, pid, q, mc, x:0, t:Date.now()}}});
   }, "Lançamento salvo.");
   if (ok) closeSheet(); else b.disabled = false;
 }
@@ -670,6 +675,8 @@ async function cartaoRanking(b){
 
 /* ---------- ações do ranking tratadas aqui (o index.html só repassa) ---------- */
 async function rkAcao(a, b){
+  if (a === "novaOperacao") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } shVenda("opcaixa~"); return true; }
+  if (a === "rkRecarregar") { location.reload(); return true; }
   if (a === "aplicarListaEquipe") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } aplicarListaEquipe(b); return true; }
   if (a === "rkGrupo") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarGrupo(b); return true; }
   if (a === "addMembro") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } addMembro(b); return true; }
@@ -730,9 +737,9 @@ function linhasDoTexto(txt, solto){
   }
   return out;
 }
-async function importarImagem(arq){
+async function importarImagem(arq, aba){
   if (!arq) return;
-  const c = rkCat();
+  const c = (aba && RK.find(x => x.k === aba)) || rkCat(); S.importaAba = c.k;
   openSheet(`<h2>Lendo a imagem…</h2><p class="meta">Na primeira vez, o leitor é baixado (alguns segundos). Depois é rápido.</p>`);
   try {
     const T = await carregaLeitor();
@@ -746,41 +753,55 @@ async function importarImagem(arq){
     base.forEach((r, i) => {
       const iguais = leituras.map(L => L.find(x => semAcento(x.nome) === semAcento(r.nome)) || L[i]).filter(Boolean);
       const campos = [0, 1, 2].map(k => { const vs = iguais.map(x => x.v[k]).filter(v => v != null && !isNaN(v)); if (!vs.length) return {v:undefined, ok:true}; const cont = {}; vs.forEach(v => cont[v] = (cont[v] || 0) + 1); const [v, n] = Object.entries(cont).sort((a, b) => b[1] - a[1])[0]; return {v:Number(v), ok:n === vs.length}; });
-      const p = acharPessoa(r.nome);
-      rows.push({nome:r.nome, cad:p ? p.nome : null, q:campos[0].v, mc:campos[1].v ?? (c.k === "opcaixa" ? 0 : undefined), lt:c.lt ? campos[2].v : undefined, conferir:!campos.slice(0, c.lt ? 3 : c.k === "opcaixa" ? 1 : 2).every(x => x.ok)});
+      const p = acharParecido(r.nome);
+      rows.push({nome:r.nome, cad:p ? p.nome : null, pid:p ? p.id : null, q:campos[0].v, mc:campos[1].v ?? (c.k === "opcaixa" ? 0 : undefined), lt:c.lt ? campos[2].v : undefined, conferir:!campos.slice(0, c.lt ? 3 : c.k === "opcaixa" ? 1 : 2).every(x => x.ok)});
     });
     S.importa = rows;
     if (!rows.length) { openSheet(`<h2>Nada encontrado</h2><p class="meta">Não achei linhas com nome e números. Use uma foto ou print nítido da tabela, sem cortes, e tente de novo.</p><button class="btn" data-act="fechar">Fechar</button>`); return; }
     const novos = rows.filter(r => !r.cad).length;
     const inp = (i, k, v, fmtv) => `<input class="inp" data-imp="${i}" data-k="${k}" inputmode="decimal" value="${v == null ? "" : esc(fmtv(v))}" style="padding:6px 8px;min-width:80px">`;
     openSheet(`<h2>Conferir importação · ${c.t}</h2>
-      <p class="meta" style="margin:0 0 8px">Confira os valores lidos. Linhas em <b style="color:var(--warn)">amarelo</b> tiveram leituras diferentes: confira com a imagem. Desmarque o que não quiser lançar.${novos ? ` <b>${novos} nome(s) novo(s)</b> serão cadastrados na equipe.` : ""}</p>
+      <p class="meta" style="margin:0 0 8px">Confira os valores lidos. Linhas em <b style="color:var(--warn)">amarelo</b> tiveram leituras diferentes: confira com a imagem. Desmarque o que não quiser lançar.${novos ? ` <b style="color:var(--warn)">⚠️ ${novos} nome(s) não estão na equipe</b>: ficam desmarcados; marque e escolha o grupo para adicionar.` : ""} Cada pessoa vai automaticamente para o grupo dela, substituindo o valor anterior do mês.</p>
       <div style="overflow-x:auto"><table class="tbl"><tr><th></th><th>${c.p}</th><th class="n">Qtd.</th><th class="n">Venda MC</th>${c.lt ? `<th class="n">Litragem</th>` : ""}</tr>
-      ${rows.map((r, i) => `<tr style="${r.conferir ? "background:var(--warn-bg)" : ""}"><td><input type="checkbox" data-imp-ok="${i}" checked></td><td><input class="inp" data-imp="${i}" data-k="nome" value="${esc(r.nome)}" style="padding:6px 8px;min-width:150px">${r.cad ? `<br><span class="meta" style="font-size:11px">cadastrado: ${esc(r.cad)}</span>` : `<br><span class="meta" style="font-size:11px;color:var(--cyan)">novo na equipe</span>`}</td><td>${inp(i, "q", r.q, fmt2)}</td><td>${inp(i, "mc", r.mc, moeda)}</td>${c.lt ? `<td>${inp(i, "lt", r.lt, fmt2)}</td>` : ""}</tr>`).join("")}</table></div>
-      <p class="meta">Mês: <b>${S.rkMes.split("-").reverse().join("/")}</b>. Quem já existe no mês é atualizado; os novos são adicionados.</p>
+      ${rows.map((r, i) => `<tr style="${r.conferir ? "background:var(--warn-bg)" : ""}"><td><input type="checkbox" data-imp-ok="${i}" ${r.cad ? "checked" : ""}></td><td><input class="inp" data-imp="${i}" data-k="nome" value="${esc(r.nome)}" style="padding:6px 8px;min-width:150px">${r.cad ? `<br><span style="font-size:11px;color:var(--muted)">✔ ${esc(r.cad)} · ${esc(grupoOpcoes()[grupoKey(pessoasRk()[r.pid])] || "")}</span>` : `<br><span style="font-size:11px;color:var(--warn);font-weight:700">⚠️ Não está na equipe. Marque para adicionar como:</span><br><select class="inp" data-imp-g="${i}" style="padding:4px 6px;font-size:12px">${c.k === "todos" ? `<option value="">— escolha o grupo —</option>` : ""}${Object.entries(grupoOpcoes()).filter(([k]) => k !== "frentista").map(([k, t]) => `<option value="${k}" ${k === grupoDaAba(c.k) ? "selected" : ""}>${t}</option>`).join("")}</select>`}</td><td>${inp(i, "q", r.q, fmt2)}</td><td>${inp(i, "mc", r.mc, moeda)}</td>${c.lt ? `<td>${inp(i, "lt", r.lt, fmt2)}</td>` : ""}</tr>`).join("")}</table></div>
+      <p style="font-size:12px;color:var(--muted)">Mês: <b>${S.rkMes.split("-").reverse().join("/")}</b>. Uma linha por pessoa: o valor novo substitui o anterior.</p>
       <div class="row"><button class="btn" data-act="fechar">Cancelar</button><button class="btn pri" data-act="confirmarImport">Lançar ${rows.length}</button></div>`);
   } catch (e) { console.error("Importar imagem:", e); openSheet(`<h2>Não foi possível ler</h2><p class="meta">${esc(e.message || "Erro ao ler a imagem.")}</p><button class="btn" data-act="fechar">Fechar</button>`); }
 }
 async function confirmarImport(b){
-  const c = rkCat(), lidos = []; let erro = "";
+  const c = RK.find(x => x.k === S.importaAba) || rkCat(), lidos = []; let erro = "";
   (S.importa || []).forEach((r, i) => {
     if (!(document.querySelector(`[data-imp-ok="${i}"]`) || {}).checked) return;
     const val = k => (document.querySelector(`[data-imp="${i}"][data-k="${k}"]`) || {}).value;
-    const nome = String(val("nome") || "").trim(), q = parse(val("q")), mc = parse(val("mc")), lt = c.lt ? parse(val("lt")) : 0;
+    const nome = String(val("nome") || "").trim(), q = parse(val("q")), mc = c.k === "opcaixa" ? (parse(val("mc")) || 0) : parse(val("mc")), lt = c.lt ? parse(val("lt")) : 0;
+    const g = r.pid ? null : (document.querySelector(`[data-imp-g="${i}"]`) || {}).value;
     if (!nome || !(q >= 0) || !(mc >= 0) || (c.lt && !(lt >= 0))) { erro = erro || "Confira a linha " + (i + 1) + ": nome ou número inválido."; return; }
-    lidos.push({nome, q, mc, lt});
+    if (!r.pid && !g) { erro = erro || "Escolha o grupo de " + nome + "."; return; }
+    lidos.push({nome, ocr:r.nome, pid:r.pid, g, q, mc, lt});
   });
   if (erro) return toast(erro);
   if (!lidos.length) return toast("Nenhuma linha marcada.");
   b.disabled = true;
   const ok = await safe(async () => {
-    const ids = await registrarPessoas(lidos.map(r => r.nome), c.k), existentes = vendasDoMes(c.k), patch = {};
+    const P0 = pessoasRk(), novosP = {}, d = (S.vendas || {})[S.rkMes] || {}, patch = {}, agora = Date.now();
     lidos.forEach((r, i) => {
-      const pid = ids[r.nome], P = pessoasRk()[pid] || {}, nomeCad = P.nome || r.nome;
-      const ja = existentes.find(x => (pid && x.pid === pid) || semAcento(x.nome) === semAcento(r.nome)), id = ja ? ja.id : "v" + Date.now().toString(36) + i;
-      patch[id] = c.lt ? {nome:nomeCad, pid, q:r.q, mc:r.mc, lt:r.lt, x:0} : {nome:nomeCad, pid, q:r.q, mc:r.mc, x:0};
+      const chave = t => semAcento(t).replace(/\s+/g, " ").trim();
+      if (r.pid) { const p = P0[r.pid]; const ch = [...new Set([...(p.chaves || []), chave(r.ocr), chave(r.nome)])]; if (ch.length !== (p.chaves || []).length) novosP[r.pid] = {chaves:ch}; }
+      else { r.pid = "p" + agora.toString(36) + i; novosP[r.pid] = {nome:r.nome, chaves:[...new Set([chave(r.ocr), chave(r.nome)])], x:0, ...grupoParaFuncao(r.g)}; }
     });
-    await gravaVendas({[c.k]:patch});
+    if (Object.keys(novosP).length) { await S.db.doc("cfg/main").update({rkPessoas:novosP}); S.cfg = deepMerge(S.cfg || {}, {rkPessoas:novosP}); }
+    const P = pessoasRk();
+    lidos.forEach((r, i) => {
+      const p = P[r.pid] || {}, dest = tabDestino(p, c.k), nomeCad = p.nome || r.nome;
+      let idDest = null;
+      for (const tb of c.k === "opcaixa" ? ["opcaixa"] : [...DEDUP_TABS, "frentista"]) for (const [id, v] of Object.entries(d[tb] || {})) {
+        if (!v || v.x || !(v.pid === r.pid || (!v.pid && acharParecido(v.nome) && acharParecido(v.nome).id === r.pid))) continue;
+        if (tb === dest && !idDest) idDest = id; else (patch[tb] = patch[tb] || {})[id] = {x:1};
+      }
+      const id = idDest || "v" + agora.toString(36) + i, abaLt = RK.find(x => x.k === dest) || {};
+      (patch[dest] = patch[dest] || {})[id] = {nome:nomeCad, pid:r.pid, q:r.q, mc:r.mc, ...(abaLt.lt && c.lt ? {lt:r.lt} : {}), x:0, t:agora};
+    });
+    await gravaVendas(patch);
   }, lidos.length + " lançamento(s) importado(s).");
   if (ok) { S.importa = null; closeSheet(); } else b.disabled = false;
 }
@@ -797,6 +818,7 @@ try { rkLogo(); } catch (e) {}
 const grupoProd = c => rkVirtual(c.k) ? "frentista" : (GRUPO_ABA[c.k] || "loja");
 const NOME_GRUPO = {frentista:"Frentistas", loja:"Loja", caixa:"Caixa"};
 function cardProdutos(c){
+  if (c.k === "todos") return "";
   const gp = grupoProd(c), d = (((S.vendas || {})[S.rkMes] || {}).produtos || {})[gp], itens = (d && Array.isArray(d.itens)) ? d.itens : [];
   if (!itens.length && !S.admin) return "";
   const max = Math.max(1, ...itens.map(x => num(x.q)));
@@ -953,3 +975,46 @@ document.addEventListener("input", ev => { const t = ev.target; if (!t || t.id !
   document.querySelectorAll("[data-eq-row]").forEach(el => { const ok = !q || q.split(/\s+/).every(w => el.dataset.eqRow.includes(w)); el.hidden = !ok; if (ok) n++; });
   const nada = document.getElementById("eqNada"); if (nada) nada.hidden = n > 0;
   const nv = document.getElementById("novoMembro"); if (nv && !n) nv.value = t.value; });
+
+/* ---------- uma linha por pessoa no mês (loja, diesel, gasolina e caixa) ----------
+   se a mesma pessoa tiver mais de uma linha, vale a mais recente (t); sem data, a que está no grupo dela */
+const DEDUP_TABS = ["loja", "diesel", "gasolina", "caixa"];
+function grupoDaAba(k){ return {diesel:"frentista_diesel", gasolina:"frentista_gasolina", lubrificador:"lubrificador", madrugada:"frentista_madrugada", loja:"loja", caixa:"caixa", opcaixa:"caixa"}[k] || ""; }
+/* aba onde ficam os números da pessoa, conforme o grupo dela */
+function tabDestino(p, ck){
+  if (ck === "opcaixa") return "opcaixa";
+  const ativa = t => rkAbas().some(c => c.k === t), fr = (ck === "diesel" || ck === "gasolina") ? ck : (ativa("diesel") ? "diesel" : "gasolina");
+  const g = grupoKey(p || {}), ex = funcoesExtras()[g];
+  let t = g === "frentista_diesel" ? "diesel" : g === "frentista_gasolina" ? "gasolina" : (g === "lubrificador" || g === "frentista_madrugada" || g === "frentista") ? fr
+    : (g === "caixa" || g === "caixa_madrugada") ? "caixa" : g === "loja" ? "loja" : ex ? (ex.grupo === "frentista" ? fr : ex.grupo === "caixa" ? "caixa" : "loja") : (RK.some(x => x.k === ck) ? ck : "loja");
+  return ativa(t) ? t : (RK.some(x => x.k === ck) ? ck : rkAbas()[0].k);
+}
+function rkVencedores(){
+  const k = S.rkMes + "|" + (S.vendasK || "") + "|" + JSON.stringify((S.cfg && S.cfg.rkPessoas) || {});
+  if (S._rkVenc && S._rkVenc.k === k) return S._rkVenc.m;
+  const d = (S.vendas || {})[S.rkMes] || {}, P = pessoasRk(), best = {};
+  for (const tb of [...DEDUP_TABS, "frentista"]) for (const [id, v] of Object.entries(d[tb] || {})) {
+    if (!v || v.x || !v.nome) continue;
+    const pid = (v.pid && P[v.pid] && !P[v.pid].x) ? v.pid : ((acharPessoa(v.nome) || {}).id || "n:" + semAcento(v.nome).replace(/\s+/g, " ").trim());
+    const tab = tb === "frentista" ? "diesel" : tb, n0 = num(v.t), n1 = (pid[0] !== "n" && tabDestino(P[pid], tab) === tab) ? 1 : 0, cur = best[pid];
+    if (!cur || n0 > cur.n0 || (n0 === cur.n0 && n1 > cur.n1)) best[pid] = {tb, id, n0, n1};
+  }
+  const m = new Set(Object.values(best).map(x => x.tb + "/" + x.id)); S._rkVenc = {k, m}; return m;
+}
+
+/* ---------- 🧾 operações dos caixas dentro da aba Caixa: foto ou à mão; conta na meta de operações ---------- */
+function cardOperacoes(){
+  if (!rkAbas().some(c => c.k === "opcaixa")) return `<div class="card" style="font-size:12px;color:var(--muted)">🧾 Para lançar as <b>operações dos caixas</b>, ligue <b>Operações Caixa</b> em ⚙️ → Opções.</div>`;
+  const l = vendasDoMes("opcaixa"), tot = l.reduce((a, r) => a + r.q, 0), m = metasGerais().operacoes;
+  return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><b>🧾 Operações dos caixas</b><span style="font-size:12px;color:var(--muted)">${fmtCampo("q", tot)}${m ? " de " + fmtCampo("q", m.valor) : ""}</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px"><label class="btn brand" style="margin:0;cursor:pointer;text-align:center">📷 Ler foto das operações<input type="file" accept="image/*" data-rk-op="1" hidden></label><button class="btn" style="margin:0" data-act="novaOperacao">➕ Lançar à mão</button></div>
+    <p style="font-size:11px;color:var(--muted);margin:6px 0 0">Cada caixa: quantidade de operações no mês. O valor novo substitui o anterior. Metas em ⚙️ → Metas (Operações Caixa).</p></div>`;
+}
+function opDaPessoa(r){
+  if (S.rkTipo !== "caixa" || !r.pid || !rkAbas().some(c => c.k === "opcaixa")) return "";
+  const l = vendasDoMes("opcaixa"), o = l.find(x => x.pid === r.pid), base = o || {...r, q:0, tab:"opcaixa"}, m = metaDaPessoa(base, "opcaixa", l), st = situacao(base, m);
+  if (!o && !m) return "";
+  return `<div class="meta" style="font-size:11px;margin-top:4px">🧾 Operações: <b>${fmtCampo("q", base.q)}</b>${m ? " · meta " + fmtCampo("q", m.valor) : ""}</div>${st ? barra(st, 6) : ""}`;
+}
+document.addEventListener("change", ev => { const t = ev.target; if (!t || !t.dataset || !t.dataset.rkOp) return;
+  if (!S.admin) return toast("Área restrita ao administrador."); const f = t.files && t.files[0]; t.value = ""; importarImagem(f, "opcaixa"); });
