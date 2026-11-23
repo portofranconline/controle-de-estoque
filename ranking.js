@@ -278,6 +278,10 @@ function vRkCfg(){
         ${["frentista", "frentista_madrugada", "caixa", "caixa_madrugada"].includes(p.funcao) ? `<button class="btn" style="width:auto;margin:0;padding:8px 10px" data-act="rkMadrugada" data-id="${id}">${/madrugada/.test(p.funcao) ? "☀️ Tirar da madrugada" : "🌙 Mudar p/ madrugada"}</button>` : ""}
         <button class="btn" style="width:auto;margin:0;padding:8px 10px;color:var(--crit)" data-act="removerPessoa" data-id="${id}">🗑️</button></div></div>`).join("") : `<p class="meta">Ninguém cadastrado ainda. Importe a primeira imagem no ranking.</p>`}
       ${gente.length ? `<button class="btn pri" style="margin-top:12px" data-act="salvarEquipe">Salvar equipe</button>` : ""}
+      <div style="border:1px dashed var(--line);border-radius:12px;padding:10px;margin-top:14px"><b>➕ Adicionar membro à equipe</b>
+        <input class="inp" id="novoMembro" placeholder="Nome do colaborador" style="margin-top:6px">
+        <div class="row" style="margin-top:6px"><select class="inp" id="novoMembroFuncao" style="flex:1">${Object.entries(FUNCOES_EQUIPE).map(([k, t]) => `<option value="${k}">${t}</option>`).join("")}</select>
+        <button class="btn" style="width:auto;margin:0" data-act="addMembro">Adicionar</button></div></div>
       <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
       <label class="f" for="eqNovo">Cadastrar pessoa à mão<input id="eqNovo" class="inp" placeholder="Nome completo"></label>
       <select id="eqNovaFuncao" class="inp" style="margin-top:6px">${Object.entries(funcoesTodas()).map(([k, t]) => `<option value="${k}">${t}</option>`).join("")}</select>
@@ -654,6 +658,7 @@ async function cartaoRanking(b){
 
 /* ---------- ações do ranking tratadas aqui (o index.html só repassa) ---------- */
 async function rkAcao(a, b){
+  if (a === "addMembro") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } addMembro(b); return true; }
   if (a === "rkSetor") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarSetor(b); return true; }
   if (a === "salvarProdutos") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarProdutos(b); return true; }
   if (a === "rkBaixar") { shBaixarRanking(); return true; }
@@ -856,4 +861,16 @@ function botoesFuncao(v, tb){
   const bts = fr ? Object.keys(FRENT).map(k => `<button class="chip ${atual === k ? "on" : ""}" style="justify-content:center;padding:7px 2px;font-size:12px;margin:0" data-act="rkSetor" data-id="${pid}" data-s="${k}">${curto[k]}</button>`)
     : funcoesDaAba(tb).map(f => `<button class="chip ${atual === f ? "on" : ""}" style="justify-content:center;padding:7px 4px;font-size:12px;margin:0" data-act="rkSetor" data-id="${pid}" data-f="${f}">${esc(nomeFuncao(f))}</button>`);
   return `<div style="margin:8px 0 4px"><div class="meta" style="font-size:11px;font-weight:700">FUNÇÃO (toque para trocar · a meta segue a função)</div><div style="display:grid;grid-template-columns:repeat(${fr ? 4 : Math.min(3, bts.length)},1fr);gap:4px;margin-top:4px">${bts.join("")}</div></div>`;
+}
+
+/* ➕ adicionar membro à equipe do ranking (só funções do ranking) */
+const FUNCOES_EQUIPE = {frentista_diesel:"Frentista Diesel", frentista_gasolina:"Frentista Gasolina", lubrificador:"Frentista Lubrificador", frentista_madrugada:"Frentista Madrugada", caixa:"Caixa", caixa_madrugada:"Caixa Madrugada", loja:"Loja"};
+async function addMembro(b){
+  const nome = (($("#novoMembro") || {}).value || "").trim(), f = ($("#novoMembroFuncao") || {}).value || "loja";
+  if (!nome) return toast("Digite o nome.");
+  if (acharPessoa(nome)) return toast("Esse nome já está na equipe.");
+  const id = "p" + Date.now().toString(36), setor = {frentista_diesel:"diesel", frentista_gasolina:"gasolina", lubrificador:"lubrificador", frentista_madrugada:"madrugada"}[f] || "";
+  const patch = {rkPessoas:{[id]:{nome, funcao:setor === "diesel" || setor === "gasolina" ? "frentista" : f, setor, chaves:[semAcento(nome).replace(/\s+/g, " ").trim()], x:0}}};
+  b.disabled = true;
+  if (await safe(() => S.db.doc("cfg/main").update(patch), nome + " adicionado.")) { S.cfg = deepMerge(S.cfg || {}, patch); render(); } else b.disabled = false;
 }
