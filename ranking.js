@@ -283,7 +283,7 @@ function vRkCfg(){
     }
     const ORD = Object.keys(grupoOpcoes()), grupoP = p => { const i = ORD.indexOf(grupoKey(p)); return i < 0 ? ORD.length : i; };
     const gente = [...Object.entries(P).filter(([, p]) => p && !p.x), ...puxados].sort((a, b) => grupoP(a[1]) - grupoP(b[1]) || a[1].nome.localeCompare(b[1].nome, "pt-BR"));
-    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 10</small></h2>
+    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 13</small></h2>
       <input class="inp" id="eqBusca" placeholder="🔎 Buscar nome (equipe e relatórios)" autocomplete="off" style="margin:6px 0">
       <div id="eqNada" hidden style="font-size:12px;color:var(--muted);margin-bottom:6px">Nome não encontrado. Use <b>➕ Adicionar membro</b> no fim da tela.</div>
       <p style="margin:4px 0 10px;font-size:12px;color:var(--muted);line-height:1.4">Toque no grupo de cada pessoa: salva na hora, e a venda e a meta passam a ser desse grupo. Os nomes vêm dos relatórios do ranking.</p>
@@ -467,49 +467,176 @@ async function compartilharOuBaixar(blob, nome){
 }
 const carregaImg = src => new Promise(ok => { if (!src) return ok(null); const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; });
 function rr(g, x, y, w, h, r){ g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
-function fundoCartao(g, W, H){
-  const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, "#071226"); gr.addColorStop(0.55, "#0b2a4a"); gr.addColorStop(1, "#0b7285"); g.fillStyle = gr; g.fillRect(0, 0, W, H);
-  g.globalAlpha = 0.08; g.fillStyle = "#22d3ee"; for (let i = 0; i < 9; i++) { g.beginPath(); g.arc(W * (i % 3) / 2, 180 + i * 140, 220, 0, Math.PI * 2); g.fill(); } g.globalAlpha = 1;
-  rkLogo(); if (RK_LOGO_IMG && RK_LOGO_IMG.complete && RK_LOGO_IMG.naturalWidth) { const h = 64, w = h * RK_LOGO_IMG.naturalWidth / RK_LOGO_IMG.naturalHeight; g.drawImage(RK_LOGO_IMG, 40, 40, w, h); }
-  g.fillStyle = "#22d3ee"; g.font = "bold 30px Arial"; g.textAlign = "center"; g.fillText("RANKING DE VENDAS POSTO", W / 2, 88);
-  g.fillStyle = "rgba(255,255,255,.75)"; g.font = "26px Arial"; g.fillText((S.nomeFilial || "") + " · " + nomeMes(S.rkMes), W / 2, 130);
-  g.fillStyle = "rgba(255,255,255,.55)"; g.font = "22px Arial"; g.fillText("Desenvolvido por Luís Ricardo Menezes · Aldo Porto Franco", W / 2, H - 40); g.textAlign = "left";
+/* fundo do cartão: foto da galeria (guardada neste aparelho) ou o fundo padrão com marca d'água do Aldo */
+const RK_FUNDO = {img:null, src:null, mem:null};
+const RK_MARCA_SRC = "data:image/png;base64,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";
+let RK_MARCA = null;
+async function rkMarcaImg(){ if (!RK_MARCA) RK_MARCA = await carregaImg(RK_MARCA_SRC); return RK_MARCA; }
+function rkFundoDados(){ if (RK_FUNDO.mem) return RK_FUNDO.mem; try { return localStorage.getItem("rkFundo"); } catch (e) { return null; } }
+async function rkFundoImg(){
+  const d = rkFundoDados(); if (!d) { RK_FUNDO.img = null; RK_FUNDO.src = null; return null; }
+  if (RK_FUNDO.src === d && RK_FUNDO.img) return RK_FUNDO.img;
+  RK_FUNDO.img = await carregaImg(d); RK_FUNDO.src = d; return RK_FUNDO.img;
 }
+async function rkTrocarFundo(arq){
+  if (!arq) return;
+  try {
+    const src = await new Promise((ok, erro) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = erro; r.readAsDataURL(arq); }), img = await carregaImg(src);
+    if (!img) return toast("Não foi possível abrir essa imagem.");
+    const k = Math.min(1, 1400 / Math.max(img.width, img.height)), cv = document.createElement("canvas"); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+    cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height); const d = cv.toDataURL("image/jpeg", 0.82);
+    RK_FUNDO.mem = null; try { localStorage.setItem("rkFundo", d); } catch (e) { RK_FUNDO.mem = d; }
+    toast("Fundo trocado."); if (S.rkPrev && S.rkPrev.refazer) S.rkPrev.refazer();
+  } catch (e) { console.error("Fundo:", e); toast("Não foi possível usar essa imagem."); }
+}
+document.addEventListener("change", ev => { const t = ev.target; if (t && t.dataset && t.dataset.rkFundo) { const f = t.files && t.files[0]; t.value = ""; rkTrocarFundo(f); } });
+async function fundoCartao(g, W, H){
+  rkLogo();
+  if (RK_LOGO_IMG && !RK_LOGO_IMG.complete) await new Promise(ok => { RK_LOGO_IMG.addEventListener("load", ok, {once:true}); RK_LOGO_IMG.addEventListener("error", ok, {once:true}); setTimeout(ok, 3000); });
+  const logo = RK_LOGO_IMG && RK_LOGO_IMG.naturalWidth ? RK_LOGO_IMG : null, ar = logo ? logo.naturalWidth / logo.naturalHeight : 1, foto = await rkFundoImg();
+  if (foto) {
+    const k = Math.max(W / foto.width, H / foto.height), w = foto.width * k, h = foto.height * k; g.drawImage(foto, (W - w) / 2, (H - h) / 2, w, h);
+    const v = g.createLinearGradient(0, 0, 0, H); v.addColorStop(0, "rgba(4,10,24,.78)"); v.addColorStop(0.3, "rgba(4,10,24,.55)"); v.addColorStop(1, "rgba(4,10,24,.86)"); g.fillStyle = v; g.fillRect(0, 0, W, H);
+  } else {
+    const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, "#071226"); gr.addColorStop(0.55, "#0b2a4a"); gr.addColorStop(1, "#0b7285"); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  }
+  /* marca d'água do Aldo (grafismo branco), quase invisível, só no canto de baixo */
+  const marca = await rkMarcaImg();
+  if (marca) { const mw = W * 0.85, mh = mw * marca.height / marca.width; g.save(); g.globalAlpha = 0.07; g.drawImage(marca, W - mw * 0.92, H - mh - 70, mw, mh); g.restore(); }
+  if (logo) {
+    const h = 92, w = h * ar; g.save(); g.shadowColor = "rgba(0,0,0,.5)"; g.shadowBlur = 30; g.shadowOffsetY = 8; g.drawImage(logo, (W - w) / 2, 36, w, h); g.restore();
+  }
+  g.textAlign = "center";
+  try { g.letterSpacing = "5px"; } catch (e) {}
+  g.fillStyle = "#22d3ee"; g.font = "bold 30px Arial"; g.fillText("RANKING DE VENDAS POSTO", W / 2, 180);
+  try { g.letterSpacing = "0px"; } catch (e) {}
+  const lg = g.createLinearGradient(W / 2 - 300, 0, W / 2 + 300, 0); lg.addColorStop(0, "rgba(251,191,36,0)"); lg.addColorStop(0.5, "#fbbf24"); lg.addColorStop(1, "rgba(251,191,36,0)");
+  g.fillStyle = lg; g.fillRect(W / 2 - 300, 196, 600, 3);
+  g.fillStyle = "rgba(255,255,255,.82)"; g.font = "26px Arial"; g.fillText((S.nomeFilial || "") + " · " + nomeMes(S.rkMes), W / 2, 236);
+  const lf = g.createLinearGradient(80, 0, W - 80, 0); lf.addColorStop(0, "rgba(255,255,255,0)"); lf.addColorStop(0.5, "rgba(255,255,255,.3)"); lf.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = lf; g.fillRect(80, H - 82, W - 160, 2);
+  g.fillStyle = "rgba(255,255,255,.6)"; g.font = "22px Arial"; g.fillText("Desenvolvido por Luís Ricardo Menezes · Aldo Porto Franco", W / 2, H - 40); g.textAlign = "left";
+}
+const corSt = st => !st ? "#22d3ee" : st.bateu ? "#34d399" : st.pct >= 70 ? "#fbbf24" : "#f87171";
+function painelVidro(g, x, y, w, h, r){
+  g.save(); g.shadowColor = "rgba(0,0,0,.35)"; g.shadowBlur = 24; g.shadowOffsetY = 6; rr(g, x, y, w, h, r || 26); g.fillStyle = "rgba(8,22,46,.62)"; g.fill(); g.restore();
+  rr(g, x, y, w, h, r || 26); g.strokeStyle = "rgba(255,255,255,.16)"; g.lineWidth = 2; g.stroke();
+}
+function barraCartao(g, x, y, w, h, st){
+  rr(g, x, y, w, h, h / 2); g.fillStyle = "rgba(255,255,255,.13)"; g.fill(); if (!st) return;
+  const cor = corSt(st), bw = Math.max(h, w * Math.min(1, st.pct / 100)), gr = g.createLinearGradient(x, 0, x + bw, 0); gr.addColorStop(0, cor + "aa"); gr.addColorStop(1, cor);
+  g.save(); g.shadowColor = cor; g.shadowBlur = 14; rr(g, x, y, bw, h, h / 2); g.fillStyle = gr; g.fill(); g.restore();
+  if (st.bateu) { g.save(); rr(g, x, y, bw, h, h / 2); g.clip(); g.fillStyle = "rgba(255,255,255,.22)"; for (let i = -h; i < bw; i += h * 1.6) { g.beginPath(); g.moveTo(x + i, y + h); g.lineTo(x + i + h * 0.8, y + h); g.lineTo(x + i + h * 1.6, y); g.lineTo(x + i + h * 0.8, y); g.closePath(); g.fill(); } g.restore(); }
+}
+/* bloco de uma meta: valor, %, barra, quanto falta/passou e projeção do mês */
+function blocoMeta(g, x, y, w, titulo, campo, real, meta, st){
+  painelVidro(g, x, y, w, 200);
+  const cor = corSt(st), pj = projecao(real, meta.valor);
+  g.textAlign = "left"; g.fillStyle = "rgba(255,255,255,.85)"; g.font = "bold 26px Arial"; g.fillText(titulo, x + 32, y + 48);
+  g.textAlign = "right"; g.fillStyle = cor; g.font = "bold 58px Arial"; g.fillText((st ? st.pct : 0) + "%", x + w - 32, y + 70);
+  g.textAlign = "left"; g.fillStyle = "#ffffff"; g.font = "bold 38px Arial"; const v = fmtCampo(campo, real); g.fillText(v, x + 32, y + 102);
+  const vw = g.measureText(v).width; g.fillStyle = "rgba(255,255,255,.6)"; g.font = "24px Arial"; g.fillText(cortaTexto(g, "  de " + fmtCampo(campo, meta.valor), w - 64 - vw - 170), x + 32 + vw, y + 102);
+  barraCartao(g, x + 32, y + 122, w - 64, 22, st);
+  g.font = "bold 23px Arial"; g.fillStyle = st && st.bateu ? "#34d399" : "#ffffff";
+  const t1 = st && st.bateu ? "✅ META BATIDA · passou " + fmtCampo(campo, real - meta.valor) : "Faltam " + fmtCampo(campo, meta.valor - real);
+  g.fillText(t1, x + 32, y + 178);
+  if (pj) { const t1w = g.measureText(t1).width; g.font = "22px Arial"; g.fillStyle = pj.pct >= 100 ? "#34d399" : pj.pct >= 85 ? "#fbbf24" : "#fca5a5"; g.fillText(cortaTexto(g, " · 📈 projeção " + fmtCampo(campo, pj.proj) + " (" + pj.pct + "%)", w - 64 - t1w), x + 32 + t1w, y + 178); }
+}
+const tituloCampo = (campo, k) => campo === "lt" ? "⛽ LITRAGEM" : campo === "mc" ? "🛒 VENDA DA LOJA (MC)" : k === "opcaixa" ? "🧾 OPERAÇÕES (QTD.)" : "📦 QUANTIDADE";
 function cortaCentro(g, t, w){ return cortaTexto(g, t, w); }
 async function cartaoPessoa(id, b){
   const c = rkCat(), lista = listaRk(c), r = lista.find(x => x.id === id); if (!r) return;
   if (b) b.disabled = true;
   try {
-    const meta = metaDaPessoa(r, c.k, lista), st = situacao(r, meta), pos = lista.indexOf(r) + 1, dq = rkDestaqueAtivo() && destaqueDe(c.k), destaque = dq && dq.r.pid === r.pid;
-    const W = 1080, H = 1350, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
-    fundoCartao(g, W, H);
-    const cx = W / 2, cy = 390, R = 170, pct = st ? st.pct : 0, cor = st ? (st.bateu ? "#34d399" : pct >= 70 ? "#fbbf24" : "#f87171") : "#22d3ee";
-    g.lineWidth = 26; g.strokeStyle = "rgba(255,255,255,.14)"; g.beginPath(); g.arc(cx, cy, R + 30, 0, Math.PI * 2); g.stroke();
-    if (st) { g.strokeStyle = cor; g.lineCap = "round"; g.beginPath(); g.arc(cx, cy, R + 30, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, pct / 100)); g.stroke(); g.lineCap = "butt"; }
+    const meta = metaDaPessoa(r, c.k, lista), st = situacao(r, meta), mm = meta && meta.campo !== "mc" ? metaDaPessoa(r, c.k, lista, "mc") : null, mst = situacao(r, mm);
+    const pos = lista.indexOf(r) + 1, dq = rkDestaqueAtivo() && destaqueDe(c.k), destaque = dq && dq.r.pid === r.pid;
+    const blocos = [...(meta ? [[tituloCampo(meta.campo, c.k), meta.campo, meta, st]] : []), ...(mm ? [[tituloCampo("mc"), "mc", mm, mst]] : [])];
+    const y0 = destaque ? 860 : 800, temLt = c.lt || r.lt > 0, H = y0 + Math.max(1, blocos.length) * 222 + 150 + 110;
+    const W = 1080, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
+    await fundoCartao(g, W, H);
+    const cx = W / 2, cy = 445, R = 145, pct = st ? st.pct : 0, cor = corSt(st);
+    g.lineWidth = 24; g.strokeStyle = "rgba(255,255,255,.14)"; g.beginPath(); g.arc(cx, cy, R + 28, 0, Math.PI * 2); g.stroke();
+    if (st) { g.save(); g.shadowColor = cor; g.shadowBlur = 28; g.strokeStyle = cor; g.lineCap = "round"; g.beginPath(); g.arc(cx, cy, R + 28, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.01, Math.min(1, pct / 100))); g.stroke(); g.restore(); }
     const foto = await carregaImg(rkFotosAtivas() && r.pid ? (S.rkFotos || {})[r.pid] : null);
     g.save(); g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.clip();
     if (foto) { const l = Math.min(foto.width, foto.height); g.drawImage(foto, (foto.width - l) / 2, (foto.height - l) / 2, l, l, cx - R, cy - R, R * 2, R * 2); }
-    else { g.fillStyle = "#13325a"; g.fillRect(cx - R, cy - R, R * 2, R * 2); g.fillStyle = "#e6eef9"; g.font = "bold 130px Arial"; g.textAlign = "center"; g.fillText(r.nome.split(" ").filter(Boolean).map(x => x[0]).slice(0, 2).join("").toUpperCase(), cx, cy + 46); g.textAlign = "left"; }
+    else { const ag = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R); ag.addColorStop(0, "#1e4b85"); ag.addColorStop(1, "#0c2547"); g.fillStyle = ag; g.fillRect(cx - R, cy - R, R * 2, R * 2); g.fillStyle = "#e6eef9"; g.font = "bold 120px Arial"; g.textAlign = "center"; g.fillText(r.nome.split(" ").filter(Boolean).map(x => x[0]).slice(0, 2).join("").toUpperCase(), cx, cy + 42); }
     g.restore();
-    rr(g, cx - 70, cy + R + 2, 140, 64, 32); g.fillStyle = pos <= 3 ? ["#fbbf24", "#cbd5e1", "#d97706"][pos - 1] : "#22d3ee"; g.fill();
-    g.fillStyle = "#071226"; g.font = "bold 40px Arial"; g.textAlign = "center"; g.fillText(pos + "º", cx, cy + R + 48);
-    g.fillStyle = "#ffffff"; g.font = "bold 56px Arial"; g.fillText(cortaCentro(g, r.nome, W - 120), cx, 720);
-    g.fillStyle = "rgba(255,255,255,.75)"; g.font = "30px Arial"; g.fillText(nomeFuncao(r.funcao) + " · " + c.t + " · " + pos + "º de " + lista.length, cx, 770);
-    if (destaque) { rr(g, cx - 300, 800, 600, 64, 32); g.fillStyle = "#fbbf24"; g.fill(); g.fillStyle = "#071226"; g.font = "bold 30px Arial"; g.fillText("⭐ DESTAQUE: 1º A BATER A META", cx, 843); }
-    const yb = destaque ? 930 : 860;
-    if (st) {
-      g.fillStyle = cor; g.font = "bold 92px Arial"; g.fillText(pct + "%", cx, yb + 70);
-      g.fillStyle = "#ffffff"; g.font = "bold 32px Arial"; g.fillText(st.bateu ? "META BATIDA! Passou " + fmtCampo(meta.campo, Math.abs(r[meta.campo] - meta.valor)) : "Faltam " + fmtCampo(meta.campo, meta.valor - r[meta.campo]) + " para a meta", cx, yb + 122);
-      rr(g, 90, yb + 150, W - 180, 30, 15); g.fillStyle = "rgba(255,255,255,.15)"; g.fill();
-      rr(g, 90, yb + 150, Math.max(30, (W - 180) * Math.min(1, pct / 100)), 30, 15); g.fillStyle = cor; g.fill();
-    } else { g.fillStyle = "rgba(255,255,255,.8)"; g.font = "30px Arial"; g.fillText("Sem meta definida neste mês", cx, yb + 80); }
-    const stats = [["Quantidade", fmt2(r.q)], ["Venda MC", "R$ " + moeda(r.mc)], ...(c.lt ? [["Litragem", fmt2(r.lt) + " L"]] : []), ...(meta ? [["Meta", fmtCampo(meta.campo, meta.valor)]] : [])];
-    const bw = (W - 180 - (stats.length - 1) * 16) / stats.length, ys = yb + 210;
-    stats.forEach(([t, v], i) => { const x = 90 + i * (bw + 16); rr(g, x, ys, bw, 110, 18); g.fillStyle = "rgba(255,255,255,.10)"; g.fill(); g.fillStyle = "rgba(255,255,255,.7)"; g.font = "22px Arial"; g.fillText(t, x + bw / 2, ys + 40); g.fillStyle = "#ffffff"; g.font = "bold 28px Arial"; g.fillText(cortaCentro(g, v, bw - 16), x + bw / 2, ys + 82); });
+    g.save(); g.shadowColor = "rgba(0,0,0,.4)"; g.shadowBlur = 16; rr(g, cx - 72, cy + R + 4, 144, 62, 31); g.fillStyle = pos <= 3 ? ["#fbbf24", "#e2e8f0", "#d97706"][pos - 1] : "#22d3ee"; g.fill(); g.restore();
+    g.fillStyle = "#071226"; g.font = "bold 38px Arial"; g.textAlign = "center"; g.fillText((pos <= 3 ? ["🥇", "🥈", "🥉"][pos - 1] + " " : "") + pos + "º", cx, cy + R + 49);
+    g.save(); g.shadowColor = "rgba(0,0,0,.5)"; g.shadowBlur = 12; g.fillStyle = "#ffffff"; g.font = "bold 56px Arial"; g.fillText(cortaCentro(g, r.nome, W - 120), cx, 712); g.restore();
+    g.fillStyle = "rgba(255,255,255,.78)"; g.font = "28px Arial"; g.fillText(cortaCentro(g, nomeFuncao(r.funcao) + " · " + c.t + " · " + pos + "º de " + lista.length, W - 120), cx, 758);
+    if (destaque) { rr(g, cx - 300, 784, 600, 60, 30); g.fillStyle = "#fbbf24"; g.fill(); g.fillStyle = "#071226"; g.font = "bold 28px Arial"; g.fillText("⭐ DESTAQUE: 1º A BATER A META", cx, 824); }
+    let y = y0;
+    if (blocos.length) for (const [tit, campo, m, s] of blocos) { blocoMeta(g, 70, y, W - 140, tit, campo, r[campo], m, s); y += 222; }
+    else { painelVidro(g, 70, y, W - 140, 200); g.textAlign = "center"; g.fillStyle = "rgba(255,255,255,.85)"; g.font = "30px Arial"; g.fillText("Sem meta definida neste mês", cx, y + 112); y += 222; }
+    const stats = [["Quantidade", fmt2(r.q)], ["Venda MC", "R$ " + moeda(r.mc)], ...(temLt ? [["Litragem", fmt2(r.lt) + " L"]] : [])];
+    const bw = (W - 140 - (stats.length - 1) * 16) / stats.length;
+    stats.forEach(([t, v], i) => { const x = 70 + i * (bw + 16); painelVidro(g, x, y, bw, 120, 20); g.textAlign = "center"; g.fillStyle = "rgba(255,255,255,.7)"; g.font = "22px Arial"; g.fillText(t, x + bw / 2, y + 44); g.fillStyle = "#ffffff"; g.font = "bold 30px Arial"; g.fillText(cortaCentro(g, v, bw - 20), x + bw / 2, y + 88); });
     g.textAlign = "left";
-    await compartilharOuBaixar(await jpegDe(cv), ("Meta - " + r.nome + " - " + S.rkMes).replace(/[^\wÀ-ÿ -]+/g, " ").trim() + ".jpg");
+    mostrarPrevia(cv, ("Meta - " + r.nome + " - " + S.rkMes).replace(/[^\wÀ-ÿ -]+/g, " ").trim() + ".jpg", () => cartaoPessoa(id));
   } catch (e) { console.error("Cartão:", e); toast("Não foi possível gerar o cartão."); }
   if (b) b.disabled = false;
+}
+/* metas de todos, separadas por categoria, numa imagem só */
+const CORES_CAT = {lubrificador:"#38bdf8", madrugada:"#818cf8"};
+async function cartaoTodos(b){
+  if (b) b.disabled = true;
+  try {
+    const grupos = rkAbasVer().filter(c => c.k !== "todos").map(c => { const l = listaRk(c); return {c, linhas:l.map(r => { const m = metaDaPessoa(r, c.k, l), mm = m && m.campo !== "mc" ? metaDaPessoa(r, c.k, l, "mc") : null; return {...r, m, st:situacao(r, m), mst:situacao(r, mm)}; })}; }).filter(x => x.linhas.length);
+    const gr = resumoGeral(), tiles = [...(rkAbas().some(c => c.lt) ? [["⛽ Litros", "lt", gr.litros, gr.m.litros]] : []), ["🛒 Venda da Loja", "mc", gr.total, gr.m.loja], ...(rkAbas().some(c => c.k === "opcaixa") ? [["🧾 Operações", "q", gr.op, gr.m.operacoes]] : [])];
+    const RH = 96, W = 1080, H = 400 + 200 + grupos.reduce((a, x) => a + 96 + x.linhas.length * RH + 34, 0) + 110;
+    const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
+    await fundoCartao(g, W, H);
+    g.textAlign = "center"; g.save(); g.shadowColor = "rgba(0,0,0,.5)"; g.shadowBlur = 12; g.fillStyle = "#ffffff"; g.font = "bold 54px Arial"; g.fillText("METAS DA EQUIPE", W / 2, 318); g.restore();
+    g.fillStyle = "rgba(255,255,255,.75)"; g.font = "26px Arial"; g.fillText("Todos os colaboradores por categoria", W / 2, 360);
+    let y = 400; const tw = (W - 140 - (tiles.length - 1) * 16) / tiles.length;
+    tiles.forEach(([t, campo, real, meta], i) => {
+      const x = 70 + i * (tw + 16), st = meta ? situacao({[campo]:real}, {campo, valor:meta.valor}) : null, pj = meta ? projecao(real, meta.valor) : null;
+      painelVidro(g, x, y, tw, 172, 22); g.textAlign = "center";
+      g.fillStyle = "rgba(255,255,255,.8)"; g.font = "bold 22px Arial"; g.fillText(t, x + tw / 2, y + 36);
+      g.fillStyle = "#ffffff"; g.font = "bold 28px Arial"; g.fillText(cortaTexto(g, fmtCampo(campo, real), tw - 20), x + tw / 2, y + 74);
+      g.fillStyle = corSt(st); g.font = "bold 34px Arial"; g.fillText(st ? st.pct + "%" : "—", x + tw / 2, y + 114);
+      barraCartao(g, x + 20, y + 128, tw - 40, 12, st);
+      g.fillStyle = "rgba(255,255,255,.7)"; g.font = "18px Arial"; g.fillText(cortaTexto(g, meta ? (pj ? "projeção " + pj.pct + "%" : "meta " + fmtCampo(campo, meta.valor)) : "sem meta", tw - 20), x + tw / 2, y + 162);
+    });
+    y += 200;
+    for (const {c, linhas} of grupos) {
+      const cor = CORES_ABA[c.k] || CORES_CAT[c.k] || "#22d3ee", hp = 96 + linhas.length * RH;
+      painelVidro(g, 70, y, W - 140, hp, 26);
+      g.save(); rr(g, 70, y, W - 140, 74, 26); g.clip(); const hg = g.createLinearGradient(70, 0, W - 70, 0); hg.addColorStop(0, cor + "cc"); hg.addColorStop(1, cor + "22"); g.fillStyle = hg; g.fillRect(70, y, W - 140, 74); g.restore();
+      g.textAlign = "left"; g.fillStyle = "#ffffff"; g.font = "bold 32px Arial"; g.fillText(c.ico + "  " + c.t.toUpperCase(), 100, y + 49);
+      g.textAlign = "right"; g.font = "bold 22px Arial"; g.fillText(linhas.length + (linhas.length === 1 ? " pessoa" : " pessoas"), W - 100, y + 47);
+      let ly = y + 92;
+      linhas.forEach((r, i) => {
+        if (i) { g.fillStyle = "rgba(255,255,255,.08)"; g.fillRect(100, ly - 6, W - 200, 1); }
+        const campo = r.m ? r.m.campo : (c.k === "opcaixa" ? "q" : c.lt ? "lt" : "mc");
+        g.textAlign = "center"; g.font = i < 3 ? "36px Arial" : "bold 28px Arial"; g.fillStyle = cor; g.fillText(i < 3 ? ["🥇", "🥈", "🥉"][i] : (i + 1) + "º", 128, ly + 46);
+        g.textAlign = "left"; g.fillStyle = "#ffffff"; g.font = "bold 26px Arial"; g.fillText(cortaTexto(g, r.nome, 400), 172, ly + 36);
+        g.fillStyle = "rgba(255,255,255,.65)"; g.font = "20px Arial"; g.fillText(cortaTexto(g, fmtCampo(campo, r[campo]) + (r.m ? " · meta " + fmtCampo(campo, r.m.valor) : ""), 400), 172, ly + 66);
+        const bx = 600, bw = W - 100 - bx - 90;
+        g.textAlign = "right"; g.fillStyle = corSt(r.st); g.font = "bold 30px Arial"; g.fillText(r.st ? r.st.pct + "%" : "—", W - 100, ly + 40);
+        barraCartao(g, bx, ly + 22, bw, 16, r.st);
+        if (r.mst) { g.textAlign = "left"; g.fillStyle = "rgba(255,255,255,.7)"; g.font = "18px Arial"; g.fillText("🛒", bx, ly + 70); barraCartao(g, bx + 34, ly + 58, bw - 34, 10, r.mst); g.textAlign = "right"; g.fillStyle = corSt(r.mst); g.font = "bold 20px Arial"; g.fillText(r.mst.pct + "%", W - 100, ly + 70); }
+        ly += RH;
+      });
+      y += hp + 34;
+    }
+    if (!grupos.length) { g.textAlign = "center"; g.fillStyle = "#ffffff"; g.font = "30px Arial"; g.fillText("Sem lançamentos neste mês", W / 2, y + 60); }
+    g.textAlign = "left";
+    mostrarPrevia(cv, ("Metas da equipe - " + (S.nomeFilial || "posto") + " - " + S.rkMes).replace(/[^\wÀ-ÿ -]+/g, " ").trim() + ".jpg", () => cartaoTodos());
+  } catch (e) { console.error("Cartão de todos:", e); toast("Não foi possível gerar a imagem."); }
+  if (b) b.disabled = false;
+}
+/* prévia antes de enviar: mostra a imagem, deixa trocar o fundo e só depois envia/baixa */
+function mostrarPrevia(cv, nome, refazer){
+  S.rkPrev = {cv, nome, refazer, blob:jpegDe(cv)};
+  const tem = !!rkFundoDados();
+  openSheet(`<h2>👀 Prévia da imagem</h2><p style="font-size:12px;color:var(--muted);margin:0 0 8px">Confira como vai ficar antes de enviar. Para usar uma foto como fundo, toque em "Trocar fundo".</p>
+    <div style="max-height:58vh;overflow:auto;border-radius:12px;background:#000"><img src="${cv.toDataURL("image/jpeg", 0.8)}" alt="Prévia da imagem" style="width:100%;display:block"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px"><label class="btn" style="margin:0;cursor:pointer;text-align:center">🖼️ Trocar fundo<input type="file" accept="image/*" data-rk-fundo="1" hidden></label><button class="btn" style="margin:0" data-act="rkFundoPadrao"${tem ? "" : " disabled"}>↩️ Fundo padrão</button></div>
+    <button class="btn pri" style="margin-top:8px" data-act="rkPrevEnviar">📤 Enviar / baixar imagem</button>
+    <button class="btn" data-act="fechar">Fechar</button>`);
 }
 async function cartaoGeral(b){
   if (b) b.disabled = true;
@@ -518,13 +645,13 @@ async function cartaoGeral(b){
     if (rkAbas().some(c => c.lt)) linhas.push(["⛽ LITROS · FRENTISTAS", "lt", gr.litros, gr.m.litros]);
     linhas.push(["🛒 VENDA DA LOJA · TODOS OS SETORES", "mc", gr.total, gr.m.loja]);
     if (rkAbas().some(c => c.k === "opcaixa")) linhas.push(["🧾 OPERAÇÕES CAIXA (QUANTIDADE)", "q", gr.op, gr.m.operacoes]);
-    const W = 1080, H = 640 + linhas.length * 230 + gr.partes.length * 70, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
-    fundoCartao(g, W, H); g.textAlign = "center";
+    const W = 1080, H = 750 + linhas.length * 230 + gr.partes.length * 70, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
+    await fundoCartao(g, W, H); g.translate(0, 110); g.textAlign = "center";
     g.fillStyle = "#ffffff"; g.font = "bold 58px Arial"; g.fillText("METAS GERAIS DO POSTO", W / 2, 220);
     let y = 300;
     for (const [tit, campo, real, meta] of linhas) {
       const st = meta ? situacao({[campo]:real}, {campo, valor:meta.valor}) : null, pj = meta ? projecao(real, meta.valor) : null, cor = st ? (st.bateu ? "#34d399" : st.pct >= 70 ? "#fbbf24" : "#f87171") : "#22d3ee";
-      rr(g, 70, y, W - 140, 200, 26); g.fillStyle = "rgba(255,255,255,.09)"; g.fill();
+      painelVidro(g, 70, y, W - 140, 200, 26);
       g.textAlign = "left"; g.fillStyle = "rgba(255,255,255,.8)"; g.font = "bold 26px Arial"; g.fillText(tit, 105, y + 46);
       g.fillStyle = "#ffffff"; g.font = "bold 46px Arial"; g.fillText(fmtCampo(campo, real), 105, y + 104);
       g.textAlign = "right"; g.fillStyle = cor; g.font = "bold 56px Arial"; g.fillText(st ? st.pct + "%" : "—", W - 105, y + 104);
@@ -544,7 +671,7 @@ async function cartaoGeral(b){
       y += 70;
     }
     g.textAlign = "left";
-    await compartilharOuBaixar(await jpegDe(cv), ("Metas gerais - " + (S.nomeFilial || "posto") + " - " + S.rkMes).replace(/[^\wÀ-ÿ -]+/g, " ").trim() + ".jpg");
+    mostrarPrevia(cv, ("Metas gerais - " + (S.nomeFilial || "posto") + " - " + S.rkMes).replace(/[^\wÀ-ÿ -]+/g, " ").trim() + ".jpg", () => cartaoGeral());
   } catch (e) { console.error("Cartão geral:", e); toast("Não foi possível gerar o cartão."); }
   if (b) b.disabled = false;
 }
@@ -614,7 +741,9 @@ function shBaixarRanking(){
   const c = rkCat();
   openSheet(`<h2>Baixar e enviar</h2><p class="meta" style="margin:0 0 10px">${c.t} · ${nomeMes(S.rkMes)}</p>
     <button class="btn pri" data-act="baixarRkImagem">🎉 Imagem do ranking (JPG)</button>
+    <button class="btn" data-act="rkCartaoTodos">👥 Metas de todos por categoria (JPG)</button>
     <button class="btn" data-act="cartaoGeral">🏪 Cartão das metas gerais (JPG)</button>
+    <p style="font-size:11px;color:var(--muted);margin:2px 0 6px">Cada imagem abre uma prévia antes de enviar; lá dá para trocar o fundo por uma foto da galeria.</p>
     <button class="btn" data-act="baixarRanking" data-t="pdf">📄 Tabela em PDF</button>
     <button class="btn" data-act="fechar">Fechar</button>`);
 }
@@ -633,8 +762,8 @@ async function cartaoRanking(b){
   try {
     const c = rkCat(), lista = listaRk(c), campo = c.lt ? "lt" : "mc", dq = rkDestaqueAtivo() ? destaqueDe(c.k) : null;
     const linhas = lista.map(r => { const m = metaDaPessoa(r, c.k, lista); return {...r, m, st:situacao(r, m)}; }).slice(0, 30);
-    const W = 1080, H = 1060 + Math.max(0, linhas.length - 3) * 112, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
-    fundoCartao(g, W, H); g.textAlign = "center";
+    const W = 1080, H = 1170 + Math.max(0, linhas.length - 3) * 112, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
+    await fundoCartao(g, W, H); g.translate(0, 110); g.textAlign = "center";
     g.fillStyle = "#ffffff"; g.font = "bold 54px Arial"; g.fillText(c.t.toUpperCase(), W / 2, 205);
     const cores = ["#fbbf24", "#22d3ee", "#f472b6", "#34d399", "#a78bfa", "#f87171"];
     for (let i = 0; i < 90; i++) { g.save(); g.globalAlpha = 0.8; g.fillStyle = cores[i % 6]; g.translate((i * 137) % W, 240 + (i * 89) % 560); g.rotate(i); g.fillRect(-7, -3, 14, 6); g.restore(); }
@@ -653,7 +782,7 @@ async function cartaoRanking(b){
     }
     let y = 1000;
     for (let i = 3; i < linhas.length; i++) {
-      const r = linhas[i]; rr(g, 70, y, W - 140, 96, 20); g.fillStyle = "rgba(255,255,255,.09)"; g.fill();
+      const r = linhas[i]; painelVidro(g, 70, y, W - 140, 96, 20);
       g.textAlign = "center"; g.fillStyle = "#22d3ee"; g.font = "bold 34px Arial"; g.fillText((i + 1) + "º", 120, y + 60);
       await desenhaAvatar(g, r, 205, y + 48, 32, r.st ? (r.st.bateu ? "#34d399" : r.st.pct >= 70 ? "#fbbf24" : "#f87171") : "#22d3ee");
       g.textAlign = "left"; g.fillStyle = "#ffffff"; g.font = "bold 28px Arial"; g.fillText(cortaTexto(g, r.nome + (dq && dq.r.pid === r.pid ? " ⭐" : ""), 520), 255, y + 40);
@@ -668,7 +797,7 @@ async function cartaoRanking(b){
     }
     if (!linhas.length) { g.textAlign = "center"; g.fillStyle = "#ffffff"; g.font = "32px Arial"; g.fillText("Sem lançamentos neste mês", W / 2, 600); }
     g.textAlign = "left";
-    await compartilharOuBaixar(await jpegDe(cv), ("Ranking " + c.t + " - " + S.rkMes).replace(/[^\wÀ-ÿ -]+/g, " ").trim() + ".jpg");
+    mostrarPrevia(cv, ("Ranking " + c.t + " - " + S.rkMes).replace(/[^\wÀ-ÿ -]+/g, " ").trim() + ".jpg", () => cartaoRanking());
   } catch (e) { console.error("Imagem do ranking:", e); toast("Não foi possível gerar a imagem."); }
   if (b) b.disabled = false;
 }
@@ -685,6 +814,9 @@ async function rkAcao(a, b){
   if (a === "rkBaixar") { shBaixarRanking(); return true; }
   if (a === "salvarMetasSetores") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarMetasSetores(b); return true; }
   if (a === "baixarRkImagem") { cartaoRanking(b); return true; }
+  if (a === "rkCartaoTodos") { cartaoTodos(b); return true; }
+  if (a === "rkPrevEnviar") { const p = S.rkPrev; if (!p) return true; b.disabled = true; try { await compartilharOuBaixar(await p.blob, p.nome); } catch (e) { toast("Não foi possível enviar a imagem."); } b.disabled = false; return true; }
+  if (a === "rkFundoPadrao") { RK_FUNDO.mem = null; try { localStorage.removeItem("rkFundo"); } catch (e) {} toast("Fundo padrão."); if (S.rkPrev && S.rkPrev.refazer) S.rkPrev.refazer(); return true; }
   const soAdmin = ["rkMadrugada", "novaFuncao", "removerFuncao"];
   if (soAdmin.includes(a) && !S.admin) { toast("Área restrita ao administrador."); return true; }
   if (a === "rkMadrugada") {
