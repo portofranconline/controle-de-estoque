@@ -288,7 +288,7 @@ function vRkCfg(){
     }
     const ORD = Object.keys(grupoOpcoes()), grupoP = p => { const i = ORD.indexOf(grupoKey(p)); return i < 0 ? ORD.length : i; };
     const gente = [...Object.entries(P).filter(([, p]) => p && !p.x), ...puxados].sort((a, b) => grupoP(a[1]) - grupoP(b[1]) || a[1].nome.localeCompare(b[1].nome, "pt-BR"));
-    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 16</small></h2>
+    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 17</small></h2>
       <input class="inp" id="eqBusca" placeholder="🔎 Buscar nome (equipe e relatórios)" autocomplete="off" style="margin:6px 0">
       <div id="eqNada" hidden style="font-size:12px;color:var(--muted);margin-bottom:6px">Nome não encontrado. Use <b>➕ Adicionar membro</b> no fim da tela.</div>
       <p style="margin:4px 0 10px;font-size:12px;color:var(--muted);line-height:1.4">Toque no grupo de cada pessoa: salva na hora, e a venda e a meta passam a ser desse grupo. Os nomes vêm dos relatórios do ranking.</p>
@@ -779,70 +779,79 @@ function tileMeta(icone, titulo, campo, real, meta){
     ${meta ? `${barra(st ? {...st, texto:""} : null, 8)}<div style="font-size:11px;line-height:1.4;color:var(--muted);margin-top:4px">Meta ${fmtCampo(campo, meta.valor)}${meta.herdada ? "*" : ""}<br>${st.bateu ? `✅ passou ${fmtCampo(campo, real - meta.valor)}` : `Faltam <span style="font-weight:800;color:var(--ink)">${fmtCampo(campo, meta.valor - real)}</span>`}${pj ? `<br>📈 Projeção <span style="font-weight:800;color:${corPj}">${pj.pct}%</span>${!st.bateu && pj.resta ? ` · ${fmtCampo(campo, pj.porDia)}/dia` : ""}` : ""}</div>`
       : `<div class="meta" style="font-size:11px">Sem meta${S.admin ? " · ⚙️" : ""}</div>`}</div>`;
 }
-/* ---------- venda geral do posto em litros: numerador diário (só o admin lança), meta do mês e projeção ---------- */
+/* ---------- venda geral do posto em litros: soma de todos os dias até a meta do mês ----------
+   Cada dia lançado fica fixo (não muda). Os litros dos frentistas importados também entram:
+   o total do mês é o maior entre a soma dos dias e o total dos frentistas, para não contar duas vezes. */
 const META_POSTO_PADRAO = 1150000;
 function diasDoMes(mes){ const [a, m] = (mes || S.rkMes).split("-").map(Number); return new Date(a, m, 0).getDate(); }
-function projPosto(total, dias, meta, mes){
-  if (!meta || !dias.length) return null;
-  const nd = diasDoMes(mes), ult = dias[dias.length - 1]; if (ult >= nd) return null;
-  const media = total / dias.length, proj = total + media * (nd - ult), resta = nd - ult;
-  return {proj, pct:Math.floor(proj / meta.valor * 100), porDia:Math.max(0, meta.valor - total) / resta, resta, dia:ult, dias:nd, media};
-}
+function litrosFrentistas(){ try { return resumoGeral().litros || 0; } catch (e) { return 0; } }
 function postoGeral(d, metaValor){
   d = d || ((S.vendas || {})[S.rkMes] || {}).postoDia || {};
-  const dias = Object.keys(d).filter(k => num(d[k]) > 0).map(Number).sort((a, b) => a - b), total = dias.reduce((a, k) => a + num(d[k]), 0);
+  const dias = Object.keys(d).filter(k => num(d[k]) > 0).map(Number).sort((a, b) => a - b), somaDias = dias.reduce((a, k) => a + num(d[k]), 0), frent = litrosFrentistas();
+  const total = Math.max(somaDias, frent), fonte = frent > somaDias ? "frentistas" : "dias";
   let meta = null;
   if (metaValor > 0) meta = {valor:metaValor};
   else { const x = ultimoMes(v => v.metaGeral && num(v.metaGeral.postoLitros) > 0 ? num(v.metaGeral.postoLitros) : null); if (x) meta = {valor:x.v, herdada:x.mes !== S.rkMes}; }
-  return {d, dias, total, meta, st:meta ? situacao({lt:total}, {campo:"lt", valor:meta.valor}) : null, pj:projPosto(total, dias, meta)};
+  /* dia de referência: último dia lançado; se os frentistas estão à frente, conta até ontem */
+  const nd = diasDoMes(), mesAtual = S.rkMes === rkMesAtual(), ontem = Math.max(1, new Date().getDate() - 1), ultDia = dias.length ? dias[dias.length - 1] : 0;
+  const ref = fonte === "dias" ? ultDia : (mesAtual ? Math.max(ultDia, ontem) : nd);
+  let pj = null;
+  if (meta && ref > 0 && ref < nd && total > 0) { const media = total / ref, proj = media * nd, resta = nd - ref; pj = {proj, pct:Math.floor(proj / meta.valor * 100), porDia:Math.max(0, meta.valor - total) / resta, resta, dia:ref, dias:nd, media}; }
+  return {d, dias, somaDias, frent, total, fonte, ref, meta, st:meta ? situacao({lt:total}, {campo:"lt", valor:meta.valor}) : null, pj};
 }
 function textoPosto(P){
   if (!P.meta) return "Sem meta definida.";
   const corPj = P.pj ? (P.pj.pct >= 100 ? "var(--good)" : P.pj.pct >= 85 ? "var(--warn)" : "var(--crit)") : "";
-  return `Meta ${fmtCampo("lt", P.meta.valor)}${P.meta.herdada ? "*" : ""} · ${P.st.bateu ? `✅ passou <b>${fmtCampo("lt", P.total - P.meta.valor)}</b>` : `faltam <b style="color:var(--ink)">${fmtCampo("lt", P.meta.valor - P.total)}</b>`}`
-    + (P.pj ? `<br>📈 Projeção: <b>${fmtCampo("lt", P.pj.proj)}</b> = <b style="color:${corPj}">${P.pj.pct}% da meta</b>${P.st.bateu ? "" : ` · precisa de <b>${fmtCampo("lt", P.pj.porDia)}</b>/dia nos ${P.pj.resta} dias restantes`}` : "")
-    + (P.dias.length ? `<br>Lançado até o dia ${P.dias[P.dias.length - 1]} (${P.dias.length} ${P.dias.length === 1 ? "dia" : "dias"}) · média ${fmtCampo("lt", P.total / P.dias.length)}/dia` : "<br>Nenhum dia lançado ainda.");
+  return `Meta ${fmtCampo("lt", P.meta.valor)}${P.meta.herdada ? "*" : ""} · ${P.st.bateu ? `✅ passou <b>${fmtCampo("lt", P.total - P.meta.valor)}</b>` : `ainda faltam <b style="color:var(--ink)">${fmtCampo("lt", P.meta.valor - P.total)}</b>`}`
+    + (P.pj ? `<br>📈 Projeção do mês: <b>${fmtCampo("lt", P.pj.proj)}</b> = <b style="color:${corPj}">${P.pj.pct}% da meta</b>${P.st.bateu ? "" : ` · precisa vender <b>${fmtCampo("lt", P.pj.porDia)}</b>/dia nos ${P.pj.resta} dias restantes`}` : "")
+    + `<br>Dias lançados: <b>${fmtCampo("lt", P.somaDias)}</b> (${P.dias.length} ${P.dias.length === 1 ? "dia" : "dias"}) · frentistas importados: <b>${fmtCampo("lt", P.frent)}</b>`
+    + (P.ref ? ` · contado até o dia ${P.ref}` : "");
 }
 function tilePosto(){
-  const P = postoGeral(); if (!P.meta && !P.dias.length && !S.admin) return "";
+  const P = postoGeral(); if (!P.meta && !P.total && !S.admin) return "";
   return `<div style="grid-column:1/-1;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;min-width:0">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:6px"><div class="meta" style="font-size:11px;font-weight:700">⛽ Venda geral do posto (litros)</div>${S.admin ? `<button class="btn sm" style="width:auto;margin:0;padding:3px 8px;font-size:11px" data-act="rkPosto">✏️ Lançar</button>` : ""}</div>
     <div style="display:flex;justify-content:space-between;gap:6px;align-items:baseline"><b style="font-size:18px;white-space:nowrap">${fmtCampo("lt", P.total)}</b>${P.st ? `<b style="color:${P.st.cor}">${P.st.pct}%</b>` : ""}</div>
     ${P.meta ? barra(P.st ? {...P.st, texto:""} : null, 8) : ""}<div style="font-size:11px;line-height:1.5;color:var(--muted);margin-top:4px">${textoPosto(P)}</div></div>`;
 }
-function shPosto(dia){
+function shPosto(dia, corrigir){
   if (!S.admin) return toast("Área restrita ao administrador.");
   const P = postoGeral(), nd = diasDoMes(), ult = P.dias.length ? P.dias[P.dias.length - 1] : 0;
   dia = dia || Math.min(nd, ult + 1);
+  const fixo = num(P.d[dia]) > 0 && !corrigir, sug = Math.max(0, P.frent - P.somaDias);
   const val = num(P.d[dia]) > 0 ? fmt2(num(P.d[dia])) : "";
-  openSheet(`<h2>⛽ Venda geral do posto</h2><p style="font-size:12px;color:var(--muted);margin:0 0 8px">Só o administrador vê esta tela. Lance a venda total do posto (em litros) de cada dia; a meta, o quanto falta e a projeção atualizam sozinhos. ${nomeMes(S.rkMes)}.</p>
-    <div style="display:grid;grid-template-columns:110px 1fr;gap:8px"><div><label style="display:block;font-size:12px;color:var(--muted);margin:0 0 4px">Dia</label><select id="pgDia" data-rk-posto="1">${Array.from({length:nd}, (_, i) => i + 1).map(k => `<option value="${k}"${k === dia ? " selected" : ""}>${k}${num(P.d[k]) > 0 ? " ✓" : ""}</option>`).join("")}</select></div>
-    <div><label style="display:block;font-size:12px;color:var(--muted);margin:0 0 4px">Litros vendidos no dia</label><input id="pgLitros" inputmode="decimal" placeholder="Ex.: 38.500" value="${val}" data-rk-posto="1"></div></div>
+  openSheet(`<h2>⛽ Venda geral do posto</h2><p style="font-size:12px;color:var(--muted);margin:0 0 8px">Só o administrador vê esta tela. Lance a venda do dia em litros: ela soma com os outros dias até chegar na meta do mês. Dia salvo fica fixo. ${nomeMes(S.rkMes)}.</p>
+    <div style="display:grid;grid-template-columns:110px 1fr;gap:8px"><div><label style="display:block;font-size:12px;color:var(--muted);margin:0 0 4px">Dia</label><select id="pgDia" data-rk-posto="1">${Array.from({length:nd}, (_, i) => i + 1).map(k => `<option value="${k}"${k === dia ? " selected" : ""}>${k}${num(P.d[k]) > 0 ? " 🔒" : ""}</option>`).join("")}</select></div>
+    <div><label style="display:block;font-size:12px;color:var(--muted);margin:0 0 4px">Litros vendidos no dia</label><input id="pgLitros" inputmode="decimal" placeholder="Ex.: 33.693,03" value="${val}" data-rk-posto="1"${fixo ? " disabled" : ""}></div></div>
+    ${fixo ? `<p style="font-size:12px;margin:6px 0 0">🔒 Dia ${dia} já lançado: <b>${val} L</b>. <button class="btn sm" style="width:auto;display:inline-block;margin:0 0 0 4px;padding:2px 8px;font-size:11px" data-act="rkPostoCorrigir" data-d="${dia}">Corrigir</button></p>`
+      : sug > 0 ? `<p style="font-size:12px;margin:6px 0 0">Pelos relatórios dos frentistas faltam <b>${fmtCampo("lt", sug)}</b> para fechar com o importado. <button class="btn sm" style="width:auto;display:inline-block;margin:0 0 0 4px;padding:2px 8px;font-size:11px" data-act="rkPostoUsar" data-v="${sug}">Usar</button></p>` : ""}
     <div id="pgSim" style="margin-top:10px;padding:10px;border-radius:12px;background:var(--surface2);border:1px dashed var(--line);font-size:12px;line-height:1.55"></div>
-    <button class="btn pri" style="margin-top:8px" data-act="rkPostoSalvar">💾 Salvar dia</button>
+    ${fixo ? "" : `<button class="btn pri" style="margin-top:8px" data-act="rkPostoSalvar">💾 Salvar dia ${dia}</button>`}
     <details style="margin-top:8px"><summary style="cursor:pointer;font-weight:700;font-size:13px">🎯 Meta do mês em litros</summary>
       <input id="pgMeta" inputmode="decimal" value="${fmt2(P.meta ? P.meta.valor : META_POSTO_PADRAO)}" data-rk-posto="1" style="margin-top:6px">
       <p style="font-size:11px;color:var(--muted);margin:4px 0">${P.meta ? (P.meta.herdada ? "Meta vinda do mês anterior. " : "") : "Ainda não salva: valor sugerido. "}Vale para ${nomeMes(S.rkMes)} e para os meses seguintes até ser alterada.</p>
       <button class="btn" data-act="rkPostoMeta">💾 Salvar meta</button></details>
-    <details style="margin-top:6px"><summary style="cursor:pointer;font-weight:700;font-size:13px">📅 Dias lançados (${P.dias.length})</summary>
-      <div style="font-size:12px;margin-top:6px">${P.dias.length ? P.dias.map(k => `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--line)"><span>Dia ${k}</span><b>${fmtCampo("lt", num(P.d[k]))}</b></div>`).join("") : "Nenhum dia lançado."}</div></details>
+    <details style="margin-top:6px"><summary style="cursor:pointer;font-weight:700;font-size:13px">📅 Dias lançados (${P.dias.length}) · soma ${fmtCampo("lt", P.somaDias)}</summary>
+      <div style="font-size:12px;margin-top:6px">${P.dias.length ? P.dias.map(k => `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--line)"><span>🔒 Dia ${k}</span><b>${fmtCampo("lt", num(P.d[k]))}</b></div>`).join("") : "Nenhum dia lançado."}</div></details>
     <button class="btn" data-act="fechar">Fechar</button>`);
+  S.rkPostoCorr = corrigir ? dia : 0;
   simPosto();
 }
 /* simulação: mostra como fica a meta antes de salvar */
 function simPosto(){
   const el = $("#pgSim"); if (!el) return;
-  const atual = postoGeral(), dia = +(($("#pgDia") || {}).value || 0), t = (($("#pgLitros") || {}).value || "").trim(), v = t ? parse(t) : 0, mt = parse((($("#pgMeta") || {}).value || "").trim());
-  if (t && !(v >= 0)) { el.innerHTML = "Valor inválido. Ex.: 38.500 ou 38.500,50"; return; }
-  const P = postoGeral({...atual.d, [dia]:v}, mt > 0 ? mt : (atual.meta ? atual.meta.valor : META_POSTO_PADRAO));
-  el.innerHTML = `<b>👀 Simulação (ainda não salvo)</b><br>Total do mês: <b>${fmtCampo("lt", P.total)}</b>${P.st ? ` · <b style="color:${P.st.cor}">${P.st.pct}%</b>` : ""}${P.meta ? barra(P.st ? {...P.st, texto:""} : null, 8) : ""}<div style="margin-top:4px">${textoPosto(P)}</div>`;
+  const atual = postoGeral(), dia = +(($("#pgDia") || {}).value || 0), inp = $("#pgLitros"), t = ((inp || {}).value || "").trim(), v = t ? parse(t) : 0, mt = parse((($("#pgMeta") || {}).value || "").trim());
+  if (t && !(v >= 0)) { el.innerHTML = "Valor inválido. Ex.: 33.693,03"; return; }
+  const P = postoGeral(inp && inp.disabled ? atual.d : {...atual.d, [dia]:v}, mt > 0 ? mt : (atual.meta ? atual.meta.valor : META_POSTO_PADRAO));
+  el.innerHTML = `<b>👀 ${inp && inp.disabled ? "Situação atual" : "Simulação (ainda não salvo)"}</b><br>Total do mês: <b>${fmtCampo("lt", P.total)}</b>${P.st ? ` · <b style="color:${P.st.cor}">${P.st.pct}%</b>` : ""}${P.meta ? barra(P.st ? {...P.st, texto:""} : null, 8) : ""}<div style="margin-top:4px">${textoPosto(P)}</div>`;
 }
-const rkPostoEv = ev => { const t = ev.target; if (!t || !t.dataset || !t.dataset.rkPosto) return; if (t.id === "pgDia" && ev.type === "change") { const P = postoGeral(), k = +t.value, i = $("#pgLitros"); if (i) i.value = num(P.d[k]) > 0 ? fmt2(num(P.d[k])) : ""; } simPosto(); };
+const rkPostoEv = ev => { const t = ev.target; if (!t || !t.dataset || !t.dataset.rkPosto) return; if (t.id === "pgDia" && ev.type === "change") { shPosto(+t.value); return; } simPosto(); };
 document.addEventListener("input", rkPostoEv); document.addEventListener("change", rkPostoEv);
 async function salvarPosto(b){
-  const dia = +(($("#pgDia") || {}).value || 0), t = (($("#pgLitros") || {}).value || "").trim(), v = t ? parse(t) : 0;
-  if (!dia || !(v >= 0)) return toast("Valor inválido. Ex.: 38.500 ou 38.500,50");
-  b.disabled = true; const ok = await safe(() => gravaVendas({postoDia:{[dia]:v}}), v ? `Dia ${dia}: ${fmtCampo("lt", v)} salvo.` : `Dia ${dia} zerado.`); b.disabled = false;
+  const P = postoGeral(), dia = +(($("#pgDia") || {}).value || 0), t = (($("#pgLitros") || {}).value || "").trim(), v = t ? parse(t) : NaN;
+  if (!dia || !(v > 0)) return toast("Digite os litros do dia. Ex.: 33.693,03");
+  if (num(P.d[dia]) > 0 && S.rkPostoCorr !== dia) return toast("Dia " + dia + " já lançado. Use Corrigir.");
+  b.disabled = true; const ok = await safe(() => gravaVendas({postoDia:{[dia]:v}}), `Dia ${dia}: ${fmtCampo("lt", v)} somado.`); b.disabled = false;
   if (ok) shPosto(Math.min(diasDoMes(), dia + 1));
 }
 async function salvarMetaPosto(b){
@@ -981,6 +990,8 @@ async function rkAcao(a, b){
   if (a === "rkPrevPdf") { baixarPdf(b, false); return true; }
   if (a === "rkLotePdf") { baixarPdf(b, true); return true; }
   if (a === "rkPosto") { shPosto(); return true; }
+  if (a === "rkPostoCorrigir") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } if (confirm("Corrigir a venda do dia " + b.dataset.d + "? O valor salvo será trocado.")) shPosto(+b.dataset.d, true); return true; }
+  if (a === "rkPostoUsar") { const i = $("#pgLitros"); if (i) { i.value = fmt2(+b.dataset.v); simPosto(); } return true; }
   if (a === "rkPostoSalvar") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarPosto(b); return true; }
   if (a === "rkPostoMeta") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarMetaPosto(b); return true; }
   if (a === "rkLoteGerar") { gerarLote(b); return true; }
