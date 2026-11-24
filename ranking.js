@@ -288,7 +288,7 @@ function vRkCfg(){
     }
     const ORD = Object.keys(grupoOpcoes()), grupoP = p => { const i = ORD.indexOf(grupoKey(p)); return i < 0 ? ORD.length : i; };
     const gente = [...Object.entries(P).filter(([, p]) => p && !p.x), ...puxados].sort((a, b) => grupoP(a[1]) - grupoP(b[1]) || a[1].nome.localeCompare(b[1].nome, "pt-BR"));
-    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 15</small></h2>
+    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 16</small></h2>
       <input class="inp" id="eqBusca" placeholder="🔎 Buscar nome (equipe e relatórios)" autocomplete="off" style="margin:6px 0">
       <div id="eqNada" hidden style="font-size:12px;color:var(--muted);margin-bottom:6px">Nome não encontrado. Use <b>➕ Adicionar membro</b> no fim da tela.</div>
       <p style="margin:4px 0 10px;font-size:12px;color:var(--muted);line-height:1.4">Toque no grupo de cada pessoa: salva na hora, e a venda e a meta passam a ser desse grupo. Os nomes vêm dos relatórios do ranking.</p>
@@ -607,7 +607,7 @@ async function gerarLote(b, ks){
       for (const r of lista) {
         const cv = await desenhaPessoa(r, c, lista), mini = document.createElement("canvas"); mini.width = 270; mini.height = Math.round(cv.height * 270 / cv.width);
         mini.getContext("2d").drawImage(cv, 0, 0, mini.width, mini.height);
-        itens.push({nome:nomeCartao(r, c), blob:await jpegDe(cv), mini:mini.toDataURL("image/jpeg", 0.7), cat:c.t});
+        itens.push({nome:nomeCartao(r, c), w:cv.width, h:cv.height, blob:await jpegDe(cv), mini:mini.toDataURL("image/jpeg", 0.7), cat:c.t});
       }
     }
   } catch (e) { console.error("Lote:", e); toast("Não foi possível gerar os cartões."); if (b) { b.disabled = false; b.textContent = "👀 Gerar prévia dos cartões"; } return; }
@@ -619,7 +619,7 @@ function previaLote(){
   openSheet(`<h2>👀 Prévia · ${L.itens.length} cartões</h2><p style="font-size:12px;color:var(--muted);margin:0 0 8px">Confira antes de enviar. Toque num cartão para ver maior.</p>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-height:50vh;overflow:auto">${L.itens.map((x, i) => `<button data-act="rkLoteVer" data-i="${i}" style="padding:0;border:0;background:none;cursor:pointer" aria-label="${esc(x.nome)}"><img src="${x.mini}" alt="" style="width:100%;display:block;border-radius:8px"></button>`).join("")}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px"><label class="btn" style="margin:0;cursor:pointer;text-align:center">🖼️ Trocar fundo<input type="file" accept="image/*" data-rk-fundo="1" hidden></label><button class="btn" style="margin:0" data-act="rkFundoPadrao"${tem ? "" : " disabled"}>↩️ Fundo padrão</button></div>
-    <button class="btn pri" style="margin-top:8px" data-act="rkLoteEnviar">📤 Enviar / baixar todos (${L.itens.length})</button>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:6px;margin-top:8px"><button class="btn pri" style="margin:0" data-act="rkLoteEnviar">📤 Enviar / baixar todos (${L.itens.length})</button><button class="btn" style="margin:0" data-act="rkLotePdf">📄 PDF único</button></div>
     <button class="btn" data-act="fechar">Fechar</button>`);
 }
 async function enviarLote(b){
@@ -638,14 +638,16 @@ async function cartaoTodos(b){
   try {
     const grupos = rkAbasVer().filter(c => c.k !== "todos").map(c => { const l = listaRk(c); return {c, linhas:l.map(r => { const m = metaDaPessoa(r, c.k, l), mm = m && m.campo !== "mc" ? metaDaPessoa(r, c.k, l, "mc") : null; return {...r, m, st:situacao(r, m), mst:situacao(r, mm)}; })}; }).filter(x => x.linhas.length);
     const gr = resumoGeral(), tiles = [...(rkAbas().some(c => c.lt) ? [["⛽ Litros", "lt", gr.litros, gr.m.litros]] : []), ["🛒 Venda da Loja", "mc", gr.total, gr.m.loja], ...(rkAbas().some(c => c.k === "opcaixa") ? [["🧾 Operações", "q", gr.op, gr.m.operacoes]] : [])];
-    const RH = 96, W = 1080, H = 400 + 200 + grupos.reduce((a, x) => a + 96 + x.linhas.length * RH + 34, 0) + 110;
+    const PG = postoGeral(); if (PG.meta || PG.dias.length) tiles.unshift(["⛽ Venda geral posto", "lt", PG.total, PG.meta, PG.pj]);
+    const cols = tiles.length > 3 ? 2 : tiles.length, linT = Math.ceil(tiles.length / cols);
+    const RH = 96, W = 1080, H = 400 + linT * 188 + 12 + grupos.reduce((a, x) => a + 96 + x.linhas.length * RH + 34, 0) + 110;
     const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
     await fundoCartao(g, W, H);
     g.textAlign = "center"; g.save(); g.shadowColor = "rgba(0,0,0,.5)"; g.shadowBlur = 12; g.fillStyle = "#ffffff"; g.font = "bold 54px Arial"; g.fillText("METAS DA EQUIPE", W / 2, 318); g.restore();
     g.fillStyle = "rgba(255,255,255,.75)"; g.font = "26px Arial"; g.fillText("Todos os colaboradores por categoria", W / 2, 360);
-    let y = 400; const tw = (W - 140 - (tiles.length - 1) * 16) / tiles.length;
-    tiles.forEach(([t, campo, real, meta], i) => {
-      const x = 70 + i * (tw + 16), st = meta ? situacao({[campo]:real}, {campo, valor:meta.valor}) : null, pj = meta ? projecao(real, meta.valor) : null;
+    let y0 = 400; const tw = (W - 140 - (cols - 1) * 16) / cols;
+    tiles.forEach(([t, campo, real, meta, pjx], i) => {
+      const x = 70 + (i % cols) * (tw + 16), y = y0 + Math.floor(i / cols) * 188, st = meta ? situacao({[campo]:real}, {campo, valor:meta.valor}) : null, pj = meta ? (pjx !== undefined ? pjx : projecao(real, meta.valor)) : null;
       painelVidro(g, x, y, tw, 172, 22); g.textAlign = "center";
       g.fillStyle = "rgba(255,255,255,.8)"; g.font = "bold 22px Arial"; g.fillText(t, x + tw / 2, y + 36);
       g.fillStyle = "#ffffff"; g.font = "bold 28px Arial"; g.fillText(cortaTexto(g, fmtCampo(campo, real), tw - 20), x + tw / 2, y + 74);
@@ -653,7 +655,7 @@ async function cartaoTodos(b){
       barraCartao(g, x + 20, y + 128, tw - 40, 12, st);
       g.fillStyle = "rgba(255,255,255,.7)"; g.font = "18px Arial"; g.fillText(cortaTexto(g, meta ? (pj ? "projeção " + pj.pct + "%" : "meta " + fmtCampo(campo, meta.valor)) : "sem meta", tw - 20), x + tw / 2, y + 162);
     });
-    y += 200;
+    let y = y0 + linT * 188 + 12;
     for (const {c, linhas} of grupos) {
       const cor = CORES_ABA[c.k] || CORES_CAT[c.k] || "#22d3ee", hp = 96 + linhas.length * RH;
       painelVidro(g, 70, y, W - 140, hp, 26);
@@ -688,13 +690,14 @@ function mostrarPrevia(cv, nome, refazer){
   openSheet(`<h2>👀 Prévia da imagem</h2><p style="font-size:12px;color:var(--muted);margin:0 0 8px">Confira como vai ficar antes de enviar. Para usar uma foto como fundo, toque em "Trocar fundo".</p>
     <div style="max-height:58vh;overflow:auto;border-radius:12px;background:#000"><img src="${cv.toDataURL("image/jpeg", 0.8)}" alt="Prévia da imagem" style="width:100%;display:block"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px"><label class="btn" style="margin:0;cursor:pointer;text-align:center">🖼️ Trocar fundo<input type="file" accept="image/*" data-rk-fundo="1" hidden></label><button class="btn" style="margin:0" data-act="rkFundoPadrao"${tem ? "" : " disabled"}>↩️ Fundo padrão</button></div>
-    <button class="btn pri" style="margin-top:8px" data-act="rkPrevEnviar">📤 Enviar / baixar imagem</button>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:6px;margin-top:8px"><button class="btn pri" style="margin:0" data-act="rkPrevEnviar">📤 Enviar / baixar imagem</button><button class="btn" style="margin:0" data-act="rkPrevPdf">📄 PDF</button></div>
     <button class="btn" data-act="fechar">Fechar</button>`);
 }
 async function cartaoGeral(b){
   if (b) b.disabled = true;
   try {
-    const gr = resumoGeral(), linhas = [];
+    const gr = resumoGeral(), linhas = [], PG = postoGeral();
+    if (PG.meta || PG.dias.length) linhas.push(["⛽ VENDA GERAL DO POSTO (LITROS)", "lt", PG.total, PG.meta, PG.pj]);
     if (rkAbas().some(c => c.lt)) linhas.push(["⛽ LITROS · FRENTISTAS", "lt", gr.litros, gr.m.litros]);
     linhas.push(["🛒 VENDA DA LOJA · TODOS OS SETORES", "mc", gr.total, gr.m.loja]);
     if (rkAbas().some(c => c.k === "opcaixa")) linhas.push(["🧾 OPERAÇÕES CAIXA (QUANTIDADE)", "q", gr.op, gr.m.operacoes]);
@@ -702,8 +705,8 @@ async function cartaoGeral(b){
     await fundoCartao(g, W, H); g.translate(0, 110); g.textAlign = "center";
     g.fillStyle = "#ffffff"; g.font = "bold 58px Arial"; g.fillText("METAS GERAIS DO POSTO", W / 2, 220);
     let y = 300;
-    for (const [tit, campo, real, meta] of linhas) {
-      const st = meta ? situacao({[campo]:real}, {campo, valor:meta.valor}) : null, pj = meta ? projecao(real, meta.valor) : null, cor = st ? (st.bateu ? "#34d399" : st.pct >= 70 ? "#fbbf24" : "#f87171") : "#22d3ee";
+    for (const [tit, campo, real, meta, pjx] of linhas) {
+      const st = meta ? situacao({[campo]:real}, {campo, valor:meta.valor}) : null, pj = meta ? (pjx !== undefined ? pjx : projecao(real, meta.valor)) : null, cor = st ? (st.bateu ? "#34d399" : st.pct >= 70 ? "#fbbf24" : "#f87171") : "#22d3ee";
       painelVidro(g, 70, y, W - 140, 200, 26);
       g.textAlign = "left"; g.fillStyle = "rgba(255,255,255,.8)"; g.font = "bold 26px Arial"; g.fillText(tit, 105, y + 46);
       g.fillStyle = "#ffffff"; g.font = "bold 46px Arial"; g.fillText(fmtCampo(campo, real), 105, y + 104);
@@ -776,10 +779,115 @@ function tileMeta(icone, titulo, campo, real, meta){
     ${meta ? `${barra(st ? {...st, texto:""} : null, 8)}<div style="font-size:11px;line-height:1.4;color:var(--muted);margin-top:4px">Meta ${fmtCampo(campo, meta.valor)}${meta.herdada ? "*" : ""}<br>${st.bateu ? `✅ passou ${fmtCampo(campo, real - meta.valor)}` : `Faltam <span style="font-weight:800;color:var(--ink)">${fmtCampo(campo, meta.valor - real)}</span>`}${pj ? `<br>📈 Projeção <span style="font-weight:800;color:${corPj}">${pj.pct}%</span>${!st.bateu && pj.resta ? ` · ${fmtCampo(campo, pj.porDia)}/dia` : ""}` : ""}</div>`
       : `<div class="meta" style="font-size:11px">Sem meta${S.admin ? " · ⚙️" : ""}</div>`}</div>`;
 }
+/* ---------- venda geral do posto em litros: numerador diário (só o admin lança), meta do mês e projeção ---------- */
+const META_POSTO_PADRAO = 1150000;
+function diasDoMes(mes){ const [a, m] = (mes || S.rkMes).split("-").map(Number); return new Date(a, m, 0).getDate(); }
+function projPosto(total, dias, meta, mes){
+  if (!meta || !dias.length) return null;
+  const nd = diasDoMes(mes), ult = dias[dias.length - 1]; if (ult >= nd) return null;
+  const media = total / dias.length, proj = total + media * (nd - ult), resta = nd - ult;
+  return {proj, pct:Math.floor(proj / meta.valor * 100), porDia:Math.max(0, meta.valor - total) / resta, resta, dia:ult, dias:nd, media};
+}
+function postoGeral(d, metaValor){
+  d = d || ((S.vendas || {})[S.rkMes] || {}).postoDia || {};
+  const dias = Object.keys(d).filter(k => num(d[k]) > 0).map(Number).sort((a, b) => a - b), total = dias.reduce((a, k) => a + num(d[k]), 0);
+  let meta = null;
+  if (metaValor > 0) meta = {valor:metaValor};
+  else { const x = ultimoMes(v => v.metaGeral && num(v.metaGeral.postoLitros) > 0 ? num(v.metaGeral.postoLitros) : null); if (x) meta = {valor:x.v, herdada:x.mes !== S.rkMes}; }
+  return {d, dias, total, meta, st:meta ? situacao({lt:total}, {campo:"lt", valor:meta.valor}) : null, pj:projPosto(total, dias, meta)};
+}
+function textoPosto(P){
+  if (!P.meta) return "Sem meta definida.";
+  const corPj = P.pj ? (P.pj.pct >= 100 ? "var(--good)" : P.pj.pct >= 85 ? "var(--warn)" : "var(--crit)") : "";
+  return `Meta ${fmtCampo("lt", P.meta.valor)}${P.meta.herdada ? "*" : ""} · ${P.st.bateu ? `✅ passou <b>${fmtCampo("lt", P.total - P.meta.valor)}</b>` : `faltam <b style="color:var(--ink)">${fmtCampo("lt", P.meta.valor - P.total)}</b>`}`
+    + (P.pj ? `<br>📈 Projeção: <b>${fmtCampo("lt", P.pj.proj)}</b> = <b style="color:${corPj}">${P.pj.pct}% da meta</b>${P.st.bateu ? "" : ` · precisa de <b>${fmtCampo("lt", P.pj.porDia)}</b>/dia nos ${P.pj.resta} dias restantes`}` : "")
+    + (P.dias.length ? `<br>Lançado até o dia ${P.dias[P.dias.length - 1]} (${P.dias.length} ${P.dias.length === 1 ? "dia" : "dias"}) · média ${fmtCampo("lt", P.total / P.dias.length)}/dia` : "<br>Nenhum dia lançado ainda.");
+}
+function tilePosto(){
+  const P = postoGeral(); if (!P.meta && !P.dias.length && !S.admin) return "";
+  return `<div style="grid-column:1/-1;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;min-width:0">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:6px"><div class="meta" style="font-size:11px;font-weight:700">⛽ Venda geral do posto (litros)</div>${S.admin ? `<button class="btn sm" style="width:auto;margin:0;padding:3px 8px;font-size:11px" data-act="rkPosto">✏️ Lançar</button>` : ""}</div>
+    <div style="display:flex;justify-content:space-between;gap:6px;align-items:baseline"><b style="font-size:18px;white-space:nowrap">${fmtCampo("lt", P.total)}</b>${P.st ? `<b style="color:${P.st.cor}">${P.st.pct}%</b>` : ""}</div>
+    ${P.meta ? barra(P.st ? {...P.st, texto:""} : null, 8) : ""}<div style="font-size:11px;line-height:1.5;color:var(--muted);margin-top:4px">${textoPosto(P)}</div></div>`;
+}
+function shPosto(dia){
+  if (!S.admin) return toast("Área restrita ao administrador.");
+  const P = postoGeral(), nd = diasDoMes(), ult = P.dias.length ? P.dias[P.dias.length - 1] : 0;
+  dia = dia || Math.min(nd, ult + 1);
+  const val = num(P.d[dia]) > 0 ? fmt2(num(P.d[dia])) : "";
+  openSheet(`<h2>⛽ Venda geral do posto</h2><p style="font-size:12px;color:var(--muted);margin:0 0 8px">Só o administrador vê esta tela. Lance a venda total do posto (em litros) de cada dia; a meta, o quanto falta e a projeção atualizam sozinhos. ${nomeMes(S.rkMes)}.</p>
+    <div style="display:grid;grid-template-columns:110px 1fr;gap:8px"><div><label style="display:block;font-size:12px;color:var(--muted);margin:0 0 4px">Dia</label><select id="pgDia" data-rk-posto="1">${Array.from({length:nd}, (_, i) => i + 1).map(k => `<option value="${k}"${k === dia ? " selected" : ""}>${k}${num(P.d[k]) > 0 ? " ✓" : ""}</option>`).join("")}</select></div>
+    <div><label style="display:block;font-size:12px;color:var(--muted);margin:0 0 4px">Litros vendidos no dia</label><input id="pgLitros" inputmode="decimal" placeholder="Ex.: 38.500" value="${val}" data-rk-posto="1"></div></div>
+    <div id="pgSim" style="margin-top:10px;padding:10px;border-radius:12px;background:var(--surface2);border:1px dashed var(--line);font-size:12px;line-height:1.55"></div>
+    <button class="btn pri" style="margin-top:8px" data-act="rkPostoSalvar">💾 Salvar dia</button>
+    <details style="margin-top:8px"><summary style="cursor:pointer;font-weight:700;font-size:13px">🎯 Meta do mês em litros</summary>
+      <input id="pgMeta" inputmode="decimal" value="${fmt2(P.meta ? P.meta.valor : META_POSTO_PADRAO)}" data-rk-posto="1" style="margin-top:6px">
+      <p style="font-size:11px;color:var(--muted);margin:4px 0">${P.meta ? (P.meta.herdada ? "Meta vinda do mês anterior. " : "") : "Ainda não salva: valor sugerido. "}Vale para ${nomeMes(S.rkMes)} e para os meses seguintes até ser alterada.</p>
+      <button class="btn" data-act="rkPostoMeta">💾 Salvar meta</button></details>
+    <details style="margin-top:6px"><summary style="cursor:pointer;font-weight:700;font-size:13px">📅 Dias lançados (${P.dias.length})</summary>
+      <div style="font-size:12px;margin-top:6px">${P.dias.length ? P.dias.map(k => `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--line)"><span>Dia ${k}</span><b>${fmtCampo("lt", num(P.d[k]))}</b></div>`).join("") : "Nenhum dia lançado."}</div></details>
+    <button class="btn" data-act="fechar">Fechar</button>`);
+  simPosto();
+}
+/* simulação: mostra como fica a meta antes de salvar */
+function simPosto(){
+  const el = $("#pgSim"); if (!el) return;
+  const atual = postoGeral(), dia = +(($("#pgDia") || {}).value || 0), t = (($("#pgLitros") || {}).value || "").trim(), v = t ? parse(t) : 0, mt = parse((($("#pgMeta") || {}).value || "").trim());
+  if (t && !(v >= 0)) { el.innerHTML = "Valor inválido. Ex.: 38.500 ou 38.500,50"; return; }
+  const P = postoGeral({...atual.d, [dia]:v}, mt > 0 ? mt : (atual.meta ? atual.meta.valor : META_POSTO_PADRAO));
+  el.innerHTML = `<b>👀 Simulação (ainda não salvo)</b><br>Total do mês: <b>${fmtCampo("lt", P.total)}</b>${P.st ? ` · <b style="color:${P.st.cor}">${P.st.pct}%</b>` : ""}${P.meta ? barra(P.st ? {...P.st, texto:""} : null, 8) : ""}<div style="margin-top:4px">${textoPosto(P)}</div>`;
+}
+const rkPostoEv = ev => { const t = ev.target; if (!t || !t.dataset || !t.dataset.rkPosto) return; if (t.id === "pgDia" && ev.type === "change") { const P = postoGeral(), k = +t.value, i = $("#pgLitros"); if (i) i.value = num(P.d[k]) > 0 ? fmt2(num(P.d[k])) : ""; } simPosto(); };
+document.addEventListener("input", rkPostoEv); document.addEventListener("change", rkPostoEv);
+async function salvarPosto(b){
+  const dia = +(($("#pgDia") || {}).value || 0), t = (($("#pgLitros") || {}).value || "").trim(), v = t ? parse(t) : 0;
+  if (!dia || !(v >= 0)) return toast("Valor inválido. Ex.: 38.500 ou 38.500,50");
+  b.disabled = true; const ok = await safe(() => gravaVendas({postoDia:{[dia]:v}}), v ? `Dia ${dia}: ${fmtCampo("lt", v)} salvo.` : `Dia ${dia} zerado.`); b.disabled = false;
+  if (ok) shPosto(Math.min(diasDoMes(), dia + 1));
+}
+async function salvarMetaPosto(b){
+  const v = parse((($("#pgMeta") || {}).value || "").trim());
+  if (!(v > 0)) return toast("Meta inválida. Ex.: 1.150.000");
+  b.disabled = true; const ok = await safe(() => gravaVendas({metaGeral:{postoLitros:v}}), "Meta do posto salva: " + fmtCampo("lt", v)); b.disabled = false;
+  if (ok) shPosto(+(($("#pgDia") || {}).value || 0) || undefined);
+}
+
+/* PDF com uma página por imagem, no tamanho da imagem (sem distorcer) */
+async function rkPdf(imgs){
+  const enc = new TextEncoder(), partes = [], offs = []; let tam = 0;
+  const add = x => { const b = typeof x === "string" ? enc.encode(x) : x; partes.push(b); tam += b.length; };
+  const obj = (id, corpo) => { offs[id] = tam; add(id + " 0 obj\n"); corpo(); add("\nendobj\n"); };
+  const jpgs = []; for (const x of imgs) jpgs.push(new Uint8Array(await x.blob.arrayBuffer()));
+  const n = imgs.length, total = 3 + 3 * n;
+  add("%PDF-1.4\n%âãÏÓ\n");
+  obj(1, () => add("<< /Type /Catalog /Pages 2 0 R >>"));
+  obj(2, () => add("<< /Type /Pages /Kids [" + imgs.map((_, i) => (3 + 3 * i) + " 0 R").join(" ") + "] /Count " + n + " >>"));
+  imgs.forEach((x, i) => {
+    const PW = 595.28, PH = Math.round(PW * x.h / x.w * 100) / 100, pg = 3 + 3 * i, ct = 4 + 3 * i, im = 5 + 3 * i, cmd = "q " + PW + " 0 0 " + PH + " 0 0 cm /Im" + i + " Do Q";
+    obj(pg, () => add("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + PW + " " + PH + "] /Resources << /XObject << /Im" + i + " " + im + " 0 R >> >> /Contents " + ct + " 0 R >>"));
+    obj(ct, () => add("<< /Length " + cmd.length + " >>\nstream\n" + cmd + "\nendstream"));
+    obj(im, () => { add("<< /Type /XObject /Subtype /Image /Width " + x.w + " /Height " + x.h + " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " + jpgs[i].length + " >>\nstream\n"); add(jpgs[i]); add("\nendstream"); });
+  });
+  const xref = tam;
+  add("xref\n0 " + total + "\n0000000000 65535 f \n");
+  for (let id = 1; id < total; id++) add(String(offs[id]).padStart(10, "0") + " 00000 n \n");
+  add("trailer\n<< /Size " + total + " /Root 1 0 R >>\nstartxref\n" + xref + "\n%%EOF\n");
+  return new Blob(partes, {type:"application/pdf"});
+}
+async function baixarPdf(b, lote){
+  b.disabled = true;
+  try {
+    let imgs, nome;
+    if (lote) { const L = S.rkLote; if (!L || !L.itens.length) return; imgs = L.itens.map(x => ({blob:x.blob, w:x.w, h:x.h})); nome = ("Cartões de metas - " + (S.nomeFilial || "posto") + " - " + S.rkMes).replace(/[^\wÀ-ÿ -]+/g, " ").trim() + ".pdf"; }
+    else { const p = S.rkPrev; if (!p || !p.cv) return; imgs = [{blob:await p.blob, w:p.cv.width, h:p.cv.height}]; nome = p.nome.replace(/\.jpg$/, ".pdf"); }
+    await compartilharOuBaixar(await rkPdf(imgs), nome);
+  } catch (e) { console.error("PDF:", e); toast("Não foi possível gerar o PDF."); }
+  finally { b.disabled = false; }
+}
 function cardMetaGeral(){
   const g = resumoGeral(), temLitros = rkAbas().some(c => c.lt), logo = rkLogo();
   return `<div class="card"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">${logo ? `<img src="${logo}" alt="Aldo" style="height:30px;width:auto;flex:none">` : ""}<h2 style="margin:0;font-size:15px">Metas do posto · ${nomeMes(S.rkMes)}</h2></div>
-    <div style="display:grid;grid-template-columns:${temLitros ? "1fr 1fr" : "1fr"};gap:8px">
+    <div style="display:grid;grid-template-columns:${temLitros ? "1fr 1fr" : "1fr"};gap:8px">${tilePosto()}
       ${temLitros ? tileMeta("⛽", "Litros (frentistas)", "lt", g.litros, g.m.litros) : ""}
       ${tileMeta("🛒", "Venda da Loja (todos)", "mc", g.total, g.m.loja)}${rkAbas().some(c => c.k === "opcaixa") ? tileMeta("🧾", "Operações Caixa (qtd.)", "q", g.op, g.m.operacoes) : ""}</div>
     <details style="margin-top:8px"><summary class="meta" style="cursor:pointer;font-weight:700">📊 Venda MC por setor</summary>${graficoSetores(g.partes.filter(p => p.c.k !== "opcaixa"))}</details></div>`;
@@ -870,6 +978,11 @@ async function rkAcao(a, b){
   if (a === "baixarRkImagem") { cartaoRanking(b); return true; }
   if (a === "rkCartaoTodos") { cartaoTodos(b); return true; }
   if (a === "rkLote") { shLote(); return true; }
+  if (a === "rkPrevPdf") { baixarPdf(b, false); return true; }
+  if (a === "rkLotePdf") { baixarPdf(b, true); return true; }
+  if (a === "rkPosto") { shPosto(); return true; }
+  if (a === "rkPostoSalvar") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarPosto(b); return true; }
+  if (a === "rkPostoMeta") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarMetaPosto(b); return true; }
   if (a === "rkLoteGerar") { gerarLote(b); return true; }
   if (a === "rkLoteEnviar") { enviarLote(b); return true; }
   if (a === "rkLoteVoltar") { previaLote(); return true; }
