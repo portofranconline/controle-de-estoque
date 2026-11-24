@@ -288,7 +288,7 @@ function vRkCfg(){
     }
     const ORD = Object.keys(grupoOpcoes()), grupoP = p => { const i = ORD.indexOf(grupoKey(p)); return i < 0 ? ORD.length : i; };
     const gente = [...Object.entries(P).filter(([, p]) => p && !p.x), ...puxados].sort((a, b) => grupoP(a[1]) - grupoP(b[1]) || a[1].nome.localeCompare(b[1].nome, "pt-BR"));
-    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 14</small></h2>
+    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 15</small></h2>
       <input class="inp" id="eqBusca" placeholder="🔎 Buscar nome (equipe e relatórios)" autocomplete="off" style="margin:6px 0">
       <div id="eqNada" hidden style="font-size:12px;color:var(--muted);margin-bottom:6px">Nome não encontrado. Use <b>➕ Adicionar membro</b> no fim da tela.</div>
       <p style="margin:4px 0 10px;font-size:12px;color:var(--muted);line-height:1.4">Toque no grupo de cada pessoa: salva na hora, e a venda e a meta passam a ser desse grupo. Os nomes vêm dos relatórios do ranking.</p>
@@ -549,10 +549,15 @@ function blocoMeta(g, x, y, w, titulo, campo, real, meta, st){
 }
 const tituloCampo = (campo, k) => campo === "lt" ? "⛽ LITRAGEM" : campo === "mc" ? "🛒 VENDA DA LOJA (MC)" : k === "opcaixa" ? "🧾 OPERAÇÕES (QTD.)" : "📦 QUANTIDADE";
 function cortaCentro(g, t, w){ return cortaTexto(g, t, w); }
+const nomeCartao = (r, c) => ("Meta - " + r.nome + (c ? " - " + c.t : "") + " - " + S.rkMes).replace(/[^\wÀ-ÿ -]+/g, " ").replace(/ +/g, " ").trim() + ".jpg";
 async function cartaoPessoa(id, b){
   const c = rkCat(), lista = listaRk(c), r = lista.find(x => x.id === id); if (!r) return;
   if (b) b.disabled = true;
-  try {
+  try { const cv = await desenhaPessoa(r, c, lista); mostrarPrevia(cv, nomeCartao(r), () => cartaoPessoa(id)); }
+  catch (e) { console.error("Cartão:", e); toast("Não foi possível gerar o cartão."); }
+  if (b) b.disabled = false;
+}
+async function desenhaPessoa(r, c, lista){
     const meta = metaDaPessoa(r, c.k, lista), st = situacao(r, meta), mm = meta && meta.campo !== "mc" ? metaDaPessoa(r, c.k, lista, "mc") : null, mst = situacao(r, mm);
     const pos = lista.indexOf(r) + 1, dq = rkDestaqueAtivo() && destaqueDe(c.k), destaque = dq && dq.r.pid === r.pid;
     const blocos = [...(meta ? [[tituloCampo(meta.campo, c.k), meta.campo, meta, st]] : []), ...(mm ? [[tituloCampo("mc"), "mc", mm, mst]] : [])];
@@ -579,9 +584,52 @@ async function cartaoPessoa(id, b){
     const bw = (W - 140 - (stats.length - 1) * 16) / stats.length;
     stats.forEach(([t, v], i) => { const x = 70 + i * (bw + 16); painelVidro(g, x, y, bw, 120, 20); g.textAlign = "center"; g.fillStyle = "rgba(255,255,255,.7)"; g.font = "22px Arial"; g.fillText(t, x + bw / 2, y + 44); g.fillStyle = "#ffffff"; g.font = "bold 30px Arial"; g.fillText(cortaCentro(g, v, bw - 20), x + bw / 2, y + 88); });
     g.textAlign = "left";
-    mostrarPrevia(cv, ("Meta - " + r.nome + " - " + S.rkMes).replace(/[^\wÀ-ÿ -]+/g, " ").trim() + ".jpg", () => cartaoPessoa(id));
-  } catch (e) { console.error("Cartão:", e); toast("Não foi possível gerar o cartão."); }
-  if (b) b.disabled = false;
+    return cv;
+}
+/* cartões individuais de todos de uma vez, escolhendo as categorias */
+function shLote(){
+  const cats = rkAbasVer().filter(c => c.k !== "todos").map(c => ({c, n:listaRk(c).length})).filter(x => x.n), atual = rkCat().k;
+  if (!cats.length) return toast("Sem lançamentos neste mês.");
+  openSheet(`<h2>📦 Cartões de todos</h2><p style="font-size:12px;color:var(--muted);margin:0 0 8px">Marque as categorias. Será gerado um cartão (JPG) para cada pessoa, com prévia antes de enviar.</p>
+    ${cats.map(({c, n}) => `<label style="display:flex;gap:10px;align-items:center;padding:9px 4px;border-bottom:1px solid var(--line, rgba(255,255,255,.08));cursor:pointer"><input type="checkbox" data-lote="${c.k}"${atual === "todos" || atual === c.k ? " checked" : ""} style="width:20px;height:20px"> <span>${c.ico} ${esc(c.t)}</span> <span style="margin-left:auto;color:var(--muted);font-size:12px">${n} ${n === 1 ? "pessoa" : "pessoas"}</span></label>`).join("")}
+    <button class="btn pri" style="margin-top:10px" data-act="rkLoteGerar">👀 Gerar prévia dos cartões</button>
+    <button class="btn" data-act="fechar">Fechar</button>`);
+}
+async function gerarLote(b, ks){
+  ks = ks || [...document.querySelectorAll("[data-lote]:checked")].map(i => i.dataset.lote);
+  if (!ks.length) return toast("Marque pelo menos uma categoria.");
+  if (b) { b.disabled = true; b.textContent = "Gerando cartões…"; }
+  const itens = [];
+  try {
+    for (const k of ks) {
+      const c = rkAbasVer().find(x => x.k === k); if (!c) continue;
+      const lista = listaRk(c);
+      for (const r of lista) {
+        const cv = await desenhaPessoa(r, c, lista), mini = document.createElement("canvas"); mini.width = 270; mini.height = Math.round(cv.height * 270 / cv.width);
+        mini.getContext("2d").drawImage(cv, 0, 0, mini.width, mini.height);
+        itens.push({nome:nomeCartao(r, c), blob:await jpegDe(cv), mini:mini.toDataURL("image/jpeg", 0.7), cat:c.t});
+      }
+    }
+  } catch (e) { console.error("Lote:", e); toast("Não foi possível gerar os cartões."); if (b) { b.disabled = false; b.textContent = "👀 Gerar prévia dos cartões"; } return; }
+  S.rkLote = {itens, ks}; S.rkPrev = {refazer:() => gerarLote(null, ks)};
+  previaLote();
+}
+function previaLote(){
+  const L = S.rkLote; if (!L) return; const tem = !!rkFundoDados();
+  openSheet(`<h2>👀 Prévia · ${L.itens.length} cartões</h2><p style="font-size:12px;color:var(--muted);margin:0 0 8px">Confira antes de enviar. Toque num cartão para ver maior.</p>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-height:50vh;overflow:auto">${L.itens.map((x, i) => `<button data-act="rkLoteVer" data-i="${i}" style="padding:0;border:0;background:none;cursor:pointer" aria-label="${esc(x.nome)}"><img src="${x.mini}" alt="" style="width:100%;display:block;border-radius:8px"></button>`).join("")}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px"><label class="btn" style="margin:0;cursor:pointer;text-align:center">🖼️ Trocar fundo<input type="file" accept="image/*" data-rk-fundo="1" hidden></label><button class="btn" style="margin:0" data-act="rkFundoPadrao"${tem ? "" : " disabled"}>↩️ Fundo padrão</button></div>
+    <button class="btn pri" style="margin-top:8px" data-act="rkLoteEnviar">📤 Enviar / baixar todos (${L.itens.length})</button>
+    <button class="btn" data-act="fechar">Fechar</button>`);
+}
+async function enviarLote(b){
+  const L = S.rkLote; if (!L || !L.itens.length) return;
+  const files = L.itens.map(x => new File([x.blob], x.nome, {type:"image/jpeg"}));
+  b.disabled = true;
+  try { if (navigator.canShare && navigator.canShare({files})) { await navigator.share({files, title:"Cartões de metas"}); b.disabled = false; return; } }
+  catch (e) { if (e && e.name === "AbortError") { b.disabled = false; return; } console.error("Compartilhar lote:", e); }
+  for (const f of files) { baixarArquivo(f, f.name); await new Promise(ok => setTimeout(ok, 450)); }
+  toast(files.length + " imagens baixadas."); b.disabled = false;
 }
 /* metas de todos, separadas por categoria, numa imagem só */
 const CORES_CAT = {lubrificador:"#38bdf8", madrugada:"#818cf8"};
@@ -746,6 +794,7 @@ function shBaixarRanking(){
   const c = rkCat();
   openSheet(`<h2>Baixar e enviar</h2><p class="meta" style="margin:0 0 10px">${c.t} · ${nomeMes(S.rkMes)}</p>
     <button class="btn pri" data-act="baixarRkImagem">🎉 Imagem do ranking (JPG)</button>
+    <button class="btn" data-act="rkLote">📦 Cartões individuais de todos (por categoria)</button>
     <button class="btn" data-act="rkCartaoTodos">👥 Metas de todos por categoria (JPG)</button>
     <button class="btn" data-act="cartaoGeral">🏪 Cartão das metas gerais (JPG)</button>
     <p style="font-size:11px;color:var(--muted);margin:2px 0 6px">Cada imagem abre uma prévia antes de enviar; lá dá para trocar o fundo por uma foto da galeria.</p>
@@ -820,6 +869,11 @@ async function rkAcao(a, b){
   if (a === "salvarMetasSetores") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarMetasSetores(b); return true; }
   if (a === "baixarRkImagem") { cartaoRanking(b); return true; }
   if (a === "rkCartaoTodos") { cartaoTodos(b); return true; }
+  if (a === "rkLote") { shLote(); return true; }
+  if (a === "rkLoteGerar") { gerarLote(b); return true; }
+  if (a === "rkLoteEnviar") { enviarLote(b); return true; }
+  if (a === "rkLoteVoltar") { previaLote(); return true; }
+  if (a === "rkLoteVer") { const x = (S.rkLote || {itens:[]}).itens[+b.dataset.i]; if (x) openSheet(`<h2>${esc(x.cat)}</h2><img src="${URL.createObjectURL(x.blob)}" alt="" style="width:100%;border-radius:12px"><button class="btn pri" style="margin-top:8px" data-act="rkLoteVoltar">↩️ Voltar para todos</button>`); return true; }
   if (a === "rkPrevEnviar") { const p = S.rkPrev; if (!p) return true; b.disabled = true; try { await compartilharOuBaixar(await p.blob, p.nome); } catch (e) { toast("Não foi possível enviar a imagem."); } b.disabled = false; return true; }
   if (a === "rkFundoPadrao") { RK_FUNDO.mem = null; try { localStorage.removeItem("rkFundo"); } catch (e) {} toast("Fundo padrão."); if (S.rkPrev && S.rkPrev.refazer) S.rkPrev.refazer(); return true; }
   const soAdmin = ["rkMadrugada", "novaFuncao", "removerFuncao"];
