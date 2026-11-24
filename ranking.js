@@ -127,11 +127,16 @@ function metaDaPessoa(r, tab, lista, campoF){
 function metaMcDaPessoa(r, tab, lista){ const m = metaDaPessoa(r, tab, lista); return m && m.campo === "mc" ? m : metaDaPessoa(r, tab, lista, "mc"); }
 /* logo do Aldo: vira um endereço curto uma vez só (a imagem base64 é grande) */
 let RK_LOGO_URL = null, RK_LOGO_IMG = null;
+function rkLogoAntigo(){
+  try { const d = (typeof LOGO !== "undefined" && LOGO.POSTO) || ""; if (d) { const [cab, b64] = d.split(","), bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return URL.createObjectURL(new Blob([u], {type:(cab.match(/data:([^;]+)/) || [])[1] || "image/png"})); } } catch (e) {}
+  return "";
+}
+/* logo nova (PNG sem fundo, arquivo logo-aldo.png); se o arquivo faltar, usa a logo antiga */
 function rkLogo(){
   if (RK_LOGO_URL !== null) return RK_LOGO_URL;
-  RK_LOGO_URL = "";
-  try { const d = (typeof LOGO !== "undefined" && LOGO.POSTO) || ""; if (d) { const [cab, b64] = d.split(","), bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); RK_LOGO_URL = URL.createObjectURL(new Blob([u], {type:(cab.match(/data:([^;]+)/) || [])[1] || "image/png"})); } } catch (e) { RK_LOGO_URL = ""; }
-  if (RK_LOGO_URL) { RK_LOGO_IMG = new Image(); RK_LOGO_IMG.src = RK_LOGO_URL; }
+  RK_LOGO_URL = "logo-aldo.png?v=1"; RK_LOGO_IMG = new Image();
+  RK_LOGO_IMG.onerror = () => { RK_LOGO_IMG.onerror = null; RK_LOGO_URL = rkLogoAntigo(); if (RK_LOGO_URL) RK_LOGO_IMG.src = RK_LOGO_URL; };
+  RK_LOGO_IMG.src = RK_LOGO_URL;
   return RK_LOGO_URL;
 }
 function situacao(v, meta){
@@ -283,7 +288,7 @@ function vRkCfg(){
     }
     const ORD = Object.keys(grupoOpcoes()), grupoP = p => { const i = ORD.indexOf(grupoKey(p)); return i < 0 ? ORD.length : i; };
     const gente = [...Object.entries(P).filter(([, p]) => p && !p.x), ...puxados].sort((a, b) => grupoP(a[1]) - grupoP(b[1]) || a[1].nome.localeCompare(b[1].nome, "pt-BR"));
-    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 13</small></h2>
+    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 14</small></h2>
       <input class="inp" id="eqBusca" placeholder="🔎 Buscar nome (equipe e relatórios)" autocomplete="off" style="margin:6px 0">
       <div id="eqNada" hidden style="font-size:12px;color:var(--muted);margin-bottom:6px">Nome não encontrado. Use <b>➕ Adicionar membro</b> no fim da tela.</div>
       <p style="margin:4px 0 10px;font-size:12px;color:var(--muted);line-height:1.4">Toque no grupo de cada pessoa: salva na hora, e a venda e a meta passam a ser desse grupo. Os nomes vêm dos relatórios do ranking.</p>
@@ -504,7 +509,7 @@ async function fundoCartao(g, W, H){
   const marca = await rkMarcaImg();
   if (marca) { const mw = W * 0.85, mh = mw * marca.height / marca.width; g.save(); g.globalAlpha = 0.07; g.drawImage(marca, W - mw * 0.92, H - mh - 70, mw, mh); g.restore(); }
   if (logo) {
-    const h = 92, w = h * ar; g.save(); g.shadowColor = "rgba(0,0,0,.5)"; g.shadowBlur = 30; g.shadowOffsetY = 8; g.drawImage(logo, (W - w) / 2, 36, w, h); g.restore();
+    const h = 104, w = h * ar; g.save(); g.shadowColor = "rgba(0,0,0,.5)"; g.shadowBlur = 30; g.shadowOffsetY = 8; g.drawImage(logo, (W - w) / 2, 36, w, h); g.restore();
   }
   g.textAlign = "center";
   try { g.letterSpacing = "5px"; } catch (e) {}
