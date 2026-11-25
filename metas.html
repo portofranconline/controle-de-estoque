@@ -143,6 +143,7 @@ img{-webkit-user-drag:none;pointer-events:none}
     if (j.erro === "expirado") return msg("Este link expirou", "Peça um novo ao administrador.");
     if (j.erro === "compartilhado") return bloqueado(j);
     if (j.erro) return msg("Link inválido ou cancelado", "Peça um novo ao administrador.");
+    if (j.precisa_nome && (j.nomes || []).length === 1) return chamar(j.nomes[0]).then(trata).catch(() => msg("Não foi possível carregar", "Confira a internet e abra o link de novo."));
     if (j.precisa_nome) return escolher(j);
     mostrar(j);
   }

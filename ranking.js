@@ -322,7 +322,7 @@ function vRkCfg(){
     }
     const ORD = Object.keys(grupoOpcoes()), grupoP = p => { const i = ORD.indexOf(grupoKey(p)); return i < 0 ? ORD.length : i; };
     const gente = [...Object.entries(P).filter(([, p]) => p && !p.x), ...puxados].sort((a, b) => grupoP(a[1]) - grupoP(b[1]) || a[1].nome.localeCompare(b[1].nome, "pt-BR"));
-    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 29</small></h2>
+    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 30</small></h2>
       <input class="inp" id="eqBusca" placeholder="🔎 Buscar nome (equipe e relatórios)" autocomplete="off" style="margin:6px 0">
       <div id="eqNada" hidden style="font-size:12px;color:var(--muted);margin-bottom:6px">Nome não encontrado. Use <b>➕ Adicionar membro</b> no fim da tela.</div>
       <p style="margin:4px 0 10px;font-size:12px;color:var(--muted);line-height:1.4">Toque no grupo de cada pessoa: salva na hora, e a venda e a meta passam a ser desse grupo. Os nomes vêm dos relatórios do ranking.</p>
@@ -916,6 +916,8 @@ function shLink(sel){
   openSheet(`<h2>🔗 Link das metas para o grupo</h2><p style="font-size:12px;color:var(--muted);margin:0 0 8px;line-height:1.45">Um link por categoria, para mandar no grupo. Na 1ª vez, cada colaborador escolhe o próprio nome e o link fica preso ao aparelho dele. Se alguém repassar, quem abrir fica bloqueado e você recebe um alerta em 🚨 Alertas. ${nomeMes(S.rkMes)}.</p>
     <label class="f" for="lkCat">Categoria<select id="lkCat" class="inp" data-rk-link="1">${cats.map(x => `<option value="${x.k}"${x.k === c.k ? " selected" : ""}>${x.ico} ${esc(x.t)}</option>`).join("")}</select></label>
     <p class="meta" style="font-size:12px;margin:4px 0 0">${n} ${n === 1 ? "pessoa" : "pessoas"} nesta categoria: o link aceita até ${n} ${n === 1 ? "aparelho" : "aparelhos"}.</p>
+    <label class="f" for="lkPara">Enviar para<select id="lkPara" class="inp"><option value="">👥 Grupo (todos da categoria)</option>${listaRk(c).map(r => r.nome).filter((x, i, a) => x && a.indexOf(x) === i).sort((a, b) => a.localeCompare(b, "pt-BR")).map(x => `<option>${esc(x)}</option>`).join("")}</select></label>
+    <p class="meta" style="font-size:11px;margin:2px 0 0">Individual: o link mostra só a meta dessa pessoa e trava no 1º celular que abrir. Se ela encaminhar, quem abrir fica bloqueado e você recebe o alerta.</p>
     <label class="f" for="lkVal">Validade<select id="lkVal" class="inp">${RK_VALIDADES.map(([v, t]) => `<option value="${v}"${v === (sel.val || "24") ? " selected" : ""}>${t}</option>`).join("")}</select></label>
     <button class="btn pri" style="margin-top:8px" data-act="rkLinkGerar">🔗 Gerar link</button>
     <button class="btn" data-act="rkLinks">📋 Links gerados</button>
@@ -935,17 +937,18 @@ function dadosLink(c){
 }
 async function gerarLink(b){
   const cats = rkAbasVer(), c = cats.find(x => x.k === ($("#lkCat") || {}).value) || rkCat(), val = ($("#lkVal") || {}).value || "24";
-  const dados = dadosLink(c); if (!dados.linhas.length) return toast("Nenhum lançamento em " + c.t + " neste mês.");
+  const dados = dadosLink(c), para = ($("#lkPara") || {}).value || ""; if (para) dados.linhas = dados.linhas.filter(x => x.n === para);
+  if (!dados.linhas.length) return toast("Nenhum lançamento em " + c.t + " neste mês.");
   b.disabled = true;
   try {
-    const titulo = c.t + " · " + nomeMes(S.rkMes), tk = await api("POST", "/rest/v1/rpc/criar_link_metas", {p_titulo:titulo, p_dados:dados, p_horas:rkLinkHoras(val)});
+    const titulo = c.t + (para ? " · " + para : "") + " · " + nomeMes(S.rkMes), tk = await api("POST", "/rest/v1/rpc/criar_link_metas", {p_titulo:titulo, p_dados:dados, p_horas:rkLinkHoras(val)});
     if (!tk || String(tk).length < 40) throw new Error("O banco não devolveu o código. Rode o arquivo 05-links-metas.sql no Supabase.");
     const url = new URL("metas.html", location.href).href.split("?")[0] + "#k=" + tk, vt = (RK_VALIDADES.find(x => x[0] === val) || [, ""])[1];
     S.rkLinkAtual = {url, titulo};
     openSheet(`<h2>✅ Link criado</h2><p style="font-size:13px;margin:0 0 6px"><b>${esc(titulo)}</b> · validade: ${esc(vt)} · até ${dados.linhas.length} ${dados.linhas.length === 1 ? "aparelho" : "aparelhos"}.</p>
       <div style="font-family:var(--mono);font-size:11px;word-break:break-all;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:8px">${esc(url)}</div>
-      <p style="font-size:11px;color:var(--muted);margin:6px 0">Mande no grupo da equipe. Cada um escolhe o próprio nome na 1ª vez que abrir.</p>
-      <button class="btn pri" data-act="rkLinkEnviar">📤 Enviar no grupo</button><button class="btn" data-act="rkLinkCopiar">📋 Copiar link</button>
+      <p style="font-size:11px;color:var(--muted);margin:6px 0">${para ? `Mande só para ${esc(para)}. Abre direto no celular dele e trava nele.` : "Mande no grupo da equipe. Cada um escolhe o próprio nome na 1ª vez que abrir."}</p>
+      <button class="btn pri" data-act="rkLinkEnviar">📤 ${para ? "Enviar para " + esc(para.split(" ")[0]) : "Enviar no grupo"}</button><button class="btn" data-act="rkLinkCopiar">📋 Copiar link</button>
       <button class="btn" data-act="rkLink">↩️ Gerar outro</button><button class="btn" data-act="fechar">Fechar</button>`);
   } catch (e) { console.error("Link:", e); toast(/criar_link_metas|404|function/i.test(e.message) ? "Falta rodar o arquivo 05-links-metas.sql no Supabase." : (e.message || "Não foi possível gerar o link.")); }
   b.disabled = false;
