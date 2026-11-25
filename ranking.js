@@ -203,7 +203,7 @@ function vRanking(){
           <div class="meta" style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:4px"><span>Qtd. <b>${fmt2(r.q)}</b></span><span>Venda MC <b>R$ ${moeda(r.mc)}</b></span>${c.lt ? `<span>Litragem <b>${fmt2(r.lt)} L</b></span>` : ""}${r.meta ? `<span>Meta <b>${fmtCampo(r.meta.campo, r.meta.valor)}</b></span>` : ""}</div>
           ${barra(r.st)}${r.mcSt ? `<div class="meta" style="font-size:11px;margin-top:4px">🛒 Venda da loja · meta R$ ${moeda(r.mcMeta.valor)}</div>${barra(r.mcSt, 6)}` : ""}${opDaPessoa(r)}</div>${acoes(r)}</div>`).join("");
   const total = k => lista.reduce((a, r) => a + r[k], 0);
-  return `<div class="top"><button class="back" data-act="${S.admin ? "admin" : "home"}">Voltar</button><h1>Acompanhamento metas</h1></div><div class="pad">
+  return `<div class="top"><button class="back" data-act="${S.admin ? "admin" : "home"}">Voltar</button><h1>ACOMPANHAMENTO METAS</h1></div><div class="pad">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
       <select id="rkTipoSel" class="inp" aria-label="Setor">${rkAbasVer().map(x => `<option value="${x.k}" ${x.k === c.k ? "selected" : ""}>${x.ico} ${x.t}</option>`).join("")}</select>
       <select id="rkMes" class="inp" aria-label="Mês">${meses.map(m => `<option value="${m}" ${m === S.rkMes ? "selected" : ""}>${MESES[Number(m.slice(5)) - 1].slice(0, 3)}/${m.slice(0, 4)}</option>`).join("")}</select></div>
@@ -227,7 +227,10 @@ function categoriasMeta(){
   const ambos = f => ["diesel", "gasolina"].filter(ativa).map(t => [t, f]);
   if (ambos("x").length) { fr.push({t:"Frentista Lubrificador", alvos:ambos("lubrificador")}, {t:"Frentista Madrugada", alvos:ambos("frentista_madrugada")}); extras("frentista").forEach(([k, f]) => fr.push({t:f.nome, alvos:ambos(k)})); }
   if (ativa("loja")) { lj.push({t:"Vendedor da Loja", alvos:[["loja", "loja"]]}); extras("loja").forEach(([k, f]) => lj.push({t:f.nome, alvos:[["loja", k]]})); }
-  for (const [tab, nome] of [["caixa", "Caixa"], ["opcaixa", "Operações Caixa"]]) if (ativa(tab)) { cx.push({t:nome, alvos:[[tab, "caixa"]]}, {t:nome + " Madrugada", alvos:[[tab, "caixa_madrugada"]]}); extras("caixa").forEach(([k, f]) => cx.push({t:f.nome + (tab === "opcaixa" ? " (Operações)" : ""), alvos:[[tab, k]]})); }
+  /* caixa: venda da loja (aba caixa) e operações (aba opcaixa) na mesma categoria, como litragem + venda dos frentistas */
+  const cxFun = [["caixa", "Caixa"], ["caixa_madrugada", "Caixa Madrugada"], ...extras("caixa").map(([k, f]) => [k, f.nome])];
+  if (ativa("caixa")) cxFun.forEach(([f, t]) => cx.push({t, alvos:[["caixa", f]], op:ativa("opcaixa") ? [["opcaixa", f]] : null}));
+  else if (ativa("opcaixa")) cxFun.forEach(([f, t]) => cx.push({t:t + " (Operações)", alvos:[["opcaixa", f]]}));
   return [["⛽ Meta Frentistas", fr, true], ["🛒 Meta Loja", lj, false], ["💵 Meta Caixa", cx, false]].filter(([, l]) => l.length);
 }
 function telaMetasSetores(mg){
@@ -235,12 +238,13 @@ function telaMetasSetores(mg){
   const v = (x, f) => x ? esc(f(x.valor)) : "", salvar = `<button class="btn pri" style="margin-top:12px" data-act="salvarMetasSetores">💾 Salvar metas</button>`;
   const campoGeral = (id, rot, x, f, ex) => `<label class="f" style="margin-top:8px">${rot}<input class="inp" data-mgs="${id}" inputmode="decimal" placeholder="${ex}" value="${v(x, f)}"></label>`;
   const grupos = categoriasMeta().map(([tit, cats, comLt]) => `<div class="card"><h2>${tit} · ${nomeMes(S.rkMes)}</h2>
-      <p style="margin:4px 0 6px;font-size:12px;color:var(--muted);line-height:1.4"><b>Venda da loja (MC):</b> quanto a categoria vende em R$ (entra no total da loja).${comLt ? " <b>Litragem:</b> litros da categoria." : ""} <b>Por pessoa</b> vale para cada um; <b>Total da equipe</b> é dividido entre as pessoas. Em branco: sem meta.</p>
+      <p style="margin:4px 0 6px;font-size:12px;color:var(--muted);line-height:1.4"><b>Venda da loja (MC):</b> quanto a categoria vende em R$ (entra no total da loja).${comLt ? " <b>Litragem:</b> litros da categoria." : ""}${cats.some(x => x.op) ? " <b>Operações:</b> quantidade de operações do caixa." : ""} <b>Por pessoa</b> vale para cada um; <b>Total da equipe</b> é dividido entre as pessoas. Em branco: sem meta.</p>
       ${cats.map(cat => { const n = S.rkCats.push(cat) - 1, [t0, f0] = cat.alvos[0], g = metaGrupo(t0, f0) || {};
         return `<div style="border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-top:8px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc(cat.t)}</b>
           <select class="inp" data-cat-modo="${n}" style="padding:6px;width:auto"><option value="pessoa" ${g.modo !== "equipe" ? "selected" : ""}>Por pessoa</option><option value="equipe" ${g.modo === "equipe" ? "selected" : ""}>Total da equipe</option></select></div>
-        <div style="display:grid;grid-template-columns:${comLt ? "1fr 1fr" : "1fr"};gap:6px;margin-top:6px">
+        <div style="display:grid;grid-template-columns:${comLt || cat.op ? "1fr 1fr" : "1fr"};gap:6px;margin-top:6px">
           ${t0 === "opcaixa" ? `<label class="meta" style="font-size:11px">🧾 Meta de operações (quantidade)<input class="inp" data-cat-mc="${n}" data-cat-q="1" inputmode="decimal" placeholder="Ex.: 1.500" value="${g.q ? esc(fmtCampo("q", g.q)) : ""}" style="padding:8px"></label>` : `<label class="meta" style="font-size:11px">🛒 Venda da loja (R$)<input class="inp" data-cat-mc="${n}" inputmode="decimal" placeholder="Ex.: 9.000,00" value="${g.mc ? esc(moeda(g.mc)) : ""}" style="padding:8px"></label>`}
+          ${cat.op ? (() => { const go = metaGrupo(cat.op[0][0], cat.op[0][1]) || {}; return `<label class="meta" style="font-size:11px">🧾 Operações (qtd.)<input class="inp" data-cat-op="${n}" inputmode="decimal" placeholder="Ex.: 1.500" value="${go.q ? esc(fmtCampo("q", go.q)) : ""}" style="padding:8px"></label>`; })() : ""}
           ${comLt ? `<label class="meta" style="font-size:11px">⛽ Litragem (L)<input class="inp" data-cat-lt="${n}" inputmode="decimal" placeholder="Ex.: 90.000" value="${g.lt ? esc(fmt2(g.lt)) : ""}" style="padding:8px"></label>` : ""}</div></div>`; }).join("")}
       ${salvar}</div>`).join("");
   return `<div class="card"><h2>🏪 Metas gerais do posto · ${nomeMes(S.rkMes)}</h2>
@@ -259,6 +263,8 @@ async function salvarMetasSetores(b){
     const modo = (document.querySelector(`[data-cat-modo="${n}"]`) || {}).value || "pessoa";
     const ehQ = el.dataset.catQ === "1";
     for (const [tab, f] of cat.alvos) (metas2[tab] = metas2[tab] || {})[f] = ehQ ? {modo, q:mc, mc:0, lt:0, campo:"", valor:0} : {modo, mc, lt, campo:"", valor:0};
+    if (cat.op) { const q = ler(document.querySelector(`[data-cat-op="${n}"]`)); if (!(q >= 0)) return toast("Valor inválido nas operações de " + cat.t + ". Ex.: 1.500");
+      for (const [tab, f] of cat.op) (metas2[tab] = metas2[tab] || {})[f] = {modo, q, mc:0, lt:0, campo:"", valor:0}; }
   }
   b.disabled = true; await safe(() => gravaVendas({metaGeral:geral, metas2}), "Metas salvas."); b.disabled = false;
 }
@@ -288,7 +294,7 @@ function vRkCfg(){
     }
     const ORD = Object.keys(grupoOpcoes()), grupoP = p => { const i = ORD.indexOf(grupoKey(p)); return i < 0 ? ORD.length : i; };
     const gente = [...Object.entries(P).filter(([, p]) => p && !p.x), ...puxados].sort((a, b) => grupoP(a[1]) - grupoP(b[1]) || a[1].nome.localeCompare(b[1].nome, "pt-BR"));
-    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 21</small></h2>
+    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 22</small></h2>
       <input class="inp" id="eqBusca" placeholder="🔎 Buscar nome (equipe e relatórios)" autocomplete="off" style="margin:6px 0">
       <div id="eqNada" hidden style="font-size:12px;color:var(--muted);margin-bottom:6px">Nome não encontrado. Use <b>➕ Adicionar membro</b> no fim da tela.</div>
       <p style="margin:4px 0 10px;font-size:12px;color:var(--muted);line-height:1.4">Toque no grupo de cada pessoa: salva na hora, e a venda e a meta passam a ser desse grupo. Os nomes vêm dos relatórios do ranking.</p>

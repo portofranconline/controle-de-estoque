@@ -151,7 +151,7 @@ h2::before{content:"";width:4px;height:18px;border-radius:2px;background:var(--c
 <div id="toast" role="status"></div>
 <input type="file" id="pick" accept="image/*" hidden>
 <script src="imagens.js"></script>
-<script src="ranking.js?v=21"></script>
+<script src="ranking.js?v=22"></script>
 <script>
 /* IMG e LOGO ficam em imagens.js */
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -516,7 +516,7 @@ function vHome(){
   return `<div class="top"><div><h1>${esc(tituloPosto())}</h1><p class="sub">${esc(locaisAtivos().map(nomeLocal).join(" & "))}</p></div></div><div class="pad">
     <p class="lead">Controle de estoque da unidade</p>
     <div class="big">${b}</div>
-    <div class="row" style="justify-content:center"><button class="adm" data-act="admin">⚙️ Administração</button><button class="adm" data-act="minhaSenha">🔑 Trocar minha senha</button><button class="adm" data-act="meuEmail">📧 Meu e-mail</button><button class="adm" data-act="sair">🚪 Sair</button></div>${rankingAtivo() ? `<div style="display:flex;justify-content:center;margin-top:26px"><button class="btn brand" style="max-width:340px" data-act="ranking">🏆 Acompanhamento metas</button></div>` : ""}</div>`;
+    <div class="row" style="justify-content:center"><button class="adm" data-act="admin">⚙️ Administração</button><button class="adm" data-act="minhaSenha">🔑 Trocar minha senha</button><button class="adm" data-act="meuEmail">📧 Meu e-mail</button><button class="adm" data-act="sair">🚪 Sair</button></div>${rankingAtivo() ? `<div style="display:flex;justify-content:center;margin-top:26px"><button class="btn brand" style="max-width:340px" data-act="ranking">🏆 ACOMPANHAMENTO METAS</button></div>` : ""}</div>`;
 }
 function vLocal(){
   const c = cfg(), cats = ["Todos", ...(Array.isArray(c.categorias) ? c.categorias : [])];
@@ -1343,7 +1343,7 @@ async function copiarSql(){
   S.state = "login"; render();
 })();
 </script>
-<script>if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js?v=21').catch(()=>{});</script>
+<script>if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js?v=22').catch(()=>{});</script>
 <style>
 .cantinho{position:fixed;right:10px;bottom:10px;z-index:15;display:flex;gap:6px}
 .cantinho button{width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--muted);font:700 12px var(--body);line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;opacity:.85;box-shadow:0 2px 6px rgba(0,0,0,.18)}

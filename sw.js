@@ -3,8 +3,8 @@
 // Limpeza automática: apaga caches antigos do app e mantém só as cópias mais recentes dos arquivos.
 // Não mexe em nenhum dado salvo no aparelho (filial, login, tema) nem no banco.
 const PREFIX = 'estoque:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v21';
-const CORE = ['./', './index.html', './imagens.js', './ranking.js?v=21', './manifest.json', './supabase-config.js'];
+const CACHE = PREFIX + 'v22';
+const CORE = ['./', './index.html', './imagens.js', './ranking.js?v=22', './manifest.json', './supabase-config.js'];
 const MAX_ARQUIVOS = 40;
 self.addEventListener('install', e => e.waitUntil(
   caches.open(CACHE).then(c => Promise.all(CORE.map(u => c.add(u).catch(() => null)))).then(() => self.skipWaiting())
