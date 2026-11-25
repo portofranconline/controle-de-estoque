@@ -50,7 +50,22 @@ const rkCat = () => RK.find(c => c.k === S.rkTipo) || RKV.find(c => c.k === S.rk
 /* abas do seletor: as ligadas + Lubrificador e Madrugada (se Diesel ou Gasolina estiver ligada) */
 const rkAbasVer = () => { const a = rkAbas(), out = [RKT]; for (const c of a) { out.push(c); if (c.k === "gasolina" || (c.k === "diesel" && !a.some(x => x.k === "gasolina"))) out.push(...RKV); } return out; };
 /* lista que aparece na tela: Diesel/Gasolina sem Lubrificador e Madrugada (eles têm aba própria) */
-const listaRk = c => FRENT[c.k] ? frentistasDe(c.k) : vendasDoMes(c.k);
+/* v27: pódio — 1º, 2º e 3º só para quem bateu TODAS as metas (litragem e venda MC), na ordem de quem bateu primeiro.
+   A hora em que bateu as duas fica em vendas/AAAA-MM.batidas2[categoria][pessoa]. Os outros vêm depois, sem medalha. */
+function bateuTudo(r, k, lista){
+  const m = metaDaPessoa(r, k, lista), st = situacao(r, m); if (!st || !st.bateu) return false;
+  if (m.campo !== "mc") { const mm = metaDaPessoa(r, k, lista, "mc"); if (mm) { const s2 = situacao(r, mm); if (!s2 || !s2.bateu) return false; } }
+  return true;
+}
+const rkChaveP = r => r.pid || r.nome;
+function ordenaPodio(k, l){
+  const bt = ((((S.vendas || {})[S.rkMes] || {}).batidas2 || {})[k]) || {}, sim = [], nao = [];
+  for (const r of l) (bateuTudo(r, k, l) ? sim : nao).push(r);
+  sim.sort((a, b) => (num(bt[rkChaveP(a)]) || 9e15) - (num(bt[rkChaveP(b)]) || 9e15));
+  return [...sim.map(r => ({...r, podio:true})), ...nao];
+}
+const medalha = (r, i) => r && r.podio && i < 3 ? ["🥇", "🥈", "🥉"][i] : "";
+const listaRk = c => ordenaPodio(c.k, FRENT[c.k] ? frentistasDe(c.k) : vendasDoMes(c.k));
 const rankingAtivo = () => !!(S.cfg && S.cfg.ranking);
 const rkFotosAtivas = () => !!(S.cfg && S.cfg.rkFotos);
 const moeda = v => num(v).toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -158,8 +173,9 @@ function situacao(v, meta){
 }
 function barra(st, alto){
   if (!st) return "";
-  const passou = st.pct > 100 ? Math.min(100, st.pct - 100) : 0;
-  return `<div style="position:relative;height:${alto || 8}px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:5px"><i style="position:absolute;left:0;top:0;bottom:0;width:${Math.min(100, st.pct)}%;background:${st.cor}"></i>${passou ? `<i style="position:absolute;right:0;top:0;bottom:0;width:${passou}%;background:repeating-linear-gradient(45deg,var(--good),var(--good) 4px,color-mix(in srgb,var(--good) 55%,#fff) 4px,color-mix(in srgb,var(--good) 55%,#fff) 8px)"></i>` : ""}</div><small style="color:${st.cor};font-weight:700">${st.texto}</small>`;
+  /* v27: barra com brilho neon (amarelo e verde mais vivos) */
+  const passou = st.pct > 100 ? Math.min(100, st.pct - 100) : 0, h = alto || 8, w = Math.min(100, st.pct), neon = `0 0 4px ${st.cor},0 0 10px ${st.cor},0 0 18px color-mix(in srgb,${st.cor} 55%,transparent)`;
+  return `<div style="position:relative;height:${h}px;background:color-mix(in srgb,var(--line) 85%,transparent);border-radius:99px;margin-top:6px"><i style="position:absolute;left:0;top:0;bottom:0;width:${w}%;border-radius:99px;background:linear-gradient(90deg,color-mix(in srgb,${st.cor} 70%,#fff 0%),${st.cor});box-shadow:${w > 0 ? neon : "none"}"></i>${passou ? `<i style="position:absolute;right:0;top:0;bottom:0;width:${passou}%;border-radius:99px;background:repeating-linear-gradient(45deg,var(--good),var(--good) 4px,color-mix(in srgb,var(--good) 45%,transparent) 4px,color-mix(in srgb,var(--good) 45%,transparent) 8px);box-shadow:0 0 8px var(--good)"></i>` : ""}</div>`;
 }
 function fotoPessoa(r, tam){
   if (!rkFotosAtivas()) return "";
@@ -207,10 +223,10 @@ function vRanking(){
   let corpo = "";
   if (!linhas.length) corpo = `<p class="meta">Nenhum lançamento em ${c.t} · ${nomeMes(S.rkMes)}.${S.admin ? (junta ? " Lance pelas abas Diesel ou Gasolina, com a pessoa cadastrada nesta função (⚙️ → Equipe)." : " Use 📷 (importar da imagem) ou ➕ (lançar à mão).") : ""}</p>`;
   else if (lay === "tabela") corpo = `<div style="overflow-x:auto"><table class="tbl"><tr><th>#</th><th>${c.p}</th><th class="n">Qtd.</th><th class="n">Venda MC</th>${c.lt ? `<th class="n">Litragem</th>` : ""}<th class="n">Meta</th><th class="n">%</th></tr>
-      ${linhas.map((r, i) => `<tr><td>${med[i] || i + 1}</td><td><b data-act="rkPessoa" data-id="${r.id}" style="cursor:pointer">${esc(r.nome)}</b><br><span class="meta" style="font-size:11px">${nomeFuncao(r.funcao)}</span></td><td class="n">${fmt2(r.q)}</td><td class="n">${moeda(r.mc)}</td>${c.lt ? `<td class="n">${fmt2(r.lt)}</td>` : ""}<td class="n">${r.meta ? fmtCampo(r.meta.campo, r.meta.valor) : "—"}</td><td class="n" style="color:${r.st ? r.st.cor : "inherit"};font-weight:700">${r.st ? r.st.pct + "%" : "—"}</td></tr>`).join("")}</table></div>`;
+      ${linhas.map((r, i) => `<tr><td>${medalha(r, i) || i + 1}</td><td><b data-act="rkPessoa" data-id="${r.id}" style="cursor:pointer">${esc(r.nome)}</b><br><span class="meta" style="font-size:11px">${nomeFuncao(r.funcao)}</span></td><td class="n">${fmt2(r.q)}</td><td class="n">${moeda(r.mc)}</td>${c.lt ? `<td class="n">${fmt2(r.lt)}</td>` : ""}<td class="n">${r.meta ? fmtCampo(r.meta.campo, r.meta.valor) : "—"}</td><td class="n" style="color:${r.st ? r.st.cor : "inherit"};font-weight:700">${r.st ? r.st.pct + "%" : "—"}</td></tr>`).join("")}</table></div>`;
   else if (lay === "grafico") corpo = linhas.map((r, i) => `<div style="padding:8px 0;border-bottom:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div style="display:flex;gap:6px;align-items:center;min-width:0"><span style="font-weight:800;min-width:24px">${med[i] || i + 1}</span>${nomeL(r)}</div><b style="white-space:nowrap">${r.meta ? fmtCampo(r.meta.campo, r[r.meta.campo]) : fmtCampo(S.rkOrdem, r[S.rkOrdem])}</b></div>${r.st ? barra(r.st, 14) : `<small class="meta">sem meta</small>`}</div>`).join("");
   else corpo = linhas.map((r, i) => `<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)">
-        <div style="font-size:20px;min-width:28px;text-align:center;font-weight:800">${med[i] || i + 1}</div>
+        <div style="font-size:20px;min-width:28px;text-align:center;font-weight:800">${medalha(r, i) || i + 1}</div>
         <div style="flex:1;min-width:0">${nomeL(r)}
           <div class="meta" style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:4px"><span>Qtd. <b>${fmt2(r.q)}</b></span><span>Venda MC <b>R$ ${moeda(r.mc)}</b></span>${c.lt ? `<span>Litragem <b>${fmt2(r.lt)} L</b></span>` : ""}${r.meta ? `<span>Meta <b>${fmtCampo(r.meta.campo, r.meta.valor)}</b></span>` : ""}</div>
           ${barra(r.st)}${r.mcSt ? `<div class="meta" style="font-size:11px;margin-top:4px">🛒 Venda da loja · meta R$ ${moeda(r.mcMeta.valor)}</div>${barra(r.mcSt, 6)}` : ""}${opDaPessoa(r)}</div>${acoes(r)}</div>`).join("");
@@ -307,7 +323,7 @@ function vRkCfg(){
     }
     const ORD = Object.keys(grupoOpcoes()), grupoP = p => { const i = ORD.indexOf(grupoKey(p)); return i < 0 ? ORD.length : i; };
     const gente = [...Object.entries(P).filter(([, p]) => p && !p.x), ...puxados].sort((a, b) => grupoP(a[1]) - grupoP(b[1]) || a[1].nome.localeCompare(b[1].nome, "pt-BR"));
-    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 26</small></h2>
+    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 27</small></h2>
       <input class="inp" id="eqBusca" placeholder="🔎 Buscar nome (equipe e relatórios)" autocomplete="off" style="margin:6px 0">
       <div id="eqNada" hidden style="font-size:12px;color:var(--muted);margin-bottom:6px">Nome não encontrado. Use <b>➕ Adicionar membro</b> no fim da tela.</div>
       <p style="margin:4px 0 10px;font-size:12px;color:var(--muted);line-height:1.4">Toque no grupo de cada pessoa: salva na hora, e a venda e a meta passam a ser desse grupo. Os nomes vêm dos relatórios do ranking.</p>
@@ -427,8 +443,13 @@ async function marcarBatidas(){
     const lista = vendasDoMes(c.k);
     for (const r of lista) { if (!r.pid || (ja[c.k] || {})[r.pid]) continue; const st = situacao(r, metaDaPessoa(r, c.k, lista)); if (st && st.bateu) { (patch[c.k] = patch[c.k] || {})[r.pid] = agora; n++; } }
   }
+  /* v27: hora em que cada um bateu as DUAS metas (pódio) */
+  const ja2 = d.batidas2 || {}, patch2 = {}; let n2 = 0;
+  try { for (const c of rkAbasVer()) { if (c.k === "todos") continue; const l = FRENT[c.k] ? frentistasDe(c.k) : vendasDoMes(c.k);
+    for (const r of l) { const ch = rkChaveP(r); if ((ja2[c.k] || {})[ch] || !bateuTudo(r, c.k, l)) continue; (patch2[c.k] = patch2[c.k] || {})[ch] = agora; n2++; } } } catch (e) { console.error("Pódio:", e); }
+  if (n2) { try { await S.db.doc("vendas/" + S.rkMes).update({batidas2:patch2}); S.vendas = {...S.vendas, [S.rkMes]:deepMerge((S.vendas || {})[S.rkMes] || {}, {batidas2:patch2})}; S.vendasK = JSON.stringify(S.vendas); } catch (e) { console.error("Pódio:", e); } }
   if (!n) return;
-  try { await S.db.doc("vendas/" + S.rkMes).update({batidas:patch}); S.vendas = {...S.vendas, [S.rkMes]:deepMerge(d, {batidas:patch})}; S.vendasK = JSON.stringify(S.vendas); } catch (e) { console.error("Destaque:", e); }
+  try { await S.db.doc("vendas/" + S.rkMes).update({batidas:patch}); S.vendas = {...S.vendas, [S.rkMes]:deepMerge((S.vendas || {})[S.rkMes] || d, {batidas:patch})}; S.vendasK = JSON.stringify(S.vendas); } catch (e) { console.error("Destaque:", e); }
 }
 function destaqueDe(tab){
   const b = (((S.vendas || {})[S.rkMes] || {}).batidas || {})[tab] || {}, lista = vendasDoMes(tab);
@@ -591,8 +612,8 @@ async function desenhaPessoa(r, c, lista){
     if (foto) { const l = Math.min(foto.width, foto.height); g.drawImage(foto, (foto.width - l) / 2, (foto.height - l) / 2, l, l, cx - R, cy - R, R * 2, R * 2); }
     else { const ag = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R); ag.addColorStop(0, "#1e4b85"); ag.addColorStop(1, "#0c2547"); g.fillStyle = ag; g.fillRect(cx - R, cy - R, R * 2, R * 2); g.fillStyle = "#e6eef9"; g.font = "bold 120px Arial"; g.textAlign = "center"; g.fillText(r.nome.split(" ").filter(Boolean).map(x => x[0]).slice(0, 2).join("").toUpperCase(), cx, cy + 42); }
     g.restore();
-    g.save(); g.shadowColor = "rgba(0,0,0,.4)"; g.shadowBlur = 16; rr(g, cx - 72, cy + R + 4, 144, 62, 31); g.fillStyle = pos <= 3 ? ["#fbbf24", "#e2e8f0", "#d97706"][pos - 1] : "#22d3ee"; g.fill(); g.restore();
-    g.fillStyle = "#071226"; g.font = "bold 38px Arial"; g.textAlign = "center"; g.fillText((pos <= 3 ? ["🥇", "🥈", "🥉"][pos - 1] + " " : "") + pos + "º", cx, cy + R + 49);
+    g.save(); g.shadowColor = "rgba(0,0,0,.4)"; g.shadowBlur = 16; rr(g, cx - 72, cy + R + 4, 144, 62, 31); g.fillStyle = r.podio && pos <= 3 ? ["#fbbf24", "#e2e8f0", "#d97706"][pos - 1] : "#22d3ee"; g.fill(); g.restore();
+    g.fillStyle = "#071226"; g.font = "bold 38px Arial"; g.textAlign = "center"; g.fillText((r.podio && pos <= 3 ? ["🥇", "🥈", "🥉"][pos - 1] + " " : "") + pos + "º", cx, cy + R + 49);
     g.save(); g.shadowColor = "rgba(0,0,0,.5)"; g.shadowBlur = 12; g.fillStyle = "#ffffff"; g.font = "bold 56px Arial"; g.fillText(cortaCentro(g, r.nome, W - 120), cx, 712); g.restore();
     g.fillStyle = "rgba(255,255,255,.78)"; g.font = "28px Arial"; g.fillText(cortaCentro(g, nomeFuncao(r.funcao) + " · " + c.t + " · " + pos + "º de " + lista.length, W - 120), cx, 758);
     if (destaque) { rr(g, cx - 300, 784, 600, 60, 30); g.fillStyle = "#fbbf24"; g.fill(); g.fillStyle = "#071226"; g.font = "bold 28px Arial"; g.fillText("⭐ DESTAQUE: 1º A BATER A META", cx, 824); }
@@ -684,7 +705,7 @@ async function cartaoTodos(b){
       linhas.forEach((r, i) => {
         if (i) { g.fillStyle = "rgba(255,255,255,.08)"; g.fillRect(100, ly - 6, W - 200, 1); }
         const campo = r.m ? r.m.campo : (c.k === "opcaixa" ? "q" : c.lt ? "lt" : "mc");
-        g.textAlign = "center"; g.font = i < 3 ? "36px Arial" : "bold 28px Arial"; g.fillStyle = cor; g.fillText(i < 3 ? ["🥇", "🥈", "🥉"][i] : (i + 1) + "º", 128, ly + 46);
+        g.textAlign = "center"; g.font = medalha(r, i) ? "36px Arial" : "bold 28px Arial"; g.fillStyle = cor; g.fillText(medalha(r, i) || (i + 1) + "º", 128, ly + 46);
         g.textAlign = "left"; g.fillStyle = "#ffffff"; g.font = "bold 26px Arial"; g.fillText(cortaTexto(g, r.nome, 400), 172, ly + 36);
         g.fillStyle = "rgba(255,255,255,.65)"; g.font = "20px Arial"; g.fillText(cortaTexto(g, fmtCampo(campo, r[campo]) + (r.m ? " · meta " + fmtCampo(campo, r.m.valor) : ""), 400), 172, ly + 66);
         const bx = 600, bw = W - 100 - bx - 90;
@@ -868,7 +889,7 @@ function cardMetaGeral(){
   return `<div class="card"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">${logo ? `<img src="${logo}" alt="Aldo" style="height:30px;width:auto;flex:none">` : ""}<h2 style="margin:0;font-size:15px;flex:1">Metas do posto · ${nomeMes(S.rkMes)}</h2>${S.admin ? `<button class="btn sm" style="width:auto;margin:0;padding:3px 8px;font-size:11px" data-act="rkLancarDia">✏️ Lançar por dia</button>` : ""}</div>
     <div style="display:grid;grid-template-columns:${temLitros ? "1fr 1fr" : "1fr"};gap:8px">
       ${temLitros ? tileMeta("⛽", "Litros (frentistas)", "lt", g.litros, g.m.litros) : ""}
-      ${tileMeta("🛒", "Venda da Loja (todos)", "mc", g.total, g.m.loja)}${rkAbas().some(c => c.k === "opcaixa") ? tileMeta("🧾", "Operações Caixa (qtd.)", "q", g.op, g.m.operacoes) : ""}</div>
+      ${tileMeta("🛒", "Venda da Loja (todos)", "mc", g.total, g.m.loja)}</div>
     <details style="margin-top:8px"><summary class="meta" style="cursor:pointer;font-weight:700">📊 Venda MC por setor</summary>${graficoSetores(g.partes.filter(p => p.c.k !== "opcaixa"))}</details></div>`;
 }
 async function salvarMetaGeral(b){
@@ -914,8 +935,8 @@ function dadosLink(c){
   const linhas = l.map(r => {
     const m = metaDaPessoa(r, c.k, l), mm = m && m.campo !== "mc" ? metaDaPessoa(r, c.k, l, "mc") : null;
     let op = null; if (r.pid && (r.tab === "caixa" || c.k === "caixa") && opL.length) { const o = opL.find(x => x.pid === r.pid), base = o || {...r, q:0, tab:"opcaixa"}, mo = metaDaPessoa(base, "opcaixa", opL); if (o || mo) op = {c:"q", r:num(base.q), v:mo ? mo.valor : 0}; }
-    return {n:r.nome, f:nomeFuncao(r.funcao) || "", q:num(r.q), mc:num(r.mc), lt:num(r.lt), p:P(r, m ? m.campo : campoP, m), s:P(r, "mc", mm), o:op, ord:num(r[m ? m.campo : campoP])};
-  }).sort((a, b) => b.ord - a.ord).map(({ord, ...x}) => x);
+    return {pd:r.podio ? 1 : 0, n:r.nome, f:nomeFuncao(r.funcao) || "", q:num(r.q), mc:num(r.mc), lt:num(r.lt), p:P(r, m ? m.campo : campoP, m), s:P(r, "mc", mm), o:op, ord:num(r[m ? m.campo : campoP])};
+  }).map(({ord, ...x}) => x);
   return {filial:S.nomeFilial || "", cat:c.t, ico:c.ico, mes:nomeMes(S.rkMes), lt:!!c.lt, gerado:new Date().toISOString(), linhas};
 }
 async function gerarLink(b){
@@ -1054,6 +1075,7 @@ async function rkAcao(a, b){
   if (a === "aplicarListaEquipe") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } aplicarListaEquipe(b); return true; }
   if (a === "rkGrupo") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarGrupo(b); return true; }
   if (a === "addMembro") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } addMembro(b); return true; }
+  if (a === "rkNovoFrentista") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } novoFrentista(b); return true; }
   if (a === "rkSetor") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarSetor(b); return true; }
   if (a === "salvarProdutos") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarProdutos(b); return true; }
   if (a === "rkBaixar") { shBaixarRanking(); return true; }
@@ -1272,7 +1294,21 @@ function telaSetores(){
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">${Object.keys(FRENT).map(k => `<span class="meta" style="font-size:11px">${curto[k]}: <b>${cont(k)}</b></span>`).join("")}</div>
     ${gente.length ? gente.map(p => `<div style="border-top:1px solid var(--line);padding:8px 0"><b style="font-size:14px">${esc(p.nome)}</b>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:6px">${Object.keys(FRENT).map(k => `<button class="chip ${setoresAtuais(p).includes(k) ? "on" : ""}" style="justify-content:center;padding:7px 2px;font-size:12px;margin:0" data-act="rkSetor" data-id="${p.id}" data-s="${k}">${setoresAtuais(p).includes(k) ? "✓ " : ""}${curto[k]}</button>`).join("")}</div></div>`).join("")
-      : `<p class="meta">Nenhum frentista ainda. Importe o relatório de Diesel ou Gasolina primeiro.</p>`}</div>`;
+      : `<p class="meta">Nenhum frentista ainda. Importe o relatório de Diesel ou Gasolina primeiro.</p>`}</div>
+  <div class="card"><h2>➕ Cadastrar frentista novato</h2><p style="font-size:12px;color:var(--muted);margin:4px 0 8px;line-height:1.4">Para quem entrou agora e ainda não aparece no relatório. Use o nome igual ao do relatório, para as próximas importações juntarem certo.</p>
+    <label class="f" for="novoFr">Nome completo<input id="novoFr" class="inp" maxlength="80" placeholder="Ex.: João da Silva Santos" autocomplete="off"></label>
+    <div class="meta" style="font-size:11px;font-weight:700;margin-top:6px">SETORES (marque um ou mais)</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:4px">${Object.keys(FRENT).map(k => `<label class="chip" style="justify-content:center;padding:7px 2px;font-size:12px;margin:0;cursor:pointer"><input type="checkbox" data-novo-setor="${k}" style="margin:0 3px 0 0"${k === "diesel" ? " checked" : ""}>${curto[k]}</label>`).join("")}</div>
+    <button class="btn pri" style="margin-top:10px" data-act="rkNovoFrentista">➕ Cadastrar</button></div>`;
+}
+async function novoFrentista(b){
+  const nome = (($("#novoFr") || {}).value || "").trim().replace(/\s+/g, " "), setores = [...document.querySelectorAll("[data-novo-setor]")].filter(x => x.checked).map(x => x.dataset.novoSetor);
+  if (nome.length < 3) { const i = $("#novoFr"); if (i) i.focus(); return toast("Digite o nome completo."); }
+  if (acharPessoa(nome)) return toast("Esse nome já está na equipe.");
+  const ss = Object.keys(FRENT).filter(k => setores.includes(k)), id = "p" + Date.now().toString(36);
+  const patch = {rkPessoas:{[id]:{nome, funcao:ss[0] ? FUNC_SETOR[ss[0]] : "frentista", setor:ss[0] || "", setores:ss, chaves:[semAcento(nome).replace(/\s+/g, " ").trim()], x:0}}};
+  b.disabled = true;
+  if (await safe(() => S.db.doc("cfg/main").update(patch), nome + " cadastrado.")) { S.cfg = deepMerge(S.cfg || {}, patch); render(); } else b.disabled = false;
 }
 async function salvarSetor(b){
   const id = b.dataset.id, k = b.dataset.s, f = b.dataset.f;
