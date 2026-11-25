@@ -322,7 +322,7 @@ function vRkCfg(){
     }
     const ORD = Object.keys(grupoOpcoes()), grupoP = p => { const i = ORD.indexOf(grupoKey(p)); return i < 0 ? ORD.length : i; };
     const gente = [...Object.entries(P).filter(([, p]) => p && !p.x), ...puxados].sort((a, b) => grupoP(a[1]) - grupoP(b[1]) || a[1].nome.localeCompare(b[1].nome, "pt-BR"));
-    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 30</small></h2>
+    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 31</small></h2>
       <input class="inp" id="eqBusca" placeholder="🔎 Buscar nome (equipe e relatórios)" autocomplete="off" style="margin:6px 0">
       <div id="eqNada" hidden style="font-size:12px;color:var(--muted);margin-bottom:6px">Nome não encontrado. Use <b>➕ Adicionar membro</b> no fim da tela.</div>
       <p style="margin:4px 0 10px;font-size:12px;color:var(--muted);line-height:1.4">Toque no grupo de cada pessoa: salva na hora, e a venda e a meta passam a ser desse grupo. Os nomes vêm dos relatórios do ranking.</p>
@@ -730,9 +730,10 @@ async function cartaoGeral(b){
   if (b) b.disabled = true;
   try {
     const gr = resumoGeral(), linhas = [];
-    if (rkAbas().some(c => c.lt)) linhas.push(["⛽ LITROS · FRENTISTAS", "lt", gr.litros, gr.m.litros]);
-    linhas.push(["🛒 VENDA DA LOJA · TODOS OS SETORES", "mc", gr.total, gr.m.loja]);
-    if (rkAbas().some(c => c.k === "opcaixa")) linhas.push(["🧾 OPERAÇÕES CAIXA (QUANTIDADE)", "q", gr.op, gr.m.operacoes]);
+    const gs = S.rkGeralSel || null, quer = k => !gs || gs.has(k); gr.partes = gr.partes.filter(p => p.c.k !== "opcaixa" && quer("s:" + p.c.k));
+    if (rkAbas().some(c => c.lt) && quer("lt")) linhas.push(["⛽ LITROS · FRENTISTAS", "lt", gr.litros, gr.m.litros]);
+    if (quer("mc")) linhas.push(["🛒 VENDA DA LOJA · TODOS OS SETORES", "mc", gr.total, gr.m.loja]);
+    if (rkAbas().some(c => c.k === "opcaixa") && quer("q")) linhas.push(["🧾 OPERAÇÕES CAIXA (QUANTIDADE)", "q", gr.op, gr.m.operacoes]);
     const W = 1080, H = 750 + linhas.length * 230 + gr.partes.length * 70, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
     await fundoCartao(g, W, H); g.translate(0, 110); g.textAlign = "center";
     g.fillStyle = "#ffffff"; g.font = "bold 58px Arial"; g.fillText("METAS GERAIS DO POSTO", W / 2, 220);
@@ -749,7 +750,7 @@ async function cartaoGeral(b){
       g.fillText(meta ? "Meta " + fmtCampo(campo, meta.valor) + (st.bateu ? " · META BATIDA! +" + fmtCampo(campo, real - meta.valor) : " · faltam " + fmtCampo(campo, meta.valor - real)) + (pj ? " · projeção " + pj.pct + "%" : "") : "Sem meta definida", 105, y + 180);
       y += 230;
     }
-    g.textAlign = "left"; g.fillStyle = "#ffffff"; g.font = "bold 30px Arial"; g.fillText("📊 Venda MC por setor", 105, y + 10); y += 40;
+    if (gr.partes.length) { g.textAlign = "left"; g.fillStyle = "#ffffff"; g.font = "bold 30px Arial"; g.fillText("📊 Venda MC por setor", 105, y + 10); y += 40; }
     const max = Math.max(1, ...gr.partes.map(p => p.mc));
     for (const p of gr.partes) {
       g.textAlign = "left"; g.fillStyle = "#ffffff"; g.font = "24px Arial"; g.fillText(p.c.t, 105, y + 26);
@@ -898,9 +899,9 @@ function shBaixarRanking(){
     <button class="btn pri" data-act="baixarRkImagem">🎉 Imagem do ranking (JPG)</button>
     <button class="btn" data-act="rkLote">📦 Cartões individuais de todos (por categoria)</button>
     <button class="btn" data-act="rkCartaoTodos">👥 Metas de todos por categoria (JPG)</button>
-    <button class="btn" data-act="cartaoGeral">🏪 Cartão das metas gerais (JPG)</button>
+    <button class="btn" data-act="rkGeralSel">🏪 Cartão das metas gerais (JPG)</button>
     <p style="font-size:11px;color:var(--muted);margin:2px 0 6px">Cada imagem abre uma prévia antes de enviar; lá dá para trocar o fundo por uma foto da galeria.</p>
-    <button class="btn" data-act="baixarRanking" data-t="pdf">📄 Tabela em PDF</button>
+    <button class="btn" data-act="rkPdfSel">📄 Tabela em PDF (igual ao link)</button>
     ${S.admin ? `<button class="btn" data-act="rkLink">🔗 Link das metas para o grupo</button>` : ""}
     <button class="btn" data-act="fechar">Fechar</button>`);
 }
@@ -912,7 +913,7 @@ const rkDH = t => t ? new Date(t).toLocaleString("pt-BR", {day:"2-digit", month:
 function rkLinkHoras(v){ if (v !== "fim") return Number(v) || 24; const h = new Date(), fim = new Date(h.getFullYear(), h.getMonth() + 1, 1); return Math.max(1, Math.ceil((fim - h) / 3600000)); }
 function shLink(sel){
   if (!S.admin) return toast("Área restrita ao administrador.");
-  sel = sel || {}; const cats = rkAbasVer(), ck = sel.cat || S.rkTipo || cats[0].k, c = cats.find(x => x.k === ck) || cats[0], n = listaRk(c).length;
+  sel = sel || {}; const cats = catsUnif(), ck = sel.cat || S.rkTipo || cats[0].k, c = cats.find(x => x.k === ck) || cats[0], n = listaRk(c).length;
   openSheet(`<h2>🔗 Link das metas para o grupo</h2><p style="font-size:12px;color:var(--muted);margin:0 0 8px;line-height:1.45">Um link por categoria, para mandar no grupo. Na 1ª vez, cada colaborador escolhe o próprio nome e o link fica preso ao aparelho dele. Se alguém repassar, quem abrir fica bloqueado e você recebe um alerta em 🚨 Alertas. ${nomeMes(S.rkMes)}.</p>
     <label class="f" for="lkCat">Categoria<select id="lkCat" class="inp" data-rk-link="1">${cats.map(x => `<option value="${x.k}"${x.k === c.k ? " selected" : ""}>${x.ico} ${esc(x.t)}</option>`).join("")}</select></label>
     <p class="meta" style="font-size:12px;margin:4px 0 0">${n} ${n === 1 ? "pessoa" : "pessoas"} nesta categoria: o link aceita até ${n} ${n === 1 ? "aparelho" : "aparelhos"}.</p>
@@ -930,13 +931,13 @@ function dadosLink(c){
   const opL = rkAbas().some(x => x.k === "opcaixa") ? vendasDoMes("opcaixa") : [];
   const linhas = l.map(r => {
     const m = metaDaPessoa(r, c.k, l), mm = m && m.campo !== "mc" ? metaDaPessoa(r, c.k, l, "mc") : null;
-    let op = null; if (r.pid && (r.tab === "caixa" || c.k === "caixa") && opL.length) { const o = opL.find(x => x.pid === r.pid), base = o || {...r, q:0, tab:"opcaixa"}, mo = metaDaPessoa(base, "opcaixa", opL); if (o || mo) op = {c:"q", r:num(base.q), v:mo ? mo.valor : 0}; }
+    let op = null; if ((r.tab === "caixa" || c.k === "caixa") && opL.length) { const o = opL.find(x => (r.pid && x.pid === r.pid) || semAcento(x.nome || "") === semAcento(r.nome || "")), base = o || {...r, q:0, tab:"opcaixa"}, mo = metaDaPessoa(base, "opcaixa", opL); if (o || mo) op = {c:"q", r:num(base.q), v:mo ? mo.valor : 0}; }
     return {n:r.nome, f:nomeFuncao(r.funcao) || "", q:num(r.q), mc:num(r.mc), lt:num(r.lt), p:P(r, m ? m.campo : campoP, m), s:P(r, "mc", mm), o:op, ord:num(r[m ? m.campo : campoP])};
   }).sort((a, b) => b.ord - a.ord).map(({ord, ...x}) => x);
   return {filial:S.nomeFilial || "", cat:c.t, ico:c.ico, mes:nomeMes(S.rkMes), lt:!!c.lt, gerado:new Date().toISOString(), linhas};
 }
 async function gerarLink(b){
-  const cats = rkAbasVer(), c = cats.find(x => x.k === ($("#lkCat") || {}).value) || rkCat(), val = ($("#lkVal") || {}).value || "24";
+  const cats = catsUnif(), c = cats.find(x => x.k === ($("#lkCat") || {}).value) || rkCat(), val = ($("#lkVal") || {}).value || "24";
   const dados = dadosLink(c), para = ($("#lkPara") || {}).value || ""; if (para) dados.linhas = dados.linhas.filter(x => x.n === para);
   if (!dados.linhas.length) return toast("Nenhum lançamento em " + c.t + " neste mês.");
   b.disabled = true;
@@ -1003,7 +1004,7 @@ async function carregaAlertas(){
 function telaAlertas(){
   setTimeout(carregaAlertas, 0);
   return `<div class="card"><h2>🚨 Alertas de compartilhamento</h2><p style="font-size:12px;color:var(--muted);margin:4px 0 6px;line-height:1.45">Aparece aqui quando alguém abre o link do grupo usando o nome de outra pessoa (link repassado) ou quando o link passa do número de pessoas. Essa pessoa fica bloqueada e não vê números.<br><b>🔓 Liberar nome</b>: solta o nome do aparelho onde ele está preso, para o colaborador certo entrar no aparelho dele (use se alguém de fora pegou o nome antes).</p>
-    <div id="rkAlertasBox"><p class="meta">Carregando…</p></div></div>`;
+    <div id="rkAlertasBox"><p class="meta">Carregando…</p></div><button class="btn" style="margin-top:10px;color:var(--crit)" data-act="rkAlertasApagar">🗑️ Apagar todos os alertas</button></div>`;
 }
 async function liberarNome(b){
   if (!confirm("Liberar o nome " + b.dataset.n + "? O aparelho onde ele está perde o acesso e o próximo a escolher esse nome entra.")) return;
@@ -1076,6 +1077,11 @@ async function rkAcao(a, b){
   if (a === "rkSetor") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarSetor(b); return true; }
   if (a === "salvarProdutos") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarProdutos(b); return true; }
   if (a === "rkBaixar") { shBaixarRanking(); return true; }
+  if (a === "rkPdfSel") { shPdfMetas(); return true; }
+  if (a === "rkPdfGerar") { gerarPdfMetas(b); return true; }
+  if (a === "rkGeralSel") { shCartaoGeral(); return true; }
+  if (a === "rkGeralGerar") { const v = [...document.querySelectorAll("[data-gsel]:checked")].map(x => x.value); if (!v.length) { toast("Marque pelo menos um item."); return true; } S.rkGeralSel = new Set(v); closeSheet(); cartaoGeral(b); return true; }
+  if (a === "rkAlertasApagar") { apagarAlertas(b); return true; }
   if (a === "salvarMetasSetores") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarMetasSetores(b); return true; }
   if (a === "baixarRkImagem") { cartaoRanking(b); return true; }
   if (a === "rkCartaoTodos") { cartaoTodos(b); return true; }
@@ -1524,3 +1530,72 @@ document.addEventListener("change", ev => { const t = ev.target; if (!t || !t.da
     S.view = "ranking"; render(); importarImagem(f);
   }, 600);
 })();
+
+/* ---------- v31: categorias sem "Operações Caixa" separada (caixa já leva venda + operações) ---------- */
+function catsUnif(){ const l = rkAbasVer().filter(c => c.k !== "todos"); return l.some(c => c.k === "caixa") ? l.filter(c => c.k !== "opcaixa") : l; }
+const marcaTodos = `<div style="display:flex;gap:6px;margin:6px 0"><button class="btn sm" style="margin:0" onclick="document.querySelectorAll('.rkSel input').forEach(x=>x.checked=true)">Marcar todos</button><button class="btn sm" style="margin:0" onclick="document.querySelectorAll('.rkSel input').forEach(x=>x.checked=false)">Desmarcar</button></div>`;
+const caixaSel = (attr, v, t, on) => `<label style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line);font-size:14px;cursor:pointer"><input type="checkbox" ${attr} value="${v}"${on ? " checked" : ""} style="width:20px;height:20px;margin:0">${t}</label>`;
+function shPdfMetas(){
+  const cats = catsUnif(), at = S.rkTipo;
+  openSheet(`<h2>📄 Tabela em PDF</h2><p class="meta" style="margin:0 0 6px">Mesmo formato do link. Escolha as categorias (uma página por categoria). ${nomeMes(S.rkMes)}.</p>${marcaTodos}
+    <div class="rkSel">${cats.map(c => caixaSel("data-psel", c.k, c.ico + " " + esc(c.t) + (c.k === "caixa" && rkAbas().some(x => x.k === "opcaixa") ? " <small class='meta'>(venda + operações)</small>" : ""), !at || at === "todos" || at === c.k)).join("")}</div>
+    <button class="btn pri" style="margin-top:10px" data-act="rkPdfGerar">📄 Gerar PDF</button><button class="btn" data-act="rkBaixar">↩️ Voltar</button>`);
+}
+function shCartaoGeral(){
+  const gr = resumoGeral(), gs = S.rkGeralSel, on = k => !gs || gs.has(k), it = [];
+  if (rkAbas().some(c => c.lt)) it.push(["lt", "⛽ Litros · frentistas"]);
+  it.push(["mc", "🛒 Venda da loja · todos os setores"]);
+  if (rkAbas().some(c => c.k === "opcaixa")) it.push(["q", "🧾 Operações caixa"]);
+  gr.partes.filter(p => p.c.k !== "opcaixa").forEach(p => it.push(["s:" + p.c.k, "📊 Setor: " + esc(p.c.t)]));
+  openSheet(`<h2>🏪 Cartão das metas gerais</h2><p class="meta" style="margin:0 0 6px">Escolha o que entra no cartão.</p>${marcaTodos}
+    <div class="rkSel">${it.map(([k, t]) => caixaSel("data-gsel", k, t, on(k))).join("")}</div>
+    <button class="btn pri" style="margin-top:10px" data-act="rkGeralGerar">🏪 Gerar cartão</button><button class="btn" data-act="rkBaixar">↩️ Voltar</button>`);
+}
+/* desenha uma categoria no mesmo visual da página do link (metas.html) */
+async function desenhaLinkCv(d){
+  const W = 1080, P = 48, blocos = r => [r.p, r.s, r.o].filter(Boolean).length, RH = r => 190 + blocos(r) * 78, logo = rkLogo();
+  const H = 230 + d.linhas.reduce((a, r) => a + RH(r), 0) + 90, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
+  g.fillStyle = "#060b16"; g.fillRect(0, 0, W, H); g.strokeStyle = "rgba(34,211,238,.05)"; g.lineWidth = 2;
+  for (let x = 0; x < W; x += 56) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); } for (let y = 0; y < H; y += 56) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+  g.fillStyle = "#0a1426"; g.fillRect(0, 0, W, 150); g.fillStyle = "#22d3ee"; g.fillRect(0, 148, W, 3);
+  let lx = P; if (logo) { try { const im = await new Promise((ok, er) => { const i = new Image(); i.onload = () => ok(i); i.onerror = er; i.src = logo; }); const h = 76, w = im.width * h / im.height; g.drawImage(im, P, 37, w, h); lx = P + w + 24; } catch (e) {} }
+  g.textAlign = "left"; g.fillStyle = "#e6eef9"; g.font = "bold 40px Arial"; g.fillText(("Metas da equipe").toUpperCase(), lx, 72);
+  g.fillStyle = "#22d3ee"; g.font = "24px monospace"; g.fillText((d.ico + " " + d.cat + " · " + d.mes).toUpperCase(), lx, 112);
+  g.fillStyle = "#8597b2"; g.font = "24px Arial"; g.fillText(d.filial + " · atualizado em " + new Date().toLocaleString("pt-BR", {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"}), P, 200);
+  let y = 230; const cor = st => st.bateu ? "#34d399" : st.pct >= 70 ? "#fbbf24" : "#f87171";
+  const bloco = (m, rot) => { if (!m) return; const st = m.v > 0 ? situacao({[m.c]:m.r}, {campo:m.c, valor:m.v}) : null;
+    g.fillStyle = "#8597b2"; g.font = "22px Arial"; g.textAlign = "left"; g.fillText(rot + ": " + fmtCampo(m.c, m.r) + (m.v > 0 ? " · meta " + fmtCampo(m.c, m.v) : ""), 180, y + 22);
+    rr(g, 180, y + 34, W - 180 - P, 16, 8); g.fillStyle = "#122038"; g.fill();
+    if (st) { rr(g, 180, y + 34, Math.max(16, (W - 180 - P) * Math.min(1, st.pct / 100)), 16, 8); g.fillStyle = cor(st); g.fill(); g.fillStyle = cor(st); g.font = "bold 22px Arial"; g.textAlign = "right"; g.fillText(st.bateu ? "✅ " + st.pct + "% · passou " + fmtCampo(m.c, m.r - m.v) : st.pct + "% · faltam " + fmtCampo(m.c, m.v - m.r), W - P, y + 22); g.textAlign = "left"; }
+    y += 78; };
+  d.linhas.forEach((r, i) => {
+    const y0 = y; g.fillStyle = "#0e1829"; rr(g, P - 16, y0 + 6, W - 2 * P + 32, RH(r) - 14, 22); g.fill(); g.strokeStyle = "#1f2f4a"; g.lineWidth = 2; g.stroke();
+    g.textAlign = "center"; g.fillStyle = "#e6eef9"; g.font = "bold 40px Arial"; g.fillText(i < 3 ? ["🥇", "🥈", "🥉"][i] : String(i + 1), P + 30, y0 + 76);
+    g.beginPath(); g.arc(P + 100, y0 + 62, 32, 0, 7); g.fillStyle = "#122038"; g.fill(); g.strokeStyle = "#1f2f4a"; g.stroke();
+    g.fillStyle = "#8597b2"; g.font = "bold 24px Arial"; g.fillText(String(r.n || "").trim().split(/\s+/).map(p => p[0]).slice(0, 2).join("").toUpperCase(), P + 100, y0 + 71);
+    g.textAlign = "left"; g.fillStyle = "#e6eef9"; g.font = "bold 32px Arial"; g.fillText(String(r.n).toUpperCase().slice(0, 40), 180, y0 + 56);
+    g.fillStyle = "#8597b2"; g.font = "22px Arial"; g.fillText(r.f || "", 180, y0 + 88);
+    g.fillText("Qtd. " + fmtCampo("q", r.q) + "    Venda MC " + fmtCampo("mc", r.mc) + (d.lt ? "    Litragem " + fmtCampo("lt", r.lt) : ""), 180, y0 + 122);
+    y = y0 + 140; const pc = r.p ? r.p.c : "mc";
+    bloco(r.p, pc === "lt" ? "⛽ Litragem" : pc === "q" ? "🧾 Operações" : "🛒 Venda MC"); bloco(r.s, "🛒 Venda da loja"); bloco(r.o, "🧾 Operações");
+    y = y0 + RH(r);
+  });
+  g.fillStyle = "#8597b2"; g.font = "20px Arial"; g.textAlign = "center"; g.fillText("Posto Aldo · Acompanhamento de metas", W / 2, H - 36);
+  return cv;
+}
+async function gerarPdfMetas(b){
+  const ks = [...document.querySelectorAll("[data-psel]:checked")].map(x => x.value); if (!ks.length) return toast("Marque pelo menos uma categoria.");
+  b.disabled = true;
+  try {
+    const imgs = [];
+    for (const c of catsUnif().filter(c => ks.includes(c.k))) { const d = dadosLink(c); if (!d.linhas.length) continue; const cv = await desenhaLinkCv(d); imgs.push({blob:await new Promise(ok => cv.toBlob(ok, "image/jpeg", .9)), w:cv.width, h:cv.height}); }
+    if (!imgs.length) { toast("Nenhum lançamento nas categorias marcadas."); return; }
+    await compartilharOuBaixar(await rkPdf(imgs), ("Metas - " + (S.nomeFilial || "posto") + " - " + S.rkMes).replace(/[^\wÀ-ÿ -]+/g, " ").trim() + ".pdf");
+  } catch (e) { console.error("PDF metas:", e); toast("Não foi possível gerar o PDF."); }
+  finally { b.disabled = false; }
+}
+async function apagarAlertas(b){
+  if (!confirm("Apagar todos os alertas de compartilhamento desta filial? Os links continuam funcionando.")) return;
+  b.disabled = true; const ok = await safe(() => api("POST", "/rest/v1/rpc/apagar_alertas_links", {}), "Alertas apagados."); b.disabled = false;
+  if (ok) { S.rkAlertasN = 0; carregaAlertas(); } else toast("Se não apagou, rode o arquivo 06-apagar-alertas.sql no Supabase.");
+}

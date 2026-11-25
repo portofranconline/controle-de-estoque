@@ -60,6 +60,8 @@ img{-webkit-user-drag:none;pointer-events:none}
 .rod{position:fixed;left:0;right:0;bottom:0;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:rgba(6,11,22,.92);border-top:1px solid var(--line);font-size:11px;color:var(--muted);text-align:center;z-index:3}
 .rod b{color:var(--ink)}
 @media print{body{display:none!important}}
+body.oculto #app,body.oculto .rod{filter:blur(22px);opacity:.15}
+body.oculto::after{content:"🔒 Print bloqueado";position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:22px;font-weight:700;color:var(--crit);z-index:9}
 </style>
 </head>
 <body oncontextmenu="return false">
@@ -153,6 +155,15 @@ img{-webkit-user-drag:none;pointer-events:none}
     if (!C.url || !C.anonKey) return msg("Sem conexão com o banco", "Tente de novo mais tarde.");
     try { trata(await chamar(null)); } catch (e) { console.error(e); msg("Não foi possível carregar", "Confira a internet e abra o link de novo."); }
   }
+  /* bloqueio de print: esconde ao sair da tela, ao perder o foco e ao apertar Print Screen / atalhos de captura */
+  const esconde = () => document.body.classList.add("oculto"), mostra = () => document.body.classList.remove("oculto");
+  document.addEventListener("visibilitychange", () => document.hidden ? esconde() : setTimeout(mostra, 400));
+  window.addEventListener("blur", esconde); window.addEventListener("focus", () => setTimeout(mostra, 400));
+  window.addEventListener("pagehide", esconde);
+  document.addEventListener("keydown", e => { if (e.key === "PrintScreen" || ((e.metaKey || e.ctrlKey) && e.shiftKey) || ((e.metaKey || e.ctrlKey) && /^[ps]$/i.test(e.key))) { esconde(); e.preventDefault(); try { navigator.clipboard.writeText(""); } catch (x) {} setTimeout(mostra, 2500); } });
+  document.addEventListener("keyup", e => { if (e.key === "PrintScreen") { esconde(); try { navigator.clipboard.writeText(""); } catch (x) {} setTimeout(mostra, 2500); } });
+  document.addEventListener("touchstart", e => { if (e.touches.length >= 3) esconde(); }, {passive:true});
+  document.addEventListener("touchend", e => { if (!e.touches.length) setTimeout(mostra, 600); }, {passive:true});
   abrir();
 })();
 </script>
