@@ -18,7 +18,19 @@ const FRENT = {diesel:"Frentista Diesel", gasolina:"Frentista Gasolina", lubrifi
 const FUNC_SETOR = {diesel:"frentista", gasolina:"frentista", lubrificador:"lubrificador", madrugada:"frentista_madrugada"};
 /* setor escolhido em ⚙️ → Frentistas; sem escolha, vale a função da pessoa ou o relatório de onde veio */
 function setorDe(p, r){ if (p && FRENT[p.setor]) return p.setor; return r.funcao === "lubrificador" ? "lubrificador" : r.funcao === "frentista_madrugada" ? "madrugada" : r.src; }
-function frentistasDe(k){ const ord = S.rkOrdem || "q"; return ["diesel", "gasolina"].filter(t => rkAbas().some(c => c.k === t)).flatMap(t => vendasDoMes(t).map(r => ({...r, id:t + "~" + r.id}))).filter(r => r.setor === k).sort((a, b) => b[ord] - a[ord] || b.q - a.q); }
+/* v25: o frentista pode ter mais de um setor (ex.: Diesel + Lubrificador).
+   Diesel/Gasolina = em qual categoria de combustível ele entra (sem marcar: o relatório de onde veio).
+   Lubrificador/Madrugada = a meta dele (é a meta da categoria específica, também dentro do Diesel/Gasolina). */
+function setoresAtuais(p){
+  if (!p) return [];
+  if (Array.isArray(p.setores)) return Object.keys(FRENT).filter(k => p.setores.includes(k));
+  return FRENT[p.setor] ? [p.setor] : p.funcao === "lubrificador" ? ["lubrificador"] : p.funcao === "frentista_madrugada" ? ["madrugada"] : [];
+}
+function setoresDe(p, r){ const l = setoresAtuais(p); return l.length ? l : [setorDe(p, r)]; }
+const funcaoNoSetor = (k, f0) => FUNC_SETOR[k] === "frentista" ? (f0 && f0 !== "lubrificador" && f0 !== "frentista_madrugada" ? f0 : "frentista") : FUNC_SETOR[k];
+function frentistasDe(k){ const ord = S.rkOrdem || "q"; return ["diesel", "gasolina"].filter(t => rkAbas().some(c => c.k === t)).flatMap(t => vendasDoMes(t).map(r => ({...r, id:t + "~" + r.id})))
+  .filter(r => { const L = r.setores || [r.setor]; if (k !== "diesel" && k !== "gasolina") return L.includes(k); const comb = L.filter(x => x === "diesel" || x === "gasolina"); return comb.length ? comb.includes(k) : r.src === k; })
+  .map(r => { const L = r.setores || [r.setor], ms = L.find(x => x === "lubrificador" || x === "madrugada") || k; return {...r, setor:k, funcao:funcaoNoSetor(ms, r.f0), tab:(k === "diesel" || k === "gasolina") ? k : r.src}; }).sort((a, b) => b[ord] - a[ord] || b.q - a.q); }
 /* id "diesel~abc" (vindo das abas Lubrificador/Madrugada) → ["diesel", "abc"] */
 const rkDividir = id => { const s = String(id || ""), i = s.indexOf("~"); return i > 0 ? [s.slice(0, i), s.slice(i + 1)] : [S.rkTipo, s]; };
 /* abas ligadas nesta filial (Configurar → Opções). Operações Caixa vem desligada. */
@@ -85,7 +97,7 @@ function vendasDoMes(tipo){
   const arr = [...ents].filter(([id, [tb, v]]) => v && !v.x && v.nome && (!venc || venc.has(tb + "/" + id))).map(([id, [, v]]) => {
     const p = (v.pid && P[v.pid] && !P[v.pid].x) ? {id:v.pid, ...P[v.pid]} : acharPessoa(v.nome);
     const r = {id, tab:tipo, src:tipo, pid:p ? p.id : null, nome:p ? p.nome : v.nome, funcao:funcaoDe(p, tipo), q:num(v.q), mc:num(v.mc), lt:num(v.lt)};
-    if (tipo === "diesel" || tipo === "gasolina") { r.setor = setorDe(p, r); r.funcao = FUNC_SETOR[r.setor] === "frentista" && r.funcao !== "lubrificador" && r.funcao !== "frentista_madrugada" ? r.funcao : FUNC_SETOR[r.setor]; if (r.setor === "diesel" || r.setor === "gasolina") r.tab = r.setor; }
+    if (tipo === "diesel" || tipo === "gasolina") { r.f0 = r.funcao; r.setores = setoresDe(p, r); r.setor = r.setores[0]; r.funcao = FUNC_SETOR[r.setor] === "frentista" && r.funcao !== "lubrificador" && r.funcao !== "frentista_madrugada" ? r.funcao : FUNC_SETOR[r.setor]; if (r.setor === "diesel" || r.setor === "gasolina") r.tab = r.setor; }
     return r;
   });
   const ord = S.rkOrdem || "q", chaves = [ord, ...["q", "mc", "lt"].filter(k => k !== ord)];
@@ -295,7 +307,7 @@ function vRkCfg(){
     }
     const ORD = Object.keys(grupoOpcoes()), grupoP = p => { const i = ORD.indexOf(grupoKey(p)); return i < 0 ? ORD.length : i; };
     const gente = [...Object.entries(P).filter(([, p]) => p && !p.x), ...puxados].sort((a, b) => grupoP(a[1]) - grupoP(b[1]) || a[1].nome.localeCompare(b[1].nome, "pt-BR"));
-    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 24</small></h2>
+    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 26</small></h2>
       <input class="inp" id="eqBusca" placeholder="🔎 Buscar nome (equipe e relatórios)" autocomplete="off" style="margin:6px 0">
       <div id="eqNada" hidden style="font-size:12px;color:var(--muted);margin-bottom:6px">Nome não encontrado. Use <b>➕ Adicionar membro</b> no fim da tela.</div>
       <p style="margin:4px 0 10px;font-size:12px;color:var(--muted);line-height:1.4">Toque no grupo de cada pessoa: salva na hora, e a venda e a meta passam a ser desse grupo. Os nomes vêm dos relatórios do ranking.</p>
@@ -1253,20 +1265,26 @@ function telaSetores(){
   for (const t of ["diesel", "gasolina"]) for (const r of vendasDoMes(t)) if (r.pid) ids.add(r.pid);
   for (const [id, p] of Object.entries(P)) if (p && !p.x && (FRENT[p.setor] || BASE_GRUPO.frentista.includes(p.funcao))) ids.add(id);
   const gente = [...ids].filter(id => P[id] && !P[id].x).map(id => ({id, ...P[id]})).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
-  const atual = p => FRENT[p.setor] ? p.setor : p.funcao === "lubrificador" ? "lubrificador" : p.funcao === "frentista_madrugada" ? "madrugada" : "";
   const curto = {diesel:"🛢️ Diesel", gasolina:"⛽ Gasolina", lubrificador:"🔧 Lubrif.", madrugada:"🌙 Madrug."};
-  const cont = k => gente.filter(p => atual(p) === k).length;
+  const cont = k => gente.filter(p => setoresAtuais(p).includes(k)).length;
   return `<div class="card"><h2>⛽ Setor de cada frentista</h2>
-    <p style="font-size:12px;color:var(--muted);margin:4px 0 8px;line-height:1.4">Toque no setor de cada um. A venda (litragem e Venda MC) e a meta passam a contar nesse setor, não importa de qual relatório veio. Sem escolha: vale o relatório (Diesel ou Gasolina).</p>
+    <p style="font-size:12px;color:var(--muted);margin:4px 0 8px;line-height:1.4">Marque os setores de cada um (pode marcar mais de um). <b>Diesel/Gasolina</b>: em qual categoria ele entra. <b>Lubrificador/Madrugada</b>: a meta dele. Ex.: Diesel + Lubrificador entra no <b>Frentista Diesel</b> com a meta de <b>Lubrificador</b> (e também aparece na aba Lubrificador). Sem Diesel/Gasolina marcado: vale o relatório. Toque de novo para desmarcar.</p>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">${Object.keys(FRENT).map(k => `<span class="meta" style="font-size:11px">${curto[k]}: <b>${cont(k)}</b></span>`).join("")}</div>
     ${gente.length ? gente.map(p => `<div style="border-top:1px solid var(--line);padding:8px 0"><b style="font-size:14px">${esc(p.nome)}</b>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:6px">${Object.keys(FRENT).map(k => `<button class="chip ${atual(p) === k ? "on" : ""}" style="justify-content:center;padding:7px 2px;font-size:12px;margin:0" data-act="rkSetor" data-id="${p.id}" data-s="${k}">${curto[k]}</button>`).join("")}</div></div>`).join("")
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:6px">${Object.keys(FRENT).map(k => `<button class="chip ${setoresAtuais(p).includes(k) ? "on" : ""}" style="justify-content:center;padding:7px 2px;font-size:12px;margin:0" data-act="rkSetor" data-id="${p.id}" data-s="${k}">${setoresAtuais(p).includes(k) ? "✓ " : ""}${curto[k]}</button>`).join("")}</div></div>`).join("")
       : `<p class="meta">Nenhum frentista ainda. Importe o relatório de Diesel ou Gasolina primeiro.</p>`}</div>`;
 }
 async function salvarSetor(b){
-  const id = b.dataset.id, k = b.dataset.s, f = b.dataset.f, patch = {rkPessoas:{[id]:f ? {funcao:f} : {setor:k, funcao:FUNC_SETOR[k]}}};
+  const id = b.dataset.id, k = b.dataset.s, f = b.dataset.f;
+  let patch, txt;
+  if (f) { patch = {rkPessoas:{[id]:{funcao:f}}}; txt = nomeFuncao(f) + " ✓"; }
+  else { const cur = setoresAtuais(pessoasRk()[id]), nov = Object.keys(FRENT).filter(x => x === k ? !cur.includes(k) : cur.includes(x));
+    patch = {rkPessoas:{[id]:{setores:nov, setor:nov[0] || "", funcao:nov[0] ? FUNC_SETOR[nov[0]] : "frentista"}}}; txt = nov.length ? nov.map(x => FRENT[x]).join(" + ") + " ✓" : "Sem setor: vale o relatório"; }
   b.disabled = true;
-  if (await safe(() => S.db.doc("cfg/main").update(patch), (f ? nomeFuncao(f) : FRENT[k] || "") + " ✓")) { S.cfg = deepMerge(S.cfg || {}, patch); render(); b.parentElement.querySelectorAll(".chip").forEach(x => x.classList.toggle("on", x === b)); } b.disabled = false;
+  if (await safe(() => S.db.doc("cfg/main").update(patch), txt)) { S.cfg = deepMerge(S.cfg || {}, patch); render();
+    if (f) b.parentElement.querySelectorAll(".chip").forEach(x => x.classList.toggle("on", x === b));
+    else { const l = setoresAtuais(pessoasRk()[id]); b.parentElement.querySelectorAll(".chip").forEach(x => { const on = l.includes(x.dataset.s); x.classList.toggle("on", on); x.textContent = (on ? "✓ " : "") + x.textContent.replace(/^✓ /, ""); }); } }
+  b.disabled = false;
 }
 
 /* ✏️ Alterar: trocar a função do colaborador com um toque; a meta passa a ser a da nova função */
@@ -1275,10 +1293,10 @@ function botoesFuncao(v, tb){
   if (!pid || !S.admin) return "";
   const p = P[pid] || {}, fr = tb === "diesel" || tb === "gasolina";
   const curto = {diesel:"🛢️ Diesel", gasolina:"⛽ Gasolina", lubrificador:"🔧 Lubrif.", madrugada:"🌙 Madrug."};
-  const atual = fr ? setorDe(p, {funcao:funcaoDe(p, tb), src:tb}) : funcaoDe(p, tb);
-  const bts = fr ? Object.keys(FRENT).map(k => `<button class="chip ${atual === k ? "on" : ""}" style="justify-content:center;padding:7px 2px;font-size:12px;margin:0" data-act="rkSetor" data-id="${pid}" data-s="${k}">${curto[k]}</button>`)
+  const atual = fr ? setoresDe(p, {funcao:funcaoDe(p, tb), src:tb}) : funcaoDe(p, tb);
+  const bts = fr ? Object.keys(FRENT).map(k => `<button class="chip ${atual.includes(k) ? "on" : ""}" style="justify-content:center;padding:7px 2px;font-size:12px;margin:0" data-act="rkSetor" data-id="${pid}" data-s="${k}">${atual.includes(k) ? "✓ " : ""}${curto[k]}</button>`)
     : funcoesDaAba(tb).map(f => `<button class="chip ${atual === f ? "on" : ""}" style="justify-content:center;padding:7px 4px;font-size:12px;margin:0" data-act="rkSetor" data-id="${pid}" data-f="${f}">${esc(nomeFuncao(f))}</button>`);
-  return `<div style="margin:8px 0 4px"><div class="meta" style="font-size:11px;font-weight:700">FUNÇÃO (toque para trocar · a meta segue a função)</div><div style="display:grid;grid-template-columns:repeat(${fr ? 4 : Math.min(3, bts.length)},1fr);gap:4px;margin-top:4px">${bts.join("")}</div></div>`;
+  return `<div style="margin:8px 0 4px"><div class="meta" style="font-size:11px;font-weight:700">${fr ? "SETORES (Diesel/Gasolina = categoria · Lubrificador/Madrugada = meta)" : "FUNÇÃO (toque para trocar · a meta segue a função)"}</div><div style="display:grid;grid-template-columns:repeat(${fr ? 4 : Math.min(3, bts.length)},1fr);gap:4px;margin-top:4px">${bts.join("")}</div></div>`;
 }
 
 /* ➕ adicionar membro à equipe do ranking (só funções do ranking) */
