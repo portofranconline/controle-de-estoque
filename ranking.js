@@ -210,7 +210,7 @@ function vRanking(){
     <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
       <select id="rkOrdemSel" class="inp" aria-label="Ordenar" style="flex:1;min-width:0">${ordens.map(([k, t]) => `<option value="${k}" ${k === S.rkOrdem ? "selected" : ""}>↕ ${({q:"Qtd.", mc:"Venda MC", lt:"Litros"})[k] || t}</option>`).join("")}</select>
       ${S.admin ? `<button class="btn" style="width:auto;flex:none;padding:8px 11px;margin:0" data-act="rkCfg" title="Configurar metas" aria-label="Configurar">⚙️</button><label class="btn brand" style="width:auto;flex:none;padding:8px 11px;margin:0;cursor:pointer" title="Importar da imagem" aria-label="Importar">📷<input type="file" accept="image/*" data-rk-img="1" hidden></label>${junta ? "" : `<button class="btn" style="width:auto;flex:none;padding:8px 11px;margin:0" data-act="novaVenda" title="Lançar à mão" aria-label="Lançar">➕</button>`}` : ""}<button class="btn" style="width:auto;flex:none;padding:8px 11px;margin:0" data-act="rkBaixar" title="Baixar e enviar" aria-label="Baixar">⬇️</button><button class="btn" style="width:auto;flex:none;padding:8px 11px;margin:0" data-act="rkRecarregar" title="Atualizar página" aria-label="Atualizar">🔄</button></div>
-    ${c.k === "caixa" && S.admin ? cardOperacoes() : ""}
+    ${bannerAlertas()}${c.k === "caixa" && S.admin ? cardOperacoes() : ""}
     ${cardMetaGeral()}
     ${dq ? `<div class="card" style="border:1px solid #fbbf24"><h2>⭐ Destaque do mês · ${c.t}</h2><div style="display:flex;gap:10px;align-items:center;margin-top:6px">${fotoPessoa(dq.r, 46)}<div><b>${esc(dq.r.nome)}</b><br><span class="meta">Primeiro a bater a meta · ${new Date(dq.t).toLocaleDateString("pt-BR")}</span></div></div></div>` : ""}
     ${c.k === "todos" ? "" : `<details class="card"><summary style="cursor:pointer;font-weight:800">🎯 Metas por função · ${c.t}</summary>${resumo || `<p class="meta" style="margin:4px 0">Sem lançamentos neste mês.</p>`}</details>`}
@@ -272,11 +272,12 @@ function vRkCfg(){
   S.rkMes = S.rkMes || rkMesAtual(); S.rkTipo = rkAbas().some(c => c.k === S.rkTipo) ? S.rkTipo : rkAbas()[0].k; S.rkCfgAba = S.rkCfgAba || "metas";
   carregaFotosRk();
   const c = rkCat(), aba = S.rkCfgAba, P = pessoasRk(), lista = vendasDoMes(c.k);
-  const abas = [["metas", "🎯 Metas"], ...(rkAbas().some(x => x.k === "diesel" || x.k === "gasolina") ? [["setores", "⛽ Frentistas"]] : []), ["individual", "👤 Metas individuais"], ["equipe", "👥 Equipe"], ["opcoes", "⚙️ Opções"]];
+  const abas = [["metas", "🎯 Metas"], ...(rkAbas().some(x => x.k === "diesel" || x.k === "gasolina") ? [["setores", "⛽ Frentistas"]] : []), ["individual", "👤 Metas individuais"], ["equipe", "👥 Equipe"], ["opcoes", "⚙️ Opções"], ["alertas", "🚨 Alertas" + (S.rkAlertasN ? " (" + S.rkAlertasN + ")" : "")]];
   let corpo = "";
   const mg = metasGerais();
   if (aba === "metas") corpo = telaMetasSetores(mg);
   else if (aba === "setores") corpo = telaSetores();
+  else if (aba === "alertas") corpo = telaAlertas();
   else if (aba === "individual") {
     const gente = [...new Map([...lista.map(r => [r.pid || r.nome, r]), ...Object.entries(P).filter(([, p]) => p && !p.x && funcoesDaAba(c.k).includes(p.funcao)).map(([id, p]) => [id, {pid:id, nome:p.nome, funcao:funcaoDe(p, c.k)}])]).values()].filter(r => r.pid);
     corpo = `<div class="card"><h2>Metas individuais · ${c.t} · ${nomeMes(S.rkMes)}</h2>
@@ -294,7 +295,7 @@ function vRkCfg(){
     }
     const ORD = Object.keys(grupoOpcoes()), grupoP = p => { const i = ORD.indexOf(grupoKey(p)); return i < 0 ? ORD.length : i; };
     const gente = [...Object.entries(P).filter(([, p]) => p && !p.x), ...puxados].sort((a, b) => grupoP(a[1]) - grupoP(b[1]) || a[1].nome.localeCompare(b[1].nome, "pt-BR"));
-    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 22</small></h2>
+    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 24</small></h2>
       <input class="inp" id="eqBusca" placeholder="🔎 Buscar nome (equipe e relatórios)" autocomplete="off" style="margin:6px 0">
       <div id="eqNada" hidden style="font-size:12px;color:var(--muted);margin-bottom:6px">Nome não encontrado. Use <b>➕ Adicionar membro</b> no fim da tela.</div>
       <p style="margin:4px 0 10px;font-size:12px;color:var(--muted);line-height:1.4">Toque no grupo de cada pessoa: salva na hora, e a venda e a meta passam a ser desse grupo. Os nomes vêm dos relatórios do ranking.</p>
@@ -873,7 +874,111 @@ function shBaixarRanking(){
     <button class="btn" data-act="cartaoGeral">🏪 Cartão das metas gerais (JPG)</button>
     <p style="font-size:11px;color:var(--muted);margin:2px 0 6px">Cada imagem abre uma prévia antes de enviar; lá dá para trocar o fundo por uma foto da galeria.</p>
     <button class="btn" data-act="baixarRanking" data-t="pdf">📄 Tabela em PDF</button>
+    ${S.admin ? `<button class="btn" data-act="rkLink">🔗 Link das metas para o grupo</button>` : ""}
     <button class="btn" data-act="fechar">Fechar</button>`);
+}
+/* ---------- link das metas para o grupo: um link por categoria, cada colaborador prende o próprio nome no aparelho ----------
+   Os números ficam no banco (SQL 05: links_metas, links_metas_aparelhos, links_metas_alertas); o link leva só o código. Página: metas.html
+   Nome já usado em outro aparelho = compartilhamento: bloqueia e cai na aba 🚨 Alertas. */
+const RK_VALIDADES = [["24", "24 horas"], ["72", "3 dias"], ["168", "7 dias"], ["fim", "Até o fim do mês"]];
+const rkDH = t => t ? new Date(t).toLocaleString("pt-BR", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"}) : "—";
+function rkLinkHoras(v){ if (v !== "fim") return Number(v) || 24; const h = new Date(), fim = new Date(h.getFullYear(), h.getMonth() + 1, 1); return Math.max(1, Math.ceil((fim - h) / 3600000)); }
+function shLink(sel){
+  if (!S.admin) return toast("Área restrita ao administrador.");
+  sel = sel || {}; const cats = rkAbasVer(), ck = sel.cat || S.rkTipo || cats[0].k, c = cats.find(x => x.k === ck) || cats[0], n = listaRk(c).length;
+  openSheet(`<h2>🔗 Link das metas para o grupo</h2><p style="font-size:12px;color:var(--muted);margin:0 0 8px;line-height:1.45">Um link por categoria, para mandar no grupo. Na 1ª vez, cada colaborador escolhe o próprio nome e o link fica preso ao aparelho dele. Se alguém repassar, quem abrir fica bloqueado e você recebe um alerta em 🚨 Alertas. ${nomeMes(S.rkMes)}.</p>
+    <label class="f" for="lkCat">Categoria<select id="lkCat" class="inp" data-rk-link="1">${cats.map(x => `<option value="${x.k}"${x.k === c.k ? " selected" : ""}>${x.ico} ${esc(x.t)}</option>`).join("")}</select></label>
+    <p class="meta" style="font-size:12px;margin:4px 0 0">${n} ${n === 1 ? "pessoa" : "pessoas"} nesta categoria: o link aceita até ${n} ${n === 1 ? "aparelho" : "aparelhos"}.</p>
+    <label class="f" for="lkVal">Validade<select id="lkVal" class="inp">${RK_VALIDADES.map(([v, t]) => `<option value="${v}"${v === (sel.val || "24") ? " selected" : ""}>${t}</option>`).join("")}</select></label>
+    <button class="btn pri" style="margin-top:8px" data-act="rkLinkGerar">🔗 Gerar link</button>
+    <button class="btn" data-act="rkLinks">📋 Links gerados</button>
+    <button class="btn" data-act="rkAlertas">🚨 Alertas de compartilhamento</button>
+    <button class="btn" data-act="fechar">Fechar</button>`);
+}
+document.addEventListener("change", ev => { const t = ev.target; if (!t || !t.dataset || !t.dataset.rkLink) return; if (t.id === "lkCat") shLink({cat:t.value, val:($("#lkVal") || {}).value}); });
+function dadosLink(c){
+  const l = listaRk(c), campoP = c.k === "opcaixa" ? "q" : c.lt ? "lt" : "mc", P = (o, campo, m) => m ? {c:campo, r:num(o[campo]), v:m.valor} : null;
+  const opL = rkAbas().some(x => x.k === "opcaixa") ? vendasDoMes("opcaixa") : [];
+  const linhas = l.map(r => {
+    const m = metaDaPessoa(r, c.k, l), mm = m && m.campo !== "mc" ? metaDaPessoa(r, c.k, l, "mc") : null;
+    let op = null; if (r.pid && (r.tab === "caixa" || c.k === "caixa") && opL.length) { const o = opL.find(x => x.pid === r.pid), base = o || {...r, q:0, tab:"opcaixa"}, mo = metaDaPessoa(base, "opcaixa", opL); if (o || mo) op = {c:"q", r:num(base.q), v:mo ? mo.valor : 0}; }
+    return {n:r.nome, f:nomeFuncao(r.funcao) || "", q:num(r.q), mc:num(r.mc), lt:num(r.lt), p:P(r, m ? m.campo : campoP, m), s:P(r, "mc", mm), o:op, ord:num(r[m ? m.campo : campoP])};
+  }).sort((a, b) => b.ord - a.ord).map(({ord, ...x}) => x);
+  return {filial:S.nomeFilial || "", cat:c.t, ico:c.ico, mes:nomeMes(S.rkMes), lt:!!c.lt, gerado:new Date().toISOString(), linhas};
+}
+async function gerarLink(b){
+  const cats = rkAbasVer(), c = cats.find(x => x.k === ($("#lkCat") || {}).value) || rkCat(), val = ($("#lkVal") || {}).value || "24";
+  const dados = dadosLink(c); if (!dados.linhas.length) return toast("Nenhum lançamento em " + c.t + " neste mês.");
+  b.disabled = true;
+  try {
+    const titulo = c.t + " · " + nomeMes(S.rkMes), tk = await api("POST", "/rest/v1/rpc/criar_link_metas", {p_titulo:titulo, p_dados:dados, p_horas:rkLinkHoras(val)});
+    if (!tk || String(tk).length < 40) throw new Error("O banco não devolveu o código. Rode o arquivo 05-links-metas.sql no Supabase.");
+    const url = new URL("metas.html", location.href).href.split("?")[0] + "#k=" + tk, vt = (RK_VALIDADES.find(x => x[0] === val) || [, ""])[1];
+    S.rkLinkAtual = {url, titulo};
+    openSheet(`<h2>✅ Link criado</h2><p style="font-size:13px;margin:0 0 6px"><b>${esc(titulo)}</b> · validade: ${esc(vt)} · até ${dados.linhas.length} ${dados.linhas.length === 1 ? "aparelho" : "aparelhos"}.</p>
+      <div style="font-family:var(--mono);font-size:11px;word-break:break-all;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:8px">${esc(url)}</div>
+      <p style="font-size:11px;color:var(--muted);margin:6px 0">Mande no grupo da equipe. Cada um escolhe o próprio nome na 1ª vez que abrir.</p>
+      <button class="btn pri" data-act="rkLinkEnviar">📤 Enviar no grupo</button><button class="btn" data-act="rkLinkCopiar">📋 Copiar link</button>
+      <button class="btn" data-act="rkLink">↩️ Gerar outro</button><button class="btn" data-act="fechar">Fechar</button>`);
+  } catch (e) { console.error("Link:", e); toast(/criar_link_metas|404|function/i.test(e.message) ? "Falta rodar o arquivo 05-links-metas.sql no Supabase." : (e.message || "Não foi possível gerar o link.")); }
+  b.disabled = false;
+}
+async function enviarLink(copiar){
+  const L = S.rkLinkAtual; if (!L) return;
+  if (!copiar && navigator.share) { try { await navigator.share({title:"Metas · " + L.titulo, text:"🎯 Metas · " + L.titulo + "\nAbra no seu celular e escolha o seu nome:", url:L.url}); return; } catch (e) { if (e && e.name === "AbortError") return; } }
+  try { await navigator.clipboard.writeText(L.url); toast("Link copiado."); } catch (e) { toast("Não deu para copiar. Segure o link e copie."); }
+}
+const SQL05 = `<p class="meta">Falta rodar o arquivo 05-links-metas.sql no Supabase.</p>`;
+async function shLinks(){
+  if (!S.admin) return toast("Área restrita ao administrador.");
+  openSheet(`<h2>📋 Links gerados</h2><p class="meta">Carregando…</p>`);
+  let L = []; try { L = await api("POST", "/rest/v1/rpc/listar_links_metas", {}) || []; } catch (e) { openSheet(`<h2>📋 Links gerados</h2>${SQL05}<button class="btn" data-act="fechar">Fechar</button>`); return; }
+  const agora = Date.now();
+  openSheet(`<h2>📋 Links gerados</h2><p style="font-size:12px;color:var(--muted);margin:0 0 8px">Últimos 100 links desta filial. 🚫 Cancelar para o link parar na hora para todos.</p>
+    <div style="max-height:58vh;overflow:auto">${L.length ? L.map(x => { const st = x.cancelado ? ["🚫 Cancelado", "var(--muted)"] : new Date(x.expira_em) < agora ? ["⌛ Expirado", "var(--muted)"] : ["🟢 Ativo", "var(--good)"];
+      return `<div style="border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-top:6px;font-size:12px;line-height:1.5"><div style="display:flex;justify-content:space-between;gap:6px"><b>${esc(x.titulo)}</b><span style="color:${st[1]};font-weight:700">${st[0]}</span></div>
+        <div>Criado ${rkDH(x.criado_em)} · vale até ${rkDH(x.expira_em)}</div>
+        <div>📱 ${x.aparelhos} de ${x.max_aparelhos} aparelhos${x.alertas ? ` · <b style="color:var(--crit)">🚨 ${x.alertas} tentativa(s) de compartilhar</b>` : ""}</div>
+        ${(x.quem || []).length ? `<div class="meta">Entraram: ${x.quem.map(q => esc(q.nome)).join(", ")}</div>` : `<div class="meta">Ninguém abriu ainda.</div>`}
+        ${st[0] === "🟢 Ativo" ? `<button class="btn sm" style="width:auto;margin:6px 0 0;padding:4px 10px;font-size:12px" data-act="rkLinkCancelar" data-t="${esc(x.token)}">🚫 Cancelar</button>` : ""}</div>`; }).join("") : `<p class="meta">Nenhum link gerado ainda.</p>`}</div>
+    <button class="btn" data-act="rkLink">↩️ Voltar</button><button class="btn" data-act="fechar">Fechar</button>`);
+}
+async function cancelarLink(b){
+  b.disabled = true; const ok = await safe(() => api("POST", "/rest/v1/rpc/cancelar_link_metas", {p_token:b.dataset.t}), "Link cancelado."); b.disabled = false;
+  if (ok) shLinks();
+}
+/* alertas de compartilhamento: aba própria em ⚙️ Configurar e aviso no topo do Acompanhamento metas */
+function rkChecaAlertas(){
+  if (!S.admin || (S.rkAlertasT && Date.now() - S.rkAlertasT < 60000)) return; S.rkAlertasT = Date.now();
+  api("POST", "/rest/v1/rpc/listar_alertas_links", {}).then(L => { const n = (L || []).filter(x => !x.lido).length; if (n !== (S.rkAlertasN || 0)) { S.rkAlertasN = n; if (S.view === "ranking") render(); } }).catch(() => {});
+}
+function bannerAlertas(){
+  rkChecaAlertas();
+  return S.admin && S.rkAlertasN ? `<button class="card" data-act="rkAlertas" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;border-color:var(--crit);background:var(--crit-bg);color:var(--crit);font-weight:700;cursor:pointer;margin-bottom:10px">🚨 ${S.rkAlertasN} ${S.rkAlertasN === 1 ? "alerta" : "alertas"} de compartilhamento de link · toque para ver</button>` : "";
+}
+function tipoAlerta(t){ return t === "limite" ? "aparelho a mais (limite atingido)" : "nome já está em outro aparelho"; }
+async function carregaAlertas(){
+  const el = $("#rkAlertasBox"); if (!el) return;
+  let L; try { L = await api("POST", "/rest/v1/rpc/listar_alertas_links", {}) || []; } catch (e) { el.innerHTML = SQL05; return; }
+  if (!$("#rkAlertasBox")) return;
+  el.innerHTML = L.length ? L.map(x => `<div style="border:1px solid ${x.lido ? "var(--line)" : "var(--crit)"};border-radius:12px;padding:8px 10px;margin-top:6px;font-size:12px;line-height:1.5;${x.lido ? "" : "background:var(--crit-bg)"}">
+      <div style="display:flex;justify-content:space-between;gap:6px"><b>${esc(x.titulo)}</b>${x.lido ? `<span class="meta">visto</span>` : `<b style="color:var(--crit)">NOVO</b>`}</div>
+      <div>🚨 Tentaram entrar como <b>${esc(x.nome)}</b> · ${tipoAlerta(x.tipo)}</div>
+      <div>${x.tentativas} ${x.tentativas === 1 ? "tentativa" : "tentativas"} · 1ª ${rkDH(x.criado_em)} · última ${rkDH(x.ultimo_em)}</div>
+      ${x.nome_preso_em ? `<div class="meta">O nome ${esc(x.nome)} está preso no aparelho que entrou em ${rkDH(x.nome_preso_em)}.</div>` : ""}
+      ${x.tipo === "nome_em_uso" && x.nome_preso_em ? `<button class="btn sm" style="width:auto;margin:6px 0 0;padding:4px 10px;font-size:12px" data-act="rkLiberarNome" data-t="${esc(x.token)}" data-n="${esc(x.nome)}">🔓 Liberar nome</button>` : ""}</div>`).join("")
+    : `<p class="meta">Nenhum alerta. Ninguém tentou abrir um link no aparelho de outra pessoa.</p>`;
+  if (L.some(x => !x.lido)) { try { await api("POST", "/rest/v1/rpc/marcar_alertas_lidos", {}); } catch (e) {} S.rkAlertasN = 0; }
+}
+function telaAlertas(){
+  setTimeout(carregaAlertas, 0);
+  return `<div class="card"><h2>🚨 Alertas de compartilhamento</h2><p style="font-size:12px;color:var(--muted);margin:4px 0 6px;line-height:1.45">Aparece aqui quando alguém abre o link do grupo usando o nome de outra pessoa (link repassado) ou quando o link passa do número de pessoas. Essa pessoa fica bloqueada e não vê números.<br><b>🔓 Liberar nome</b>: solta o nome do aparelho onde ele está preso, para o colaborador certo entrar no aparelho dele (use se alguém de fora pegou o nome antes).</p>
+    <div id="rkAlertasBox"><p class="meta">Carregando…</p></div></div>`;
+}
+async function liberarNome(b){
+  if (!confirm("Liberar o nome " + b.dataset.n + "? O aparelho onde ele está perde o acesso e o próximo a escolher esse nome entra.")) return;
+  b.disabled = true; const ok = await safe(() => api("POST", "/rest/v1/rpc/liberar_nome_link", {p_token:b.dataset.t, p_nome:b.dataset.n}), "Nome liberado."); b.disabled = false;
+  if (ok) carregaAlertas();
 }
 
 /* ---------- imagem do ranking para enviar: pódio, confete e barras de meta ---------- */
@@ -947,6 +1052,14 @@ async function rkAcao(a, b){
   if (a === "rkPrevPdf") { baixarPdf(b, false); return true; }
   if (a === "rkLotePdf") { baixarPdf(b, true); return true; }
   if (a === "rkLancarDia") { shLancarDia(); return true; }
+  if (a === "rkLink") { shLink(); return true; }
+  if (a === "rkLinkGerar") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } gerarLink(b); return true; }
+  if (a === "rkLinkEnviar") { enviarLink(false); return true; }
+  if (a === "rkLinkCopiar") { enviarLink(true); return true; }
+  if (a === "rkLinks") { shLinks(); return true; }
+  if (a === "rkLinkCancelar") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } cancelarLink(b); return true; }
+  if (a === "rkAlertas") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } closeSheet(); S.view = "rkcfg"; S.rkCfgAba = "alertas"; render(); return true; }
+  if (a === "rkLiberarNome") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } liberarNome(b); return true; }
   if (a === "rkLancarDiaSalvar") { if (!S.admin) { toast("Área restrita ao administrador."); return true; } salvarLancarDia(b); return true; }
   if (a === "rkLoteGerar") { gerarLote(b); return true; }
   if (a === "rkLoteEnviar") { enviarLote(b); return true; }

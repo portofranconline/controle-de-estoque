@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Acompanhamento metas · Aldo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* página só para ver as metas (link com validade). Sempre no tema escuro do app. */
+:root{--bg:#060b16;--surface:#0e1829;--surface2:#122038;--ink:#e6eef9;--muted:#8597b2;--line:#1f2f4a;--cyan:#22d3ee;
+  --good:#34d399;--warn:#fbbf24;--crit:#f87171;--display:"Space Grotesk","Segoe UI",system-ui,sans-serif;--body:"Inter",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;--mono:"JetBrains Mono",ui-monospace,Menlo,monospace;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-text-size-adjust:100%}
+body{min-height:100vh;background-image:linear-gradient(rgba(34,211,238,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(34,211,238,.05) 1px,transparent 1px);background-size:28px 28px}
+img{-webkit-user-drag:none;pointer-events:none}
+.top{display:flex;align-items:center;gap:12px;padding:14px 16px;background:#0a1426;border-bottom:1px solid var(--cyan);position:sticky;top:0;z-index:2}
+.top img{height:34px;width:auto}
+.top h1{margin:0;font-family:var(--display);font-size:19px;letter-spacing:.04em;text-transform:uppercase;line-height:1.15}
+.top p{margin:2px 0 0;font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--cyan);text-transform:uppercase}
+.wrap{max-width:640px;margin:0 auto;padding:12px 14px 70px}
+.info{font-size:12px;color:var(--muted);line-height:1.5;margin:4px 2px 10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:6px 14px}
+.row{display:grid;grid-template-columns:30px 40px 1fr;gap:10px;padding:14px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.pos{font-family:var(--display);font-size:20px;font-weight:700;padding-top:6px;text-align:center}
+.av{width:40px;height:40px;border-radius:50%;background:var(--surface2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:var(--muted)}
+.nm{font-family:var(--display);font-weight:700;font-size:16px;text-transform:uppercase;line-height:1.2}
+.fn{font-size:12px;color:var(--muted);margin-bottom:4px}
+.ln{font-size:13px;color:var(--muted);margin-top:3px}.ln b{color:var(--ink);white-space:nowrap}
+.bar{position:relative;height:9px;border-radius:6px;background:var(--surface2);overflow:hidden;margin-top:6px}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:6px}
+.st{font-weight:700;font-size:13px;margin-top:4px}
+.sub{font-size:12px;color:var(--muted);margin-top:8px}
+.msg{text-align:center;padding:60px 20px;font-size:15px;line-height:1.6;color:var(--muted)}
+.msg b{display:block;font-family:var(--display);font-size:20px;color:var(--ink);margin-bottom:6px}
+.wm{position:fixed;inset:-40%;z-index:5;pointer-events:none;display:flex;flex-wrap:wrap;align-content:flex-start;gap:46px 40px;transform:rotate(-24deg);opacity:.3;font-family:var(--display);font-weight:700;font-size:22px;white-space:nowrap;color:#f87171;overflow:hidden;text-transform:uppercase}
+.nomes{display:grid;gap:8px;margin-top:10px}
+.nomes button{font:inherit;font-family:var(--display);font-weight:700;font-size:16px;text-transform:uppercase;text-align:left;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer}
+.nomes button:active{border-color:var(--cyan)}
+.conf{background:var(--surface);border:1px solid var(--cyan);border-radius:14px;padding:16px;margin-top:10px;text-align:center}
+.conf b{font-family:var(--display);font-size:18px;text-transform:uppercase}
+.bt{font:inherit;font-weight:700;border-radius:10px;padding:12px;border:1px solid var(--line);background:var(--surface2);color:var(--ink);width:100%;margin-top:8px;cursor:pointer}
+.bt.pri{background:#f97316;border-color:#f97316;color:#1a0d02}
+.rod{position:fixed;left:0;right:0;bottom:0;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:rgba(6,11,22,.92);border-top:1px solid var(--line);font-size:11px;color:var(--muted);text-align:center;z-index:3}
+.rod b{color:var(--ink)}
+@media print{body{display:none!important}}
+</style>
+</head>
+<body oncontextmenu="return false">
+<div class="top"><img src="logo-aldo.png?v=1" alt="Aldo" onerror="this.remove()"><div><h1>Acompanhamento metas</h1><p id="sub">Carregando…</p></div></div>
+<div class="wrap" id="app"><div class="msg">Carregando as metas…</div></div>
+<div class="rod">Desenvolvido por <b>Luís Ricardo Menezes</b> · Aldo Porto Franco</div>
+<script src="supabase-config.js"></script>
+<script>
+(function(){
+  const $ = s => document.querySelector(s), app = $("#app");
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const n2 = v => Number(v || 0).toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2});
+  const fmt = (c, v) => c === "lt" ? n2(v) + " L" : c === "mc" ? "R$ " + n2(v) : Number(v || 0).toLocaleString("pt-BR", {maximumFractionDigits:2});
+  const dh = t => new Date(t).toLocaleString("pt-BR", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
+  const msg = (t, d) => { app.innerHTML = `<div class="msg"><b>${t}</b>${d}</div>`; $("#sub").textContent = "Aldo"; };
+  ["copy", "cut", "selectstart", "dragstart"].forEach(ev => document.addEventListener(ev, e => e.preventDefault()));
+  document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && /^[cpsu]$/i.test(e.key)) e.preventDefault(); });
+
+  // código do link: lê do endereço e tira da barra (fica guardado só nesta aba)
+  let tk = (location.hash.match(/k=([a-f0-9]{40,})/i) || [])[1] || "";
+  try { if (tk) sessionStorage.setItem("metasK", tk); else tk = sessionStorage.getItem("metasK") || ""; } catch (e) {}
+  if (location.hash) history.replaceState(null, "", location.pathname);
+  // identidade deste aparelho (o link trava no primeiro que abrir)
+  let ap = ""; try { ap = localStorage.getItem("metasAparelho") || ""; } catch (e) {}
+  if (!/^[a-f0-9]{32}$/.test(ap)) { const u = new Uint8Array(16); crypto.getRandomValues(u); ap = [...u].map(x => x.toString(16).padStart(2, "0")).join(""); try { localStorage.setItem("metasAparelho", ap); } catch (e) {} }
+
+  function barra(r, v){
+    if (!(v > 0)) return {html:"", st:""};
+    const pct = Math.floor(r / v * 100), bateu = r >= v, cor = bateu ? "var(--good)" : pct >= 70 ? "var(--warn)" : "var(--crit)", w = Math.min(100, pct);
+    const fundo = bateu ? `repeating-linear-gradient(-45deg,${cor} 0 8px,color-mix(in srgb,${cor} 55%,transparent) 8px 14px)` : cor;
+    return {pct, bateu, cor, html:`<div class="bar"><i style="width:${w}%;background:${bateu ? cor : cor}"></i>${bateu && pct > 100 ? `<i style="left:${Math.max(0, 100 - (pct - 100) / pct * 100)}%;right:0;width:auto;background:${fundo}"></i>` : ""}</div>`};
+  }
+  function bloco(m, rotulo){
+    if (!m) return "";
+    const b = barra(m.r, m.v), st = b.html ? `<div class="st" style="color:${b.cor}">${b.bateu ? "✅ " + b.pct + "% · passou " + fmt(m.c, m.r - m.v) : b.pct + "% · faltam " + fmt(m.c, m.v - m.r)}</div>` : "";
+    return (rotulo ? `<div class="sub">${rotulo}${m.v > 0 ? " · meta " + fmt(m.c, m.v) : ""}</div>` : "") + b.html + st;
+  }
+  function mostrar(j){
+    const d = j.dados || {}, L = d.linhas || [], para = j.nome || "";
+    $("#sub").textContent = [d.ico ? d.ico + " " + d.cat : d.cat, d.mes].filter(Boolean).join(" · ");
+    document.title = "Metas · " + (d.cat || "") + " · Aldo";
+    const med = i => i < 3 ? ["🥇", "🥈", "🥉"][i] : String(i + 1), ini = n => String(n || "").trim().split(/\s+/).filter(Boolean).map(p => p[0]).slice(0, 2).join("").toUpperCase();
+    app.innerHTML = `<div class="info">${esc(d.filial)}<br>Atualizado em <b>${dh(d.gerado || j.criado_em)}</b> · válido até <b>${dh(j.expira_em)}</b><br>Aberto por <b>${esc(para)}</b> neste aparelho · somente leitura</div>
+      <div class="card">${L.map((r, i) => {
+        const pc = r.p ? r.p.c : (d.lt ? "lt" : "mc");
+        return `<div class="row"><div class="pos">${med(i)}</div><div class="av">${esc(ini(r.n))}</div><div style="min-width:0">
+          <div class="nm">${esc(r.n)}</div><div class="fn">${esc(r.f)}</div>
+          <div class="ln">Qtd. <b>${fmt("q", r.q)}</b> &nbsp; Venda MC <b>${fmt("mc", r.mc)}</b></div>
+          ${pc === "lt" ? `<div class="ln">Litragem <b>${fmt("lt", r.lt)}</b>${r.p && r.p.v > 0 ? ` &nbsp; Meta <b>${fmt("lt", r.p.v)}</b>` : ""}</div>` : r.p && r.p.v > 0 ? `<div class="ln">Meta <b>${fmt(pc, r.p.v)}</b></div>` : ""}
+          ${bloco(r.p, "")}${bloco(r.s, "🛒 Venda da loja")}${r.o ? `<div class="sub">🧾 Operações: <b style="color:var(--ink)">${fmt("q", r.o.r)}</b></div>` + bloco(r.o.v > 0 ? r.o : null, "") : ""}
+        </div></div>`; }).join("") || `<div class="msg">Nenhum lançamento.</div>`}</div>`;
+  }
+  async function chamar(nome){
+    const C = window.ESTOQUE_SUPABASE || {};
+    const h = {apikey:C.anonKey, "Content-Type":"application/json"}; if (/^eyJ/.test(C.anonKey)) h.Authorization = "Bearer " + C.anonKey;
+    const r = await fetch(C.url + "/rest/v1/rpc/ver_link_metas", {method:"POST", headers:h, cache:"no-store", body:JSON.stringify({p_token:tk, p_aparelho:ap, p_nome:nome || null})});
+    const j = await r.json().catch(() => null);
+    if (!r.ok || !j) throw new Error("HTTP " + r.status);
+    return j;
+  }
+  function bloqueado(j){
+    msg("Link bloqueado neste aparelho", `O nome <b style="display:inline;font-size:inherit">${esc(j.nome || "")}</b> já está em outro aparelho.<br>Este link é do grupo ${esc(j.titulo || "")} e cada colaborador abre só no próprio celular.<br><br>Compartilhar não é permitido: <b style="display:inline;font-size:inherit;color:var(--crit)">o administrador foi avisado.</b>`);
+    const wm = document.createElement("div"), t = "Link compartilhado · " + (j.nome || "") + " · bloqueado";
+    wm.className = "wm"; wm.setAttribute("aria-hidden", "true"); wm.innerHTML = Array.from({length:160}, () => `<span>${esc(t)}</span>`).join("");
+    document.body.appendChild(wm);
+  }
+  function escolher(j){
+    $("#sub").textContent = j.titulo || "Aldo";
+    const nomes = (j.nomes || []).slice().sort((a, b) => String(a).localeCompare(String(b), "pt-BR"));
+    app.innerHTML = `<div class="info"><b style="font-size:16px;color:var(--ink)">Quem é você?</b><br>Toque no seu nome. Este celular fica ligado a ele e, nas próximas vezes, abre direto.<br>Cada nome só pode ser usado em um aparelho.</div>
+      <div class="nomes">${nomes.map((n, i) => `<button data-i="${i}">${esc(n)}</button>`).join("")}</div>`;
+    app.querySelectorAll(".nomes button").forEach(b => b.onclick = () => confirmar(nomes[+b.dataset.i], j));
+  }
+  function confirmar(nome, j){
+    app.innerHTML = `<div class="conf">Você é<br><b>${esc(nome)}</b>?<p style="font-size:13px;color:var(--muted);margin:8px 0 0">Este celular ficará ligado a esse nome. Se não for você, volte e escolha o seu.</p>
+      <button class="bt pri" id="sim">Sim, sou eu</button><button class="bt" id="nao">Voltar</button></div>`;
+    $("#nao").onclick = () => escolher(j);
+    $("#sim").onclick = async () => { $("#sim").disabled = true; app.innerHTML = `<div class="msg">Abrindo…</div>`; try { trata(await chamar(nome)); } catch (e) { console.error(e); msg("Não foi possível carregar", "Confira a internet e abra o link de novo."); } };
+  }
+  function trata(j){
+    if (j.erro === "expirado") return msg("Este link expirou", "Peça um novo ao administrador.");
+    if (j.erro === "compartilhado") return bloqueado(j);
+    if (j.erro) return msg("Link inválido ou cancelado", "Peça um novo ao administrador.");
+    if (j.precisa_nome) return escolher(j);
+    mostrar(j);
+  }
+  async function abrir(){
+    const C = window.ESTOQUE_SUPABASE || {};
+    if (!tk) return msg("Link incompleto", "Peça um novo link ao administrador.");
+    if (!C.url || !C.anonKey) return msg("Sem conexão com o banco", "Tente de novo mais tarde.");
+    try { trata(await chamar(null)); } catch (e) { console.error(e); msg("Não foi possível carregar", "Confira a internet e abra o link de novo."); }
+  }
+  abrir();
+})();
+</script>
+</body>
+</html>
