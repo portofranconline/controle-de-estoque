@@ -203,7 +203,7 @@ function vRanking(){
           <div class="meta" style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:4px"><span>Qtd. <b>${fmt2(r.q)}</b></span><span>Venda MC <b>R$ ${moeda(r.mc)}</b></span>${c.lt ? `<span>Litragem <b>${fmt2(r.lt)} L</b></span>` : ""}${r.meta ? `<span>Meta <b>${fmtCampo(r.meta.campo, r.meta.valor)}</b></span>` : ""}</div>
           ${barra(r.st)}${r.mcSt ? `<div class="meta" style="font-size:11px;margin-top:4px">🛒 Venda da loja · meta R$ ${moeda(r.mcMeta.valor)}</div>${barra(r.mcSt, 6)}` : ""}${opDaPessoa(r)}</div>${acoes(r)}</div>`).join("");
   const total = k => lista.reduce((a, r) => a + r[k], 0);
-  return `<div class="top"><button class="back" data-act="${S.admin ? "admin" : "home"}">Voltar</button><h1>Ranking de vendas posto</h1></div><div class="pad">
+  return `<div class="top"><button class="back" data-act="${S.admin ? "admin" : "home"}">Voltar</button><h1>Acompanhamento metas</h1></div><div class="pad">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
       <select id="rkTipoSel" class="inp" aria-label="Setor">${rkAbasVer().map(x => `<option value="${x.k}" ${x.k === c.k ? "selected" : ""}>${x.ico} ${x.t}</option>`).join("")}</select>
       <select id="rkMes" class="inp" aria-label="Mês">${meses.map(m => `<option value="${m}" ${m === S.rkMes ? "selected" : ""}>${MESES[Number(m.slice(5)) - 1].slice(0, 3)}/${m.slice(0, 4)}</option>`).join("")}</select></div>
@@ -288,7 +288,7 @@ function vRkCfg(){
     }
     const ORD = Object.keys(grupoOpcoes()), grupoP = p => { const i = ORD.indexOf(grupoKey(p)); return i < 0 ? ORD.length : i; };
     const gente = [...Object.entries(P).filter(([, p]) => p && !p.x), ...puxados].sort((a, b) => grupoP(a[1]) - grupoP(b[1]) || a[1].nome.localeCompare(b[1].nome, "pt-BR"));
-    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 20</small></h2>
+    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 21</small></h2>
       <input class="inp" id="eqBusca" placeholder="🔎 Buscar nome (equipe e relatórios)" autocomplete="off" style="margin:6px 0">
       <div id="eqNada" hidden style="font-size:12px;color:var(--muted);margin-bottom:6px">Nome não encontrado. Use <b>➕ Adicionar membro</b> no fim da tela.</div>
       <p style="margin:4px 0 10px;font-size:12px;color:var(--muted);line-height:1.4">Toque no grupo de cada pessoa: salva na hora, e a venda e a meta passam a ser desse grupo. Os nomes vêm dos relatórios do ranking.</p>
