@@ -3,8 +3,8 @@
 // Limpeza automática: apaga caches antigos do app e mantém só as cópias mais recentes dos arquivos.
 // Não mexe em nenhum dado salvo no aparelho (filial, login, tema) nem no banco.
 const PREFIX = 'estoque:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v27';
-const CORE = ['./', './index.html', './imagens.js', './ranking.js?v=27', './manifest.json', './supabase-config.js'];
+const CACHE = PREFIX + 'v29';
+const CORE = ['./', './index.html', './imagens.js', './ranking.js?v=29', './manifest.json', './supabase-config.js'];
 const MAX_ARQUIVOS = 40;
 self.addEventListener('install', e => e.waitUntil(
   caches.open(CACHE).then(c => Promise.all(CORE.map(u => c.add(u).catch(() => null)))).then(() => self.skipWaiting())
@@ -19,6 +19,16 @@ async function aparar(cache){
   const ks = await cache.keys();
   for (let i = 0; i < ks.length - MAX_ARQUIVOS; i++) await cache.delete(ks[i]); // remove as cópias mais antigas
 }
+// v29: foto compartilhada pelo WhatsApp (Compartilhar → Controle de Estoque): guarda e abre o app para importar
+self.addEventListener('fetch', e => {
+  const req = e.request, url = new URL(req.url);
+  if (req.method !== 'POST' || url.origin !== self.location.origin || url.searchParams.get('compartilhar') !== '1') return;
+  e.respondWith((async () => {
+    try { const fd = await req.formData(); const f = fd.getAll('foto').find(x => x && x.size) || null;
+      if (f) { const c = await caches.open('compartilhado'); await c.put(new URL('foto-compartilhada', self.registration.scope).href, new Response(f, {headers:{'Content-Type': f.type || 'image/jpeg'}})); } } catch (x) {}
+    return Response.redirect(new URL('./index.html?compartilhado=1', self.registration.scope).href, 303);
+  })());
+});
 self.addEventListener('fetch', e => {
   const req = e.request, url = new URL(req.url);
   if (req.method !== 'GET' || url.origin !== self.location.origin) return; // Supabase e outros sites: direto na rede

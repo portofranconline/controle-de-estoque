@@ -64,8 +64,8 @@ function ordenaPodio(k, l){
   sim.sort((a, b) => (num(bt[rkChaveP(a)]) || 9e15) - (num(bt[rkChaveP(b)]) || 9e15));
   return [...sim.map(r => ({...r, podio:true})), ...nao];
 }
-const medalha = (r, i) => r && r.podio && i < 3 ? ["🥇", "🥈", "🥉"][i] : "";
-const listaRk = c => ordenaPodio(c.k, FRENT[c.k] ? frentistasDe(c.k) : vendasDoMes(c.k));
+const medalha = (r, i) => i < 3 ? ["🥇", "🥈", "🥉"][i] : "";
+const listaRk = c => FRENT[c.k] ? frentistasDe(c.k) : vendasDoMes(c.k);
 const rankingAtivo = () => !!(S.cfg && S.cfg.ranking);
 const rkFotosAtivas = () => !!(S.cfg && S.cfg.rkFotos);
 const moeda = v => num(v).toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -173,9 +173,8 @@ function situacao(v, meta){
 }
 function barra(st, alto){
   if (!st) return "";
-  /* v27: barra com brilho neon (amarelo e verde mais vivos) */
-  const passou = st.pct > 100 ? Math.min(100, st.pct - 100) : 0, h = alto || 8, w = Math.min(100, st.pct), neon = `0 0 4px ${st.cor},0 0 10px ${st.cor},0 0 18px color-mix(in srgb,${st.cor} 55%,transparent)`;
-  return `<div style="position:relative;height:${h}px;background:color-mix(in srgb,var(--line) 85%,transparent);border-radius:99px;margin-top:6px"><i style="position:absolute;left:0;top:0;bottom:0;width:${w}%;border-radius:99px;background:linear-gradient(90deg,color-mix(in srgb,${st.cor} 70%,#fff 0%),${st.cor});box-shadow:${w > 0 ? neon : "none"}"></i>${passou ? `<i style="position:absolute;right:0;top:0;bottom:0;width:${passou}%;border-radius:99px;background:repeating-linear-gradient(45deg,var(--good),var(--good) 4px,color-mix(in srgb,var(--good) 45%,transparent) 4px,color-mix(in srgb,var(--good) 45%,transparent) 8px);box-shadow:0 0 8px var(--good)"></i>` : ""}</div>`;
+  const passou = st.pct > 100 ? Math.min(100, st.pct - 100) : 0;
+  return `<div style="position:relative;height:${alto || 8}px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:5px"><i style="position:absolute;left:0;top:0;bottom:0;width:${Math.min(100, st.pct)}%;background:${st.cor}"></i>${passou ? `<i style="position:absolute;right:0;top:0;bottom:0;width:${passou}%;background:repeating-linear-gradient(45deg,var(--good),var(--good) 4px,color-mix(in srgb,var(--good) 55%,#fff) 4px,color-mix(in srgb,var(--good) 55%,#fff) 8px)"></i>` : ""}</div><small style="color:${st.cor};font-weight:700">${st.texto}</small>`;
 }
 function fotoPessoa(r, tam){
   if (!rkFotosAtivas()) return "";
@@ -237,7 +236,7 @@ function vRanking(){
       <select id="rkMes" class="inp" aria-label="Mês">${meses.map(m => `<option value="${m}" ${m === S.rkMes ? "selected" : ""}>${MESES[Number(m.slice(5)) - 1].slice(0, 3)}/${m.slice(0, 4)}</option>`).join("")}</select></div>
     <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
       <select id="rkOrdemSel" class="inp" aria-label="Ordenar" style="flex:1;min-width:0">${ordens.map(([k, t]) => `<option value="${k}" ${k === S.rkOrdem ? "selected" : ""}>↕ ${({q:"Qtd.", mc:"Venda MC", lt:"Litros"})[k] || t}</option>`).join("")}</select>
-      ${S.admin ? `<button class="btn" style="width:auto;flex:none;padding:8px 11px;margin:0" data-act="rkCfg" title="Configurar metas" aria-label="Configurar">⚙️</button><label class="btn brand" style="width:auto;flex:none;padding:8px 11px;margin:0;cursor:pointer" title="Importar da imagem" aria-label="Importar">📷<input type="file" accept="image/*" data-rk-img="1" hidden></label>${junta ? "" : `<button class="btn" style="width:auto;flex:none;padding:8px 11px;margin:0" data-act="novaVenda" title="Lançar à mão" aria-label="Lançar">➕</button>`}` : ""}<button class="btn" style="width:auto;flex:none;padding:8px 11px;margin:0" data-act="rkBaixar" title="Baixar e enviar" aria-label="Baixar">⬇️</button><button class="btn" style="width:auto;flex:none;padding:8px 11px;margin:0" data-act="rkRecarregar" title="Atualizar página" aria-label="Atualizar">🔄</button></div>
+      ${S.admin ? `<button class="btn" style="width:auto;flex:none;padding:8px 11px;margin:0" data-act="rkCfg" title="Configurar metas" aria-label="Configurar">⚙️</button><label class="btn brand" style="width:auto;flex:none;padding:8px 11px;margin:0;cursor:pointer" title="Importar foto (detecta sozinho qual meta atualizar)" aria-label="Importar foto">📷<input type="file" accept="image/*" data-rk-img="1" hidden></label>${junta ? "" : `<button class="btn" style="width:auto;flex:none;padding:8px 11px;margin:0" data-act="novaVenda" title="Lançar à mão" aria-label="Lançar">➕</button>`}` : ""}<button class="btn" style="width:auto;flex:none;padding:8px 11px;margin:0" data-act="rkBaixar" title="Baixar e enviar" aria-label="Baixar">⬇️</button><button class="btn" style="width:auto;flex:none;padding:8px 11px;margin:0" data-act="rkRecarregar" title="Atualizar página" aria-label="Atualizar">🔄</button></div>
     ${bannerAlertas()}${c.k === "caixa" && S.admin ? cardOperacoes() : ""}
     ${cardMetaGeral()}
     ${dq ? `<div class="card" style="border:1px solid #fbbf24"><h2>⭐ Destaque do mês · ${c.t}</h2><div style="display:flex;gap:10px;align-items:center;margin-top:6px">${fotoPessoa(dq.r, 46)}<div><b>${esc(dq.r.nome)}</b><br><span class="meta">Primeiro a bater a meta · ${new Date(dq.t).toLocaleDateString("pt-BR")}</span></div></div></div>` : ""}
@@ -323,7 +322,7 @@ function vRkCfg(){
     }
     const ORD = Object.keys(grupoOpcoes()), grupoP = p => { const i = ORD.indexOf(grupoKey(p)); return i < 0 ? ORD.length : i; };
     const gente = [...Object.entries(P).filter(([, p]) => p && !p.x), ...puxados].sort((a, b) => grupoP(a[1]) - grupoP(b[1]) || a[1].nome.localeCompare(b[1].nome, "pt-BR"));
-    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 27</small></h2>
+    corpo = `<div class="card"><h2>Equipe do ranking <small style="font-size:11px;color:var(--muted);font-weight:400">· versão 29</small></h2>
       <input class="inp" id="eqBusca" placeholder="🔎 Buscar nome (equipe e relatórios)" autocomplete="off" style="margin:6px 0">
       <div id="eqNada" hidden style="font-size:12px;color:var(--muted);margin-bottom:6px">Nome não encontrado. Use <b>➕ Adicionar membro</b> no fim da tela.</div>
       <p style="margin:4px 0 10px;font-size:12px;color:var(--muted);line-height:1.4">Toque no grupo de cada pessoa: salva na hora, e a venda e a meta passam a ser desse grupo. Os nomes vêm dos relatórios do ranking.</p>
@@ -443,11 +442,6 @@ async function marcarBatidas(){
     const lista = vendasDoMes(c.k);
     for (const r of lista) { if (!r.pid || (ja[c.k] || {})[r.pid]) continue; const st = situacao(r, metaDaPessoa(r, c.k, lista)); if (st && st.bateu) { (patch[c.k] = patch[c.k] || {})[r.pid] = agora; n++; } }
   }
-  /* v27: hora em que cada um bateu as DUAS metas (pódio) */
-  const ja2 = d.batidas2 || {}, patch2 = {}; let n2 = 0;
-  try { for (const c of rkAbasVer()) { if (c.k === "todos") continue; const l = FRENT[c.k] ? frentistasDe(c.k) : vendasDoMes(c.k);
-    for (const r of l) { const ch = rkChaveP(r); if ((ja2[c.k] || {})[ch] || !bateuTudo(r, c.k, l)) continue; (patch2[c.k] = patch2[c.k] || {})[ch] = agora; n2++; } } } catch (e) { console.error("Pódio:", e); }
-  if (n2) { try { await S.db.doc("vendas/" + S.rkMes).update({batidas2:patch2}); S.vendas = {...S.vendas, [S.rkMes]:deepMerge((S.vendas || {})[S.rkMes] || {}, {batidas2:patch2})}; S.vendasK = JSON.stringify(S.vendas); } catch (e) { console.error("Pódio:", e); } }
   if (!n) return;
   try { await S.db.doc("vendas/" + S.rkMes).update({batidas:patch}); S.vendas = {...S.vendas, [S.rkMes]:deepMerge((S.vendas || {})[S.rkMes] || d, {batidas:patch})}; S.vendasK = JSON.stringify(S.vendas); } catch (e) { console.error("Destaque:", e); }
 }
@@ -612,8 +606,8 @@ async function desenhaPessoa(r, c, lista){
     if (foto) { const l = Math.min(foto.width, foto.height); g.drawImage(foto, (foto.width - l) / 2, (foto.height - l) / 2, l, l, cx - R, cy - R, R * 2, R * 2); }
     else { const ag = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R); ag.addColorStop(0, "#1e4b85"); ag.addColorStop(1, "#0c2547"); g.fillStyle = ag; g.fillRect(cx - R, cy - R, R * 2, R * 2); g.fillStyle = "#e6eef9"; g.font = "bold 120px Arial"; g.textAlign = "center"; g.fillText(r.nome.split(" ").filter(Boolean).map(x => x[0]).slice(0, 2).join("").toUpperCase(), cx, cy + 42); }
     g.restore();
-    g.save(); g.shadowColor = "rgba(0,0,0,.4)"; g.shadowBlur = 16; rr(g, cx - 72, cy + R + 4, 144, 62, 31); g.fillStyle = r.podio && pos <= 3 ? ["#fbbf24", "#e2e8f0", "#d97706"][pos - 1] : "#22d3ee"; g.fill(); g.restore();
-    g.fillStyle = "#071226"; g.font = "bold 38px Arial"; g.textAlign = "center"; g.fillText((r.podio && pos <= 3 ? ["🥇", "🥈", "🥉"][pos - 1] + " " : "") + pos + "º", cx, cy + R + 49);
+    g.save(); g.shadowColor = "rgba(0,0,0,.4)"; g.shadowBlur = 16; rr(g, cx - 72, cy + R + 4, 144, 62, 31); g.fillStyle = pos <= 3 ? ["#fbbf24", "#e2e8f0", "#d97706"][pos - 1] : "#22d3ee"; g.fill(); g.restore();
+    g.fillStyle = "#071226"; g.font = "bold 38px Arial"; g.textAlign = "center"; g.fillText((pos <= 3 ? ["🥇", "🥈", "🥉"][pos - 1] + " " : "") + pos + "º", cx, cy + R + 49);
     g.save(); g.shadowColor = "rgba(0,0,0,.5)"; g.shadowBlur = 12; g.fillStyle = "#ffffff"; g.font = "bold 56px Arial"; g.fillText(cortaCentro(g, r.nome, W - 120), cx, 712); g.restore();
     g.fillStyle = "rgba(255,255,255,.78)"; g.font = "28px Arial"; g.fillText(cortaCentro(g, nomeFuncao(r.funcao) + " · " + c.t + " · " + pos + "º de " + lista.length, W - 120), cx, 758);
     if (destaque) { rr(g, cx - 300, 784, 600, 60, 30); g.fillStyle = "#fbbf24"; g.fill(); g.fillStyle = "#071226"; g.font = "bold 28px Arial"; g.fillText("⭐ DESTAQUE: 1º A BATER A META", cx, 824); }
@@ -935,8 +929,8 @@ function dadosLink(c){
   const linhas = l.map(r => {
     const m = metaDaPessoa(r, c.k, l), mm = m && m.campo !== "mc" ? metaDaPessoa(r, c.k, l, "mc") : null;
     let op = null; if (r.pid && (r.tab === "caixa" || c.k === "caixa") && opL.length) { const o = opL.find(x => x.pid === r.pid), base = o || {...r, q:0, tab:"opcaixa"}, mo = metaDaPessoa(base, "opcaixa", opL); if (o || mo) op = {c:"q", r:num(base.q), v:mo ? mo.valor : 0}; }
-    return {pd:r.podio ? 1 : 0, n:r.nome, f:nomeFuncao(r.funcao) || "", q:num(r.q), mc:num(r.mc), lt:num(r.lt), p:P(r, m ? m.campo : campoP, m), s:P(r, "mc", mm), o:op, ord:num(r[m ? m.campo : campoP])};
-  }).map(({ord, ...x}) => x);
+    return {n:r.nome, f:nomeFuncao(r.funcao) || "", q:num(r.q), mc:num(r.mc), lt:num(r.lt), p:P(r, m ? m.campo : campoP, m), s:P(r, "mc", mm), o:op, ord:num(r[m ? m.campo : campoP])};
+  }).sort((a, b) => b.ord - a.ord).map(({ord, ...x}) => x);
   return {filial:S.nomeFilial || "", cat:c.t, ico:c.ico, mes:nomeMes(S.rkMes), lt:!!c.lt, gerado:new Date().toISOString(), linhas};
 }
 async function gerarLink(b){
@@ -1153,36 +1147,93 @@ function linhasDoTexto(txt, solto){
   }
   return out;
 }
+/* v29: foto inteligente — lê a foto e descobre sozinho qual meta atualizar (Loja, Diesel, Gasolina, Caixa, Operações).
+   Pistas: palavras do relatório, nomes da equipe (setores marcados), quantas colunas de números e o que já aprendeu.
+   Tudo no próprio aparelho; a foto não é enviada para lugar nenhum. */
+const PALAVRAS_REL = {diesel:/\bDIESEL\b|\bS-?10\b|\bS-?500\b|\bARLA\b/, gasolina:/GASOLINA|ETANOL|\bALCOOL\b|ADITIVADA|PODIUM/, opcaixa:/OPERAC(OES|AO)|QTD\.? *OPER|N[O0º°]\.? *OPER/, caixa:/\bCAIXA|\bPDV\b/, loja:/\bLOJA\b|CONVENIENCIA/};
+function palavrasCabecalho(T){
+  const nomes = new Set(Object.values(pessoasRk()).flatMap(p => semAcento((p && p.nome) || "").toUpperCase().split(/\s+/)));
+  const out = []; for (const l of T.split(/\n+/)) { if (/\d,\d{2}/.test(l)) continue; for (const w of l.split(/[^A-Z]+/)) if (w.length >= 4 && !nomes.has(w) && !out.includes(w)) out.push(w); if (out.length >= 10) break; }
+  return out.slice(0, 10);
+}
+function detectaCategoria(textos){
+  const ativas = RK.filter(c => rkAbas().some(x => x.k === c.k)).map(c => c.k), aberta = RK.find(x => x.k === S.rkTipo) ? S.rkTipo : ativas[0];
+  if (ativas.length === 1) return {k:ativas[0], conf:"alta", motivo:"só esta categoria está ligada"};
+  const T = semAcento(textos.join("\n")).toUpperCase(), pts = {}, why = {}; ativas.forEach(k => { pts[k] = 0; why[k] = []; });
+  const add = (k, n, m) => { if (!(k in pts)) return; pts[k] += n; if (m && !why[k].includes(m)) why[k].push(m); };
+  for (const [k, re] of Object.entries(PALAVRAS_REL)) if (re.test(T)) add(k, 4, "palavras do relatório");
+  const base = textos.map(t => linhasDoTexto(t, true)).reduce((a, b) => b.length > a.length ? b : a, []);
+  let achados = 0;
+  for (const r of base) {
+    const p = acharParecido(r.nome); if (!p) continue; achados++;
+    const P = pessoasRk()[p.id] || p, ss = setoresAtuais(P), f = P.funcao || "";
+    const comb = ss.filter(x => x === "diesel" || x === "gasolina");
+    comb.forEach(x => add(x, 2, "nomes da equipe"));
+    if (!comb.length && (ss.length || BASE_GRUPO.frentista.includes(f))) { add("diesel", 1, "nomes da equipe"); add("gasolina", 1, "nomes da equipe"); }
+    if (BASE_GRUPO.caixa.includes(f)) { add("caixa", 2, "nomes da equipe"); add("opcaixa", 2, "nomes da equipe"); }
+    if (f === "loja") add("loja", 2, "nomes da equipe");
+  }
+  const cols = base.map(r => r.v.length).sort((a, b) => a - b), ncol = cols.length ? cols[Math.floor(cols.length / 2)] : 0;
+  if (ncol >= 3) { add("diesel", 3, "coluna de litragem"); add("gasolina", 3, "coluna de litragem");
+    /* litragem por pessoa: no diesel costuma ser bem maior que na gasolina */
+    const lts = base.map(r => r.v[2]).filter(v => v > 0).sort((a, b) => a - b), med = lts.length ? lts[Math.floor(lts.length / 2)] : 0;
+    if (med >= 40000) add("diesel", 2, "litragem alta, típica do diesel"); else if (med > 0) add("gasolina", 2, "litragem típica da gasolina"); }
+  else if (ncol === 1) { add("opcaixa", 4, "só a quantidade"); add("caixa", -3); }
+  else if (ncol === 2) { add("loja", 1); add("caixa", 1, "quantidade + venda"); add("opcaixa", -3); }
+  for (const a of Object.values(((S.cfg || {}).rkAssinaturas) || {})) { if (!a || !(a.k in pts) || !(a.p || []).length) continue; const hit = a.p.filter(w => T.includes(w)).length; if (hit >= Math.min(4, a.p.length)) add(a.k, 10, "aprendido de importações anteriores"); }
+  const ord = Object.entries(pts).sort((a, b) => b[1] - a[1] || (b[0] === aberta) - (a[0] === aberta)), [k, v] = ord[0], v2 = (ord[1] || [0, 0])[1];
+  if (!(v > 0)) return {k:aberta, conf:"baixa", motivo:"sem pistas na foto: usei a aba aberta", achados, linhas:base.length};
+  return {k, conf:v - v2 >= 4 ? "alta" : v - v2 >= 2 ? "média" : "baixa", motivo:why[k].join(" + "), achados, linhas:base.length};
+}
 async function importarImagem(arq, aba){
   if (!arq) return;
-  const c = (aba && RK.find(x => x.k === aba)) || rkCat(); S.importaAba = c.k;
-  openSheet(`<h2>Lendo a imagem…</h2><p class="meta">Na primeira vez, o leitor é baixado (alguns segundos). Depois é rápido.</p>`);
+  openSheet(`<h2>📷 Lendo a imagem…</h2><p class="meta">Lendo a tabela e descobrindo qual meta atualizar. Na primeira vez, o leitor é baixado (alguns segundos).</p>`);
   try {
     const T = await carregaLeitor();
     const url = await new Promise((ok, erro) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = erro; r.readAsDataURL(arq); });
     const img = await new Promise((ok, erro) => { const i = new Image(); i.onload = () => ok(i); i.onerror = erro; i.src = url; });
-    const w = await T.createWorker("por"), leituras = [];
-    try { for (const [larg, lim] of [[1800, 160], [2000, 130], [2400, 170]]) { const {data} = await w.recognize(await prepImagem(img, larg, lim)); leituras.push(linhasDoTexto(data.text, c.k === "opcaixa")); } }
+    const w = await T.createWorker("por"), textos = [];
+    try { for (const [larg, lim] of [[1800, 160], [2000, 130], [2400, 170]]) { const {data} = await w.recognize(await prepImagem(img, larg, lim)); textos.push(data.text || ""); } }
     finally { await w.terminate(); }
-    // junta as 3 leituras: fica o valor que mais se repete; se elas não concordam, a linha fica marcada para conferir
-    const base = leituras.reduce((a, b) => b.length > a.length ? b : a, []), rows = [];
-    base.forEach((r, i) => {
-      const iguais = leituras.map(L => L.find(x => semAcento(x.nome) === semAcento(r.nome)) || L[i]).filter(Boolean);
-      const campos = [0, 1, 2].map(k => { const vs = iguais.map(x => x.v[k]).filter(v => v != null && !isNaN(v)); if (!vs.length) return {v:undefined, ok:true}; const cont = {}; vs.forEach(v => cont[v] = (cont[v] || 0) + 1); const [v, n] = Object.entries(cont).sort((a, b) => b[1] - a[1])[0]; return {v:Number(v), ok:n === vs.length}; });
-      const p = acharParecido(r.nome);
-      rows.push({nome:r.nome, cad:p ? p.nome : null, pid:p ? p.id : null, q:campos[0].v, mc:campos[1].v ?? (c.k === "opcaixa" ? 0 : undefined), lt:c.lt ? campos[2].v : undefined, conferir:!campos.slice(0, c.lt ? 3 : c.k === "opcaixa" ? 1 : 2).every(x => x.ok)});
-    });
-    S.importa = rows;
-    if (!rows.length) { openSheet(`<h2>Nada encontrado</h2><p class="meta">Não achei linhas com nome e números. Use uma foto ou print nítido da tabela, sem cortes, e tente de novo.</p><button class="btn" data-act="fechar">Fechar</button>`); return; }
-    const novos = rows.filter(r => !r.cad).length;
-    const inp = (i, k, v, fmtv) => `<input class="inp" data-imp="${i}" data-k="${k}" inputmode="decimal" value="${v == null ? "" : esc(fmtv(v))}" style="padding:6px 8px;min-width:80px">`;
-    openSheet(`<h2>Conferir importação · ${c.t}</h2>
-      <p style="margin:0 0 8px;font-size:12px;color:var(--muted);line-height:1.45">Confira os valores lidos. Linhas em <b style="color:var(--warn)">amarelo</b> tiveram leituras diferentes: confira com a imagem. Desmarque o que não quiser lançar.${novos ? ` <b style="color:var(--warn)">⚠️ ${novos} nome(s) não estão na equipe</b>: ficam desmarcados; marque e escolha o grupo para adicionar.` : ""} Cada pessoa vai automaticamente para o grupo dela, substituindo o valor anterior do mês.</p>
+    const fixo = aba && RK.find(x => x.k === aba);
+    S.importaTextos = textos; S.importaDet = fixo ? {k:aba, conf:"alta", motivo:"botão de operações", fixo:true} : detectaCategoria(textos);
+    montarConferir(S.importaDet.k);
+  } catch (e) { console.error("Importar imagem:", e); openSheet(`<h2>Não foi possível ler</h2><p class="meta">${esc(e.message || "Erro ao ler a imagem.")}</p><button class="btn" data-act="fechar">Fechar</button>`); }
+}
+function montarConferir(k){
+  const c = RK.find(x => x.k === k) || rkCat(), textos = S.importaTextos || [], det = S.importaDet || {}; S.importaAba = c.k;
+  const leituras = textos.map(t => linhasDoTexto(t, c.k === "opcaixa"));
+  // junta as 3 leituras: fica o valor que mais se repete; se elas não concordam, a linha fica marcada para conferir
+  const base = leituras.reduce((a, b) => b.length > a.length ? b : a, []), rows = [];
+  base.forEach((r, i) => {
+    const iguais = leituras.map(L => L.find(x => semAcento(x.nome) === semAcento(r.nome)) || L[i]).filter(Boolean);
+    const campos = [0, 1, 2].map(k => { const vs = iguais.map(x => x.v[k]).filter(v => v != null && !isNaN(v)); if (!vs.length) return {v:undefined, ok:true}; const cont = {}; vs.forEach(v => cont[v] = (cont[v] || 0) + 1); const [v, n] = Object.entries(cont).sort((a, b) => b[1] - a[1])[0]; return {v:Number(v), ok:n === vs.length}; });
+    const p = acharParecido(r.nome);
+    rows.push({nome:r.nome, cad:p ? p.nome : null, pid:p ? p.id : null, q:campos[0].v, mc:campos[1].v ?? (c.k === "opcaixa" ? 0 : undefined), lt:c.lt ? campos[2].v : undefined, conferir:!campos.slice(0, c.lt ? 3 : c.k === "opcaixa" ? 1 : 2).every(x => x.ok)});
+  });
+  S.importa = rows;
+  const ativas = RK.filter(x => rkAbas().some(a => a.k === x.k)), corConf = det.conf === "alta" ? "var(--good)" : det.conf === "média" ? "var(--warn)" : "var(--crit)";
+  const escolha = `<div style="border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin:0 0 8px;background:var(--surface2)">
+    <label class="f" for="impCat" style="margin:0">Lançar em<select id="impCat" class="inp" data-imp-cat="1" style="margin-top:4px">${ativas.map(x => `<option value="${x.k}"${x.k === c.k ? " selected" : ""}>${x.ico} ${esc(x.t)}</option>`).join("")}</select></label>
+    ${det.fixo ? "" : c.k === det.k ? `<div style="font-size:12px;margin-top:6px">🤖 Detectei <b>${esc(c.t)}</b> · confiança <b style="color:${corConf}">${det.conf}</b>${det.motivo ? ` <span class="meta">(${esc(det.motivo)}${det.achados != null ? ` · ${det.achados} de ${det.linhas} nomes na equipe` : ""})</span>` : ""} Se não for, troque acima: o app aprende para a próxima.</div>` : `<div style="font-size:12px;margin-top:6px;color:var(--warn)">✏️ Trocado por você (detectei ${esc((RK.find(x => x.k === det.k) || {}).t || "")}). Vou lembrar disso nas próximas fotos parecidas.</div>`}</div>`;
+  if (!rows.length) { openSheet(`<h2>Nada encontrado</h2>${escolha}<p class="meta">Não achei linhas com nome e números para ${esc(c.t)}. Troque a categoria acima ou use uma foto/print nítido da tabela, sem cortes.</p><button class="btn" data-act="fechar">Fechar</button>`); return; }
+  const novos = rows.filter(r => !r.cad).length;
+  const inp = (i, k, v, fmtv) => `<input class="inp" data-imp="${i}" data-k="${k}" inputmode="decimal" value="${v == null ? "" : esc(fmtv(v))}" style="padding:6px 8px;min-width:80px">`;
+  openSheet(`<h2>Conferir importação · ${c.t}</h2>${escolha}
+      <p style="margin:0 0 8px;font-size:12px;color:var(--muted);line-height:1.45">Confira os valores lidos. Linhas em <b style="color:var(--warn)">amarelo</b> tiveram leituras diferentes: confira com a imagem. Desmarque o que não quiser lançar.${novos ? ` <b style="color:var(--warn)">⚠️ ${novos} nome(s) não estão na equipe.</b>` : ""}</p>
       <div style="overflow-x:auto"><table class="tbl"><tr><th></th><th>${c.p}</th><th class="n">Qtd.</th><th class="n">Venda MC</th>${c.lt ? `<th class="n">Litragem</th>` : ""}</tr>
       ${rows.map((r, i) => `<tr style="${r.conferir ? "background:var(--warn-bg)" : ""}"><td><input type="checkbox" data-imp-ok="${i}" ${r.cad ? "checked" : ""}></td><td><input class="inp" data-imp="${i}" data-k="nome" value="${esc(r.nome)}" style="padding:6px 8px;min-width:150px">${r.cad ? `<br><span style="font-size:11px;color:var(--muted)">✔ ${esc(r.cad)} · ${esc(grupoOpcoes()[grupoKey(pessoasRk()[r.pid])] || "")}</span>` : `<br><span style="font-size:11px;color:var(--warn);font-weight:700">⚠️ Não está na equipe. Marque para adicionar como:</span><br><select class="inp" data-imp-g="${i}" style="padding:4px 6px;font-size:12px">${c.k === "todos" ? `<option value="">— escolha o grupo —</option>` : ""}${Object.entries(grupoOpcoes()).filter(([k]) => k !== "frentista").map(([k, t]) => `<option value="${k}" ${k === grupoDaAba(c.k) ? "selected" : ""}>${t}</option>`).join("")}</select>`}</td><td>${inp(i, "q", r.q, fmt2)}</td><td>${inp(i, "mc", r.mc, moeda)}</td>${c.lt ? `<td>${inp(i, "lt", r.lt, fmt2)}</td>` : ""}</tr>`).join("")}</table></div>
       <p style="font-size:12px;color:var(--muted)">Mês: <b>${S.rkMes.split("-").reverse().join("/")}</b>. Uma linha por pessoa: o valor novo substitui o anterior.</p>
       <div class="row"><button class="btn" data-act="fechar">Cancelar</button><button class="btn pri" data-act="confirmarImport">Lançar marcados</button></div>`);
-  } catch (e) { console.error("Importar imagem:", e); openSheet(`<h2>Não foi possível ler</h2><p class="meta">${esc(e.message || "Erro ao ler a imagem.")}</p><button class="btn" data-act="fechar">Fechar</button>`); }
+}
+document.addEventListener("change", ev => { const t = ev.target; if (t && t.dataset && t.dataset.impCat) montarConferir(t.value); });
+/* aprende o "jeito" do relatório quando o administrador troca a categoria (ou a confiança era baixa) */
+async function aprendeAssinatura(k){
+  const det = S.importaDet || {}; if (det.fixo || !S.importaTextos) return;
+  if (det.k === k && det.conf === "alta") return;
+  const p = palavrasCabecalho(semAcento(S.importaTextos.join("\n")).toUpperCase()); if (p.length < 3) return;
+  const id = "a" + Date.now().toString(36), patch = {rkAssinaturas:{[id]:{k, p, em:Date.now()}}};
+  try { await S.db.doc("cfg/main").update(patch); S.cfg = deepMerge(S.cfg || {}, patch); } catch (e) { console.warn("Aprender relatório:", e); }
 }
 async function confirmarImport(b){
   const c = RK.find(x => x.k === S.importaAba) || rkCat(), lidos = []; let erro = "";
@@ -1219,7 +1270,7 @@ async function confirmarImport(b){
     });
     await gravaVendas(patch);
   }, lidos.length + " lançamento(s) importado(s).");
-  if (ok) { S.importa = null; closeSheet(); } else b.disabled = false;
+  if (ok) { aprendeAssinatura(c.k); S.importa = null; S.importaTextos = null; closeSheet(); } else b.disabled = false;
 }
 
 
@@ -1454,3 +1505,19 @@ function opDaPessoa(r){
 }
 document.addEventListener("change", ev => { const t = ev.target; if (!t || !t.dataset || !t.dataset.rkOp) return;
   if (!S.admin) return toast("Área restrita ao administrador."); const f = t.files && t.files[0]; t.value = ""; importarImagem(f, "opcaixa"); });
+
+/* v29: foto recebida pelo Compartilhar do celular (Android). Espera o login e abre a importação já detectando a meta. */
+(function rkPegaCompartilhada(){
+  if (!/[?&]compartilhado=1/.test(location.search)) return;
+  let n = 0; const t = setInterval(async () => {
+    if (++n > 300) return clearInterval(t);
+    if (S.state !== "ok" || !S.perfil) return;
+    clearInterval(t); try { history.replaceState(null, "", location.pathname); } catch (e) {}
+    let f = null;
+    try { const c = await caches.open("compartilhado"), k = new URL("foto-compartilhada", location.href).href, res = await c.match(k);
+      if (res) { const b = await res.blob(); f = new File([b], "relatorio.jpg", {type:b.type || "image/jpeg"}); await c.delete(k); } } catch (e) { console.warn("Foto compartilhada:", e); }
+    if (!f) return toast("Não encontrei a foto compartilhada. Tente de novo.");
+    if (!S.admin) return toast("Só o administrador importa relatórios.");
+    S.view = "ranking"; render(); importarImagem(f);
+  }, 600);
+})();
