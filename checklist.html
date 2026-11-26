@@ -233,9 +233,10 @@ async function entrou(offline){
   $("#tAcoes").innerHTML = `<button class="btn sm" onclick="sair()">🚪 Sair</button>`;
   if (!offline) await carregaBase().catch(e => { console.error(e); toast("Sem internet: usando os dados guardados."); });
   else Object.assign(S, LS.get(NS + ".ck.base", {}));
+  if (!(await abrirJornada())) { sincroniza(); setInterval(() => { if (S.bloqueado && document.visibilityState === "visible") abrirJornada().then(ok => { if (ok) { S.bloqueado = false; render(); } }); }, 120000); return; }
   render(); sincroniza(); avisos();
-  setInterval(async () => { if (S.view === "hoje" || S.view === "dem" || !S.admin) { if (S.papel === "colaborador") await carregaBase().catch(() => {}); else await atualizaDia(); if (!$("#veil.open") && !(document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))) render(); } avisos(); if (S.admin) contaPedidos(); sincroniza(); }, 60000);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden && !S.admin) carregaBase().then(render).catch(() => {}); });
+  setInterval(async () => { if (S.bloqueado) return; if (S.papel === "colaborador" && S.jor && !S.jor.saida && Date.now() > new Date(S.jor.ate).getTime()) { abrirJornada(); return; } if (S.view === "hoje" || S.view === "dem" || !S.admin) { if (S.papel === "colaborador") await carregaBase().catch(() => {}); else await atualizaDia(); if (!$("#veil.open") && !(document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))) render(); } avisos(); if (S.admin) contaPedidos(); sincroniza(); }, 60000);
+  document.addEventListener("visibilitychange", () => { if (document.hidden || S.papel !== "colaborador") return; abrirJornada().then(ok => { if (ok) { S.bloqueado = false; carregaBase().then(render).catch(() => render()); } }); });
   if (S.admin) contaPedidos();
   if (S.admin) setTimeout(limpezaAuto, 3000);
 }
@@ -251,8 +252,8 @@ async function carregaBase(){
 async function atualizaDia(){
   try {
     const q = "select=*&data=eq." + S.data, gestor = S.papel !== "colaborador";
-    const [rg, aj, dm, ab] = await Promise.all([tb("ck_registros", q), tb("ck_ajustes", q), tb("ck_demandas", q + "&order=criado_em").catch(() => []), gestor ? tb("ck_abonos", q).catch(() => []) : Promise.resolve([])]);
-    S.fil[S.data] = {reg:rg || [], aj:aj || [], dem:dm || [], ab:ab || []}; LS.set(NS + ".ck.dia." + S.data, S.fil[S.data]);
+    const [rg, aj, dm, ab, jo, at] = await Promise.all([tb("ck_registros", q), tb("ck_ajustes", q), tb("ck_demandas", q + "&order=criado_em").catch(() => []), gestor ? tb("ck_abonos", q).catch(() => []) : Promise.resolve([]), tb("ck_jornadas", q).catch(() => []), tb("ck_atividades", q + "&order=inicio").catch(() => [])]);
+    S.fil[S.data] = {reg:rg || [], aj:aj || [], dem:dm || [], ab:ab || [], jor:jo || [], atv:at || []}; LS.set(NS + ".ck.dia." + S.data, S.fil[S.data]);
   } catch (e) { if (!S.fil[S.data]) S.fil[S.data] = LS.get(NS + ".ck.dia." + S.data, {reg:[], aj:[], dem:[], ab:[]}); }
 }
 const nomeU = id => { const u = (S.usuarios || []).find(x => x.user_id === id); return u ? u.nome : (S.perfil && id === S.perfil.user_id ? S.perfil.nome : "—"); };
@@ -377,13 +378,14 @@ function telaColab(){
   const P = S.perfil, d = hoje(); S.data = d;
   $("#tSub").textContent = "Hoje · " + dBR(d);
   const L = linhasDia(d).filter(x => x.resp === P.user_id), h = new Date().getHours(), oi = h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
-  const fora = L.filter(x => ["atrasado", "estourado"].includes(x.st)), cob = L.filter(x => x.rr.cobertura), urg = L.filter(x => x.s.urgente && !FINAL(x.st));
+  const fora = L.filter(x => ["atrasado", "estourado"].includes(x.st) && !x.ab), cob = L.filter(x => x.rr.cobertura), urg = L.filter(x => x.s.urgente && !FINAL(x.st));
   const atual = L.find(x => !FINAL(x.st)), feitas = L.filter(x => FINAL(x.st)).length, minhaFolga = emFolga(P.user_id, d);
   const dem = ((S.fil[d] || {}).dem || []).filter(x => x.user_id === P.user_id);
   $("#app").innerHTML = `<div class="card"><div style="font-family:var(--display);font-size:22px;font-weight:700">${oi}, ${esc((P.nome || "").split(" ")[0])}!</div>
       <div class="meta" style="font-size:14px;margin-top:4px">👤 ${esc(P.nome)} · ${TURNOS[P.turno] || esc(P.turno)} · ${esc(P.funcao || "")}</div>
       ${L.length ? `<div style="margin-top:8px"><b>${feitas} de ${L.length} etapas</b><div class="bar"><i style="width:${Math.round(feitas / L.length * 100)}%"></i></div></div>` : ""}
       <div class="row" style="margin-top:6px"><button class="btn sm" onclick="pedeAvisos()">🔔 Ativar avisos</button><button class="btn sm" onclick="trocaSenha()">🔑 Minha senha</button></div></div>
+    ${cardExpediente(L)}
     ${minhaFolga ? `<div class="ban info">📅 Você está de ${esc(minhaFolga.tipo)} hoje.</div>` : ""}
     ${urg.length ? `<div class="ban crit">🚨 URGENTE: ${urg.map(x => esc(x.s.nome)).join(", ")}</div>` : ""}
     ${fora.length ? `<div class="ban crit">⏰ Fora do horário: ${fora.map(x => janela(x.s) + " " + esc(x.s.nome)).join(" · ")}. O administrador foi avisado; ao finalizar, informe o motivo.</div>` : ""}
@@ -518,7 +520,9 @@ function telaHoje(){
   $("#app").innerHTML = `<div class="card"><div class="row" style="justify-content:space-between"><button class="btn sm" onclick="mudaDia(-1)">◀</button><div style="text-align:center"><b style="font-family:var(--display);font-size:18px">${d === hoje() ? "Hoje · " : ""}${DIAS[diaSem(d)]} ${dBR(d)}</b><br><input type="date" class="inp" style="width:auto;padding:4px 8px;font-size:13px" value="${d}" onchange="vaiDia(this.value)"></div><button class="btn sm" onclick="mudaDia(1)">▶</button></div></div>
     ${fora.length ? `<div class="card" style="border-color:var(--crit)"><h2 style="color:var(--crit)">⏰ Fora do horário (${fora.length})</h2>${fora.map(x => `<div style="border-bottom:1px solid var(--line);padding:8px 0"><b>${janela(x.s)} · ${esc(x.s.nome)}</b> — ${esc(x.resp ? nomeU(x.resp) : "sem responsável")} ${pill(x.st)}
         ${x.reg && +x.reg.atraso_min > 0 ? `<div class="meta">Concluída ${x.reg.atraso_min} min depois do horário.</div>` : ""}${x.reg && x.reg.justificativa ? `<div class="meta" style="color:var(--warn)">💬 Motivo: ${esc(x.reg.justificativa)}</div>` : ""}
-        <div class="row">${S.admin ? `<button class="btn sm" onclick="abonar(${x.s.id},'${x.d}')">🛡️ Abonar horário</button>` : ""}${x.resp && x.d === hoje() ? `<button class="btn sm" onclick="formDemanda('${x.resp}',${x.s.id})">📌 Passar demanda extra e abonar</button>` : ""}<button class="btn sm" onclick="detalhe(${x.s.id},'${x.d}')">Ver</button></div></div>`).join("")}</div>` : ""}
+        <div class="row">${x.resp && x.d === hoje() ? `<button class="btn sm" onclick="formDemanda('${x.resp}')">📌 Passar demanda extra</button>` : ""}<button class="btn sm" onclick="detalhe(${x.s.id},'${x.d}')">Ver</button></div></div>`).join("")}</div>` : ""}
+    ${cardHoras(d)}
+    ${(S.fil[d] && S.fil[d].jor || []).filter(j => j.saida && horasDia(j.user_id, d).falta).map(j => `<div class="ban crit">🚨 ${esc(nomeU(j.user_id))} encerrou o dia com ${hhmm(horasDia(j.user_id, d).falta)} sem registro.</div>`).join("")}
     ${sem.length ? `<div class="ban warn">⚠️ ${sem.length} etapa(s) sem responsável: cadastre o colaborador da função/turno ou troque o responsável.</div>` : ""}
     <div class="card"><h2>Checklist diário: ${c.pct}% concluído</h2><div class="bar"><i style="width:${c.pct}%"></i></div>
       <div class="tiles" style="margin-top:10px">${[["Etapas", c.tot], ["Concluídas", c.ok], ["Pendentes", c.pend], ["Em andamento", c.and], ["Não realizadas", c.no], ["Com observação", c.obs], ["Fora do horário", fora.length], ["Abonadas", Lall.filter(x => x.ab).length], ["Demandas extras", dem.length]].map(([t, v]) => `<div class="tile"><b>${v}</b><span>${t}</span></div>`).join("")}</div>
@@ -544,7 +548,6 @@ async function detalhe(id, d){
       ${r.alterado_em ? `<tr><td class="meta">Alterado</td><td>${dhTs(r.alterado_em)} por ${esc(nomeU(r.alterado_por))} · motivo: ${esc(r.motivo_alteracao)}</td></tr>` : ""}` : ""}
     ${x.ab ? `<tr><td class="meta">🛡️ Abono</td><td>${esc(x.ab.motivo)}<div class="meta">por ${esc(x.ab.por_nome || nomeU(x.ab.por))} · ${dhTs(x.ab.em)}</div>${dm ? `<div class="meta">📌 Demanda: ${esc(dm.descricao)} · ${esc(ST[dm.status] ? ST[dm.status][0] : dm.status)}${dm.resposta ? "<br>💬 Resposta: " + esc(dm.resposta) : ""}</div>` : ""}</td></tr>` : ""}</table>
     ${r ? `<div class="fotos" id="dFotos"><span class="meta">Carregando fotos…</span></div>` : ""}
-    ${S.admin && !x.ab && foraHorario(x) ? `<button class="btn" onclick="abonar(${id},'${d}')">🛡️ Abonar horário</button>` : ""}
     ${S.admin && (!r || r.status === "andamento") ? `<label class="f">🔁 Trocar responsável neste dia<select id="dResp" class="inp">${ativos().map(u => `<option value="${u.user_id}" ${u.user_id === x.resp ? "selected" : ""}>${esc(u.nome)}</option>`).join("")}</select></label><button class="btn" onclick="trocaResp(${id},'${d}')">Salvar troca</button>` : ""}
     ${S.admin && r && r.status !== "andamento" && r.id ? `<details style="margin-top:10px"><summary class="btn">✏️ Corrigir registro (fica na auditoria)</summary>
       <label class="f">Status<select id="cSt" class="inp">${["concluido", "concluido_obs", "nao_realizado"].map(k => `<option value="${k}" ${r.status === k ? "selected" : ""}>${ST[k][0]}</option>`).join("")}</select></label>
@@ -734,7 +737,7 @@ async function apagaFolga(id){ if (!confirm("Apagar esta folga da escala?")) ret
 /* ---------- admin: configuração, retenção e auditoria ---------- */
 async function telaCfg(){
   const c = S.cfg || {retencao_dias:90};
-  $("#app").innerHTML = telaVisual() + `<div class="card"><h2>🗄️ Armazenamento (retenção)</h2><p class="meta">Registros, fotos e pedidos de material já respondidos mais antigos que o período escolhido são apagados automaticamente (1 vez por dia, quando o administrador abre o checklist). Padrão: 90 dias.</p>
+  $("#app").innerHTML = telaLocal() + telaVisual() + `<div class="card"><h2>🗄️ Armazenamento (retenção)</h2><p class="meta">Registros, fotos e pedidos de material já respondidos mais antigos que o período escolhido são apagados automaticamente (1 vez por dia, quando o administrador abre o checklist). Padrão: 90 dias.</p>
     <select id="cR" class="inp">${[60, 90, 120].map(n => `<option value="${n}" ${+c.retencao_dias === n ? "selected" : ""}>${n} dias</option>`).join("")}</select>
     <button class="btn pri" onclick="salvaRet()">💾 Salvar</button><p class="meta">Última limpeza: ${c.ultima_limpeza ? dBR(c.ultima_limpeza) : "nunca"}</p></div>
     <div class="card"><h2>🧾 Auditoria (correções do administrador)</h2><div id="aud" class="meta">Carregando…</div></div>
@@ -753,6 +756,8 @@ async function limpezaAuto(){
     if ((velhos || []).length) await api("DELETE", "/rest/v1/ck_registros?data=lt." + corte);
     await api("DELETE", "/rest/v1/ck_ajustes?data=lt." + corte).catch(() => {});
     await api("DELETE", "/rest/v1/ck_abonos?data=lt." + corte).catch(() => {});
+    const atv = await tb("ck_atividades", `select=fotos&data=lt.${corte}&limit=2000`).catch(() => []); const pa = (atv || []).flatMap(r => (r.fotos || []).map(f => f.path).filter(Boolean)); for (let i = 0; i < pa.length; i += 200) await api("DELETE", "/storage/v1/object/checklist", {prefixes:pa.slice(i, i + 200)}).catch(() => {});
+    await api("DELETE", "/rest/v1/ck_atividades?data=lt." + corte).catch(() => {});
     await api("DELETE", "/rest/v1/ck_demandas?data=lt." + corte).catch(() => {});
     await api("DELETE", "/rest/v1/ck_solicitacoes?status=neq.pendente&criado_em=lt." + corte + "T00:00:00").catch(() => {});
     await api("DELETE", "/rest/v1/ck_auditoria?quando=lt." + corte + "T00:00:00").catch(() => {});
@@ -825,12 +830,12 @@ async function demEnvia(id, st){
 function telaDemandas(){
   const d = S.data, D = ((S.fil[d] || {}).dem || []).slice().reverse();
   $("#app").innerHTML = `<div class="card"><div class="row" style="justify-content:space-between"><button class="btn sm" onclick="mudaDia(-1)">◀</button><b style="font-family:var(--display);font-size:17px">📌 Demandas extras · ${dBR(d)}</b><button class="btn sm" onclick="mudaDia(1)">▶</button></div>
-    <p class="meta">Passe uma demanda específica para um colaborador. Se ela atrapalhar uma etapa, escolha qual etapa terá o horário abonado. A resposta do colaborador aparece só aqui (administrador e líderes).</p>
+    <p class="meta">Passe uma demanda específica para um colaborador. Se por causa dela ele não cumprir uma etapa, use o botão 🛡️ Abonar etapa no cartão da demanda. A resposta do colaborador aparece só aqui (administrador e líderes).</p>
     ${d === hoje() ? `<button class="btn pri" onclick="formDemanda()">+ Nova demanda extra</button>` : ""}</div>
     ${D.map(x => { const sv = (S.servicos || []).find(s => s.id === x.servico_abonado); return `<div class="card"><div class="row" style="justify-content:space-between"><b style="font-size:16px">${esc(x.descricao)}</b>${pill(x.status)}</div>
-      <div class="meta">👷 ${esc(x.colaborador || nomeU(x.user_id))} · passada por ${esc(x.criado_por_nome || "—")} às ${hmTs(x.criado_em)}${sv ? `<br>🛡️ Abona: ${janela(sv)} ${esc(sv.nome)}` : ""}</div>
+      <div class="meta">👷 ${esc(x.colaborador || nomeU(x.user_id))} · passada por ${esc(x.criado_por_nome || "—")} às ${hmTs(x.criado_em)}${sv ? `<br>🛡️ Abonou: ${janela(sv)} ${esc(sv.nome)}` : ""}</div>
       ${x.resposta ? `<div style="margin-top:6px">💬 <b>Resposta:</b> ${esc(x.resposta)}</div>` : ""}${x.concluido_em ? `<div class="meta">Finalizada às ${hmTs(x.concluido_em)}</div>` : ""}
-      <div class="fotos" id="dmf${x.id}"></div></div>`; }).join("") || `<p class="meta" style="padding:0 4px">Nenhuma demanda extra neste dia.</p>`}`;
+      <div class="fotos" id="dmf${x.id}"></div>${!sv ? `<button class="btn sm" onclick="abonarDemanda(${x.id})">🛡️ Abonar etapa</button>` : ""}</div>`; }).join("") || `<p class="meta" style="padding:0 4px">Nenhuma demanda extra neste dia.</p>`}`;
   D.forEach(x => { if ((x.fotos || []).length) mostraFotos($("#dmf" + x.id), x.fotos); });
 }
 function formDemanda(uid, servId){
@@ -839,12 +844,9 @@ function formDemanda(uid, servId){
     <label class="f">Colaborador<select id="dmU" class="inp">${col.map(u => `<option value="${u.user_id}" ${u.user_id === uid ? "selected" : ""}>${esc(u.nome)} · ${esc(u.funcao)} · ${TURNOS[u.turno] || ""}</option>`).join("")}</select></label>
     <label class="f">O que precisa ser feito?<textarea id="dmD" class="inp" rows="3" placeholder="Ex.: Limpar óleo derramado na pista 3"></textarea></label>
     <label class="f">Horário<input id="dmH" type="time" class="inp" value="${agoraHM()}"></label>
-    <label class="f">Abonar o horário de qual etapa?<select id="dmS" class="inp"></select></label>
     <button class="btn pri" id="btDm">📤 Passar demanda</button><button class="btn" onclick="closeSheet()">Voltar</button>`);
-  const opc = () => { const u = $("#dmU").value, L = linhasDia(hoje()).filter(x => x.resp === u && !x.ab); $("#dmS").innerHTML = `<option value="">Nenhuma (só a demanda)</option>` + L.map(x => `<option value="${x.s.id}" ${x.s.id === servId ? "selected" : ""}>${janela(x.s)} ${esc(x.s.nome)} · ${ST[x.st][0]}</option>`).join(""); };
-  $("#dmU").onchange = opc; opc();
   $("#btDm").onclick = async () => {
-    const u = $("#dmU").value, desc = $("#dmD").value.trim(), sv = +$("#dmS").value || null; if (!u || !desc) return toast("Escolha o colaborador e escreva a demanda.");
+    const u = $("#dmU").value, desc = $("#dmD").value.trim(), sv = null; if (!u || !desc) return toast("Escolha o colaborador e escreva a demanda.");
     $("#btDm").disabled = true;
     try {
       const [dm] = await api("POST", "/rest/v1/ck_demandas", {filial:S.filial, user_id:u, colaborador:nomeU(u), descricao:desc, data:hoje(), horario:$("#dmH").value || null, servico_abonado:sv, criado_por_nome:S.perfil.nome || S.perfil.login}, {prefer:"return=representation"});
@@ -853,12 +855,135 @@ function formDemanda(uid, servId){
     } catch (e) { $("#btDm").disabled = false; toast(/ck_demandas|ck_abonos/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase (tabelas novas)." : e.message); }
   };
 }
-function abonar(id, d){
-  const x = linhasDia(d).find(x => x.s.id === id); if (!x) return;
-  openSheet(`<h2>🛡️ Abonar horário</h2><p class="meta">${janela(x.s)} · ${esc(x.s.nome)} · ${esc(nomeU(x.resp))} · ${dBR(d)}</p>${x.reg && x.reg.justificativa ? `<div class="ban warn">💬 Motivo do colaborador: ${esc(x.reg.justificativa)}</div>` : ""}
-    <label class="f">Motivo do abono (só administrador e líderes veem)<textarea id="abM" class="inp" rows="2" placeholder="Ex.: chamado para outra demanda na pista"></textarea></label><button class="btn pri" id="btAb">🛡️ Abonar</button><button class="btn" onclick="closeSheet()">Voltar</button>`);
-  $("#btAb").onclick = async () => { const m = $("#abM").value.trim(); if (!m) return toast("Escreva o motivo do abono.");
-    try { await api("POST", "/rest/v1/ck_abonos?on_conflict=servico_id,data", {filial:S.filial, servico_id:id, data:d, motivo:m, por_nome:S.perfil.nome || S.perfil.login}, {prefer:"resolution=merge-duplicates,return=minimal"}); closeSheet(); await atualizaDia(); render(); toast("Horário abonado."); } catch (e) { toast(e.message); } };
+/* ---------- expediente: local do posto, janela do link e horas trabalhadas ---------- */
+function pegaLocal(){
+  return new Promise(ok => { if (!navigator.geolocation) return ok(null);
+    navigator.geolocation.getCurrentPosition(p => ok({lat:p.coords.latitude, lng:p.coords.longitude, prec:p.coords.accuracy}), () => ok(null), {enableHighAccuracy:true, timeout:15000, maximumAge:60000}); });
+}
+async function abrirJornada(){
+  if (S.papel !== "colaborador") return true;
+  const cache = LS.get(NS + ".ck.jor", null);
+  if (!navigator.onLine) { if (cache && cache.data === hoje() && Date.now() < new Date(cache.ate).getTime()) { S.jor = cache; return true; } telaBloqueio({erro:"offline"}); return false; }
+  $("#app").innerHTML = `<div class="msg"><b>📍 Conferindo o local…</b>Permita o acesso à localização quando o celular pedir.</div>`;
+  const g = await pegaLocal();
+  let j; try { j = await rpc("ck_abrir_jornada", {p_lat:g && g.lat, p_lng:g && g.lng, p_prec:g && g.prec}); } catch (e) { if (cache && cache.data === hoje() && Date.now() < new Date(cache.ate).getTime()) { S.jor = cache; return true; } telaBloqueio({erro:"rede", msg:e.message}); return false; }
+  if (!j || !j.ok) { telaBloqueio(j || {}); return false; }
+  S.jor = {data:hoje(), entrada:j.entrada, ate:j.ate, saida:j.saida || null}; LS.set(NS + ".ck.jor", S.jor);
+  if (j.nova) toast("🕐 Entrada registrada às " + hmTs(j.entrada) + ". Link aberto até " + hmTs(j.ate) + ".");
+  return true;
+}
+function telaBloqueio(j){
+  $("#tabs").innerHTML = ""; S.bloqueado = true;
+  const dh = t => t ? new Date(t).toLocaleString("pt-BR", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"}) : "";
+  const M = {fora_local:["📍 Você não está no posto", `Você está a <b>${j.distancia} m</b> do posto. O checklist só abre no local de trabalho (até ${j.raio || 200} m).`],
+    sem_gps:["📍 Localização desligada", "Ative a localização do celular e permita o acesso para este site. Depois toque em Tentar de novo."],
+    encerrada:["🔒 Expediente de hoje encerrado", `O link de hoje fechou às <b>${dh(j.ate)}</b>. Abre de novo em <b>${dh(j.libera_em)}</b>.<br>Se precisar antes, peça ao administrador para liberar.`],
+    descanso:["🔒 Ainda no horário de descanso", `O link abre de novo em <b>${dh(j.libera_em)}</b> (10 horas depois do fim do expediente).<br>Se precisar antes, peça ao administrador para liberar.`],
+    offline:["📶 Sem internet", "Conecte à internet para abrir o checklist pela primeira vez hoje."],
+    rede:["📶 Não foi possível conferir", "Confira a internet e tente de novo."], sem_acesso:["🔒 Sem acesso", "Seu login está desativado. Fale com o administrador."]};
+  const [t, d] = M[j.erro] || ["🔒 Acesso bloqueado", "Fale com o administrador."];
+  $("#app").innerHTML = `<div class="msg"><b>${t}</b>${d}<br><br><button class="btn pri" style="max-width:320px;margin:0 auto" onclick="S.bloqueado=false;abrirJornada().then(ok=>{if(ok){S.bloqueado=false;render()}})">🔄 Tentar de novo</button></div>`;
+}
+const hhmm = m => Math.floor(m / 60) + "h" + pad(Math.round(m % 60));
+function horasDia(uid, d){
+  const D = S.fil[d] || {}, cfg = S.cfg || {}, iMin = cfg.intervalo_min == null ? 60 : +cfg.intervalo_min, meta = (+(cfg.jornada_horas || 8)) * 60 - iMin;
+  let J = (D.jor || []).find(j => j.user_id === uid) || null; if (!J && S.papel === "colaborador" && uid === S.perfil.user_id && S.jor && S.jor.data === d) J = S.jor;
+  const t = s => new Date(s).getTime(), agora = Date.now(), iI = new Date(d + "T" + hm(cfg.intervalo_ini || "12:00") + ":00").getTime(), iF = iI + iMin * 60000;
+  const ivs = [];
+  linhasDia(d).filter(x => x.reg && x.reg.user_id === uid && x.reg.iniciado_em).forEach(x => ivs.push([t(x.reg.iniciado_em), x.reg.concluido_em ? t(x.reg.concluido_em) : agora, "etapa"]));
+  (D.dem || []).filter(x => x.user_id === uid && x.iniciado_em).forEach(x => ivs.push([t(x.iniciado_em), x.concluido_em ? t(x.concluido_em) : agora, "demanda"]));
+  (D.atv || []).filter(x => x.user_id === uid).forEach(x => ivs.push([t(x.inicio), t(x.fim), "atividade"]));
+  const corta = ([a, b]) => b <= iI || a >= iF ? [[a, b]] : [...(a < iI ? [[a, iI]] : []), ...(b > iF ? [[iF, b]] : [])];
+  const une = l => l.filter(([a, b]) => b > a).sort((x, y) => x[0] - y[0]).reduce((acc, [a, b]) => { const u = acc[acc.length - 1]; if (u && a <= u[1]) u[1] = Math.max(u[1], b); else acc.push([a, b]); return acc; }, []).flatMap(corta);
+  const min = l => Math.round(l.reduce((s, [a, b]) => s + (b - a), 0) / 60000), uni = une(ivs.map(x => [x[0], x[1]])), tipo = k => min(une(ivs.filter(x => x[2] === k).map(x => [x[0], x[1]])));
+  let gaps = [];
+  if (J) { const ini = t(J.entrada), fimRef = J.saida ? t(J.saida) : Math.min(agora, t(J.ate)); let cur = ini; for (const [a, b] of uni) { if (a > cur) gaps.push([cur, Math.min(a, fimRef)]); cur = Math.max(cur, b); } if (fimRef > cur) gaps.push([cur, fimRef]); gaps = gaps.flatMap(corta).filter(([a, b]) => b - a >= 10 * 60000); }
+  const reg = min(uni);
+  return {J, meta, reg, falta:Math.max(0, meta - reg), etapas:tipo("etapa"), demandas:tipo("demanda"), atividades:tipo("atividade"), gaps, intervalo:hm(cfg.intervalo_ini || "12:00") + "–" + hmTs(iF)};
+}
+function cardExpediente(L){
+  const H = horasDia(S.perfil.user_id, hoje()), J = H.J, todas = L.length && L.every(x => FINAL(x.st)), pct = Math.min(100, Math.round(H.reg / H.meta * 100));
+  return `<div class="card"><h2>🕐 Meu expediente</h2>
+    ${J ? `<div class="meta">Entrada <b>${hmTs(J.entrada)}</b> · ${J.saida ? `encerrado às <b>${hmTs(J.saida)}</b>` : `link aberto até <b>${hmTs(J.ate)}</b>`} · intervalo ${H.intervalo}</div>` : ""}
+    <div style="margin-top:8px"><b style="font-size:18px">${hhmm(H.reg)}</b> <span class="meta">registradas de ${hhmm(H.meta)} (8h com 1h de intervalo)</span></div><div class="bar"><i style="width:${pct}%;background:${H.falta ? "var(--warn)" : "var(--good)"}"></i></div>
+    ${H.falta ? `<div class="meta" style="margin-top:4px">Faltam <b>${hhmm(H.falta)}</b>. ${todas ? "Você terminou as etapas: registre o que fez no tempo restante, com foto." : "Termine as etapas; o tempo que sobrar você justifica com foto."}</div>` : `<div class="meta" style="color:var(--good);margin-top:4px">✅ Horas do dia completas.</div>`}
+    ${H.gaps.length ? `<div class="fslot"><b>⏳ Tempo sem registro</b>${H.gaps.map(([a, b]) => `<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line);padding:6px 0"><span>${hmTs(a)}–${hmTs(b)} · ${hhmm(Math.round((b - a) / 60000))}</span><button class="btn sm" onclick="formAtividade(${a},${b})">📝 Justificar</button></div>`).join("")}</div>` : ""}
+    ${J && !J.saida ? `<div class="row"><button class="btn sm" onclick="formAtividade()">➕ Registrar o que fiz (com foto)</button><button class="btn sm" onclick="encerrarDia()">🏁 Encerrar o dia</button></div>` : ""}</div>`;
+}
+function formAtividade(a, b){
+  fotosTmp = []; const hmD = ms => { const d = new Date(ms); return pad(d.getHours()) + ":" + pad(d.getMinutes()); };
+  a = a || Date.now() - 30 * 60000; b = b || Date.now();
+  openSheet(`<h2>📝 O que você fez neste tempo?</h2>
+    <div class="grid2"><label class="f">Das<input id="atI" type="time" class="inp" value="${hmD(a)}"></label><label class="f">Até<input id="atF" type="time" class="inp" value="${hmD(b)}"></label></div>
+    <label class="f">Atividade (obrigatório)<textarea id="atD" class="inp" rows="3" placeholder="Ex.: Organizei o depósito de materiais de limpeza"></textarea></label>
+    ${slotFoto("foto", "📷 Foto (obrigatória)")}
+    <button class="btn pri" id="btAt">💾 Registrar</button><button class="btn" onclick="closeSheet()">Voltar</button>`);
+  $("#btAt").onclick = async () => {
+    const desc = $("#atD").value.trim(), d = hoje(), ini = new Date(d + "T" + $("#atI").value + ":00"), fim = new Date(d + "T" + $("#atF").value + ":00");
+    if (!desc) return toast("Escreva o que você fez."); if (!(fim > ini)) return toast("O horário final tem que ser depois do inicial."); if (fim.getTime() > Date.now() + 5 * 60000) return toast("Não dá para registrar horário que ainda não passou.");
+    if (!fotosTmp.length) return toast("Tire a foto da atividade."); if (!navigator.onLine) return toast("Sem internet: tente de novo quando a conexão voltar.");
+    $("#btAt").disabled = true;
+    try {
+      const fotos = []; for (const f of fotosTmp) { const path = `${S.filial}/${d}/atividade-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}.jpg`; await api("POST", "/storage/v1/object/checklist/" + path, await (await fetch(f.dataUrl)).blob(), {tipo:"image/jpeg"}); const {dataUrl, ...r} = f; fotos.push({...r, path}); }
+      await api("POST", "/rest/v1/ck_atividades", {filial:S.filial, user_id:S.perfil.user_id, colaborador:S.perfil.nome, data:d, inicio:ini.toISOString(), fim:fim.toISOString(), descricao:desc, fotos}, {prefer:"return=minimal"});
+      fotosTmp = []; closeSheet(); await atualizaDia(); render(); toast("Atividade registrada.");
+    } catch (e) { $("#btAt").disabled = false; toast(/row-level/.test(e.message) ? "Seu horário de hoje já fechou. Fale com o administrador." : e.message); }
+  };
+}
+async function encerrarDia(){
+  const L = linhasDia(hoje()).filter(x => x.resp === S.perfil.user_id), pend = L.filter(x => !FINAL(x.st)).length, H = horasDia(S.perfil.user_id, hoje());
+  if (!confirm((pend ? "Ainda há " + pend + " etapa(s) sem finalizar. " : "") + (H.falta ? "Faltam " + hhmm(H.falta) + " sem registro (o administrador será avisado). " : "") + "Encerrar o dia? Depois disso o link só abre de novo amanhã.")) return;
+  try { await rpc("ck_encerrar_jornada"); S.jor = {...S.jor, saida:new Date().toISOString(), ate:new Date().toISOString()}; LS.set(NS + ".ck.jor", S.jor); toast("Dia encerrado. Bom descanso!"); telaBloqueio({erro:"encerrada", ate:S.jor.ate, libera_em:new Date(Date.now() + (+((S.cfg || {}).descanso_horas || 10)) * 3600000).toISOString()}); } catch (e) { toast(e.message); }
+}
+/* admin e líder: horas do dia de cada colaborador */
+function cardHoras(d){
+  const us = ativos().filter(u => ((S.fil[d] || {}).jor || []).some(j => j.user_id === u.user_id) || linhasDia(d).some(x => x.resp === u.user_id));
+  if (!us.length) return "";
+  return `<div class="card"><h2>⏱️ Horas do dia</h2><p class="meta">Meta: 8h por dia, já com 1h de intervalo (${hm((S.cfg || {}).intervalo_ini || "12:00")}). Etapas + demandas extras + atividades justificadas com foto.</p><div style="overflow-x:auto"><table><tr><th>Colaborador</th><th>Entrada</th><th>Saída</th><th>Registrado</th><th>Falta</th><th></th></tr>
+    ${us.map(u => { const H = horasDia(u.user_id, d), J = H.J; return `<tr class="cl" onclick="horasDetalhe('${u.user_id}','${d}')"><td><b>${esc(u.nome)}</b></td><td>${J ? hmTs(J.entrada) : "—"}</td><td>${J ? (J.saida ? hmTs(J.saida) : "até " + hmTs(J.ate)) : "—"}</td><td>${hhmm(H.reg)}</td><td style="color:${H.falta ? "var(--crit)" : "var(--good)"}">${H.falta ? hhmm(H.falta) : "✅"}</td><td>${S.admin ? `<button class="btn sm" onclick="event.stopPropagation();liberarAcesso('${u.user_id}')">🔓</button>` : ""}</td></tr>`; }).join("")}</table></div></div>`;
+}
+async function horasDetalhe(uid, d){
+  const H = horasDia(uid, d), A = ((S.fil[d] || {}).atv || []).filter(x => x.user_id === uid);
+  openSheet(`<h2>⏱️ ${esc(nomeU(uid))} · ${dBR(d)}</h2><table>
+    <tr><td class="meta">Entrada</td><td>${H.J ? dhTs(H.J.entrada) : "Não abriu o link"}${H.J && H.J.distancia_m != null ? ` · ${H.J.distancia_m} m do posto` : ""}${H.J && H.J.liberado_em ? " · 🔓 liberado pelo administrador" : ""}</td></tr>
+    <tr><td class="meta">Saída</td><td>${H.J ? (H.J.saida ? dhTs(H.J.saida) : "link aberto até " + hmTs(H.J.ate)) : "—"}</td></tr>
+    <tr><td class="meta">Etapas</td><td>${hhmm(H.etapas)}</td></tr><tr><td class="meta">Demandas extras</td><td>${hhmm(H.demandas)}</td></tr><tr><td class="meta">Atividades justificadas</td><td>${hhmm(H.atividades)}</td></tr>
+    <tr><td class="meta">Intervalo</td><td>${H.intervalo}</td></tr><tr><td class="meta"><b>Total registrado</b></td><td><b>${hhmm(H.reg)}</b> de ${hhmm(H.meta)}${H.falta ? ` · <b style="color:var(--crit)">faltam ${hhmm(H.falta)}</b>` : " ✅"}</td></tr>
+    ${H.gaps.length ? `<tr><td class="meta">Sem registro</td><td style="color:var(--crit)">${H.gaps.map(([a, b]) => hmTs(a) + "–" + hmTs(b)).join(", ")}</td></tr>` : ""}</table>
+    <h2 style="margin-top:12px;font-size:15px">📝 Atividades justificadas</h2>${A.map(x => `<div style="border-bottom:1px solid var(--line);padding:6px 0"><b>${hmTs(x.inicio)}–${hmTs(x.fim)}</b> ${esc(x.descricao)}<div class="fotos" id="atf${x.id}"></div></div>`).join("") || `<p class="meta">Nenhuma.</p>`}
+    ${S.admin ? `<button class="btn" onclick="liberarAcesso('${uid}')">🔓 Liberar acesso do link agora</button>` : ""}<button class="btn" onclick="closeSheet()">Fechar</button>`);
+  A.forEach(x => mostraFotos($("#atf" + x.id), x.fotos));
+}
+async function liberarAcesso(uid){
+  const h = prompt("Liberar o link de " + nomeU(uid) + " por quantas horas a partir de agora?", "8"); if (!h) return;
+  try { await rpc("ck_liberar_jornada", {p_user:uid, p_horas:Math.max(1, Math.min(12, parseInt(h) || 8))}); closeSheet(); await atualizaDia(); render(); toast("Acesso liberado para " + nomeU(uid) + "."); } catch (e) { toast(/ck_liberar/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); }
+}
+function telaLocal(){
+  const c = S.cfg || {};
+  return `<div class="card"><h2>📍 Local do posto e expediente</h2>
+    ${c.posto_lat != null ? `<p>✅ Local gravado · raio de <b>${c.posto_raio || 200} m</b> · <a href="https://www.google.com/maps?q=${c.posto_lat},${c.posto_lng}" target="_blank" rel="noopener" style="color:var(--cyan)">ver no mapa</a></p>` : `<div class="ban warn">⚠️ Local ainda não gravado: por enquanto o link abre em qualquer lugar.</div>`}
+    <p class="meta">Esteja no posto e toque no botão abaixo. Depois disso, o link dos colaboradores só abre dentro do raio escolhido.</p>
+    <label class="f">Raio permitido<select id="lcR" class="inp">${[100, 200, 300, 500].map(n => `<option value="${n}" ${(+c.posto_raio || 200) === n ? "selected" : ""}>${n} metros</option>`).join("")}</select></label>
+    <button class="btn pri" onclick="gravaLocal(this)">📍 Gravar minha localização atual como o posto</button>
+    <p class="meta" style="margin-top:10px">🕐 Expediente: <b>8h</b> no total, com <b>1h de intervalo às ${hm(c.intervalo_ini || "12:00")}</b>. O link fica aberto <b>${c.janela_horas || 8}h</b> desde a 1ª abertura do dia e só abre de novo <b>${c.descanso_horas || 10}h</b> depois. Para liberar antes, use 🔓 em ⏱️ Horas do dia.</p></div>`;
+}
+async function gravaLocal(b){
+  b.disabled = true; toast("Pegando a localização…"); const g = await pegaLocal(); b.disabled = false;
+  if (!g) return toast("Não foi possível pegar a localização. Permita o acesso e tente de novo.");
+  if (g.prec > 150 && !confirm("A precisão está baixa (" + Math.round(g.prec) + " m). Gravar assim mesmo? Melhor tentar ao ar livre.")) return;
+  try { await api("POST", "/rest/v1/ck_config?on_conflict=filial", {filial:S.filial, retencao_dias:+(S.cfg || {}).retencao_dias || 90, posto_lat:g.lat, posto_lng:g.lng, posto_raio:+$("#lcR").value}, {prefer:"resolution=merge-duplicates,return=minimal"}); await carregaBase(); render(); toast("Local do posto gravado."); } catch (e) { toast(/posto_/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); }
+}
+/* abono: só pelo botão da demanda extra (etapa que o colaborador não cumpriu por causa dela) */
+function abonarDemanda(id){
+  const dm = ((S.fil[S.data] || {}).dem || []).find(x => x.id === id); if (!dm) return;
+  const L = linhasDia(dm.data).filter(x => x.resp === dm.user_id && !x.ab && (foraHorario(x) || !FINAL(x.st)));
+  if (!L.length) return toast("Nenhuma etapa de " + nomeU(dm.user_id) + " para abonar neste dia.");
+  openSheet(`<h2>🛡️ Abonar etapa</h2><p class="meta">Demanda extra: <b>${esc(dm.descricao)}</b> · ${esc(nomeU(dm.user_id))}</p>
+    <label class="f">Qual etapa o colaborador não cumpriu por causa desta demanda?<select id="abS" class="inp">${L.map(x => `<option value="${x.s.id}">${janela(x.s)} ${esc(x.s.nome)} · ${ST[x.st][0]}</option>`).join("")}</select></label>
+    <button class="btn pri" id="btAb">🛡️ Abonar</button><button class="btn" onclick="closeSheet()">Voltar</button>`);
+  $("#btAb").onclick = async () => { const sv = +$("#abS").value;
+    try { await api("POST", "/rest/v1/ck_abonos?on_conflict=servico_id,data", {filial:S.filial, servico_id:sv, data:dm.data, motivo:"Demanda extra: " + dm.descricao, demanda_id:dm.id, por_nome:S.perfil.nome || S.perfil.login}, {prefer:"resolution=merge-duplicates,return=minimal"});
+      await api("PATCH", "/rest/v1/ck_demandas?id=eq." + dm.id, {servico_abonado:sv}, {prefer:"return=minimal"}); closeSheet(); await atualizaDia(); render(); toast("Etapa abonada."); } catch (e) { toast(e.message); } };
 }
 </script>
 <script>if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js?v=31').catch(()=>{});</script>
