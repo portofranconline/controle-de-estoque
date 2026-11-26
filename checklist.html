@@ -69,6 +69,15 @@ tr.cl{cursor:pointer}tr.cl:hover{background:var(--surface2)}
 .msg{text-align:center;padding:50px 20px;color:var(--muted);line-height:1.6}
 .msg b{display:block;font-family:var(--display);font-size:20px;color:var(--ink);margin-bottom:6px}
 .chk{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.chk label{display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:13px}
+.hero{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:2px 2px 8px}.hero .oi{font-family:var(--display);font-size:22px;font-weight:700}
+.dots{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 10px}.dot{flex:none;border:2px solid var(--line);background:var(--surface);color:var(--muted);border-radius:12px;padding:7px 10px;font-weight:700;font-size:13px;cursor:pointer}
+.dot.ok{border-color:var(--good);color:var(--good)}.dot.late{border-color:var(--crit);color:var(--crit)}.dot.now{border-color:var(--brand);color:var(--brand)}.dot.on{background:var(--cyan);border-color:var(--cyan);color:var(--on-cyan)}
+.etapa{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:18px;box-shadow:0 10px 30px rgba(15,23,42,.08);margin-bottom:12px}.etapa.urg{border:2px solid var(--crit)}
+.etapa .janela{font-family:var(--display);font-size:34px;font-weight:700;letter-spacing:.02em;margin-top:6px}.etapa .nome{font-size:21px;font-weight:700;margin:2px 0 4px}
+.relogio{margin:12px 0 4px;border-radius:12px;padding:10px 12px;font-weight:700;background:var(--surface2)}.relogio.good{color:var(--good)}.relogio.crit{color:var(--crit);background:var(--crit-bg)}.relogio.warn{color:var(--warn)}.relogio.info{color:var(--cyan)}.relogio.muted{color:var(--muted)}
+.passos{display:grid;gap:8px;margin-top:10px}.passo{display:flex;align-items:center;gap:12px;text-align:left;border:1px solid var(--line);background:var(--surface2);border-radius:14px;padding:13px;font-size:16px;cursor:pointer}
+.passo span{flex:none;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--line);font-weight:700;font-size:13px}.passo.ok{border-color:var(--good)}.passo.ok span{background:var(--good);border-color:var(--good);color:#fff}.passo:disabled{cursor:default}
+.btn.xl{font-size:19px;padding:17px;border-radius:16px;margin-top:14px}.nav{display:flex;justify-content:space-between;align-items:center;margin-top:12px}.nav .btn{margin:0}
 @media(max-width:560px){.hide-m{display:none}.grid2{grid-template-columns:1fr}table{font-size:12px}th,td{padding:7px 3px}td .pill{font-size:10.5px;padding:2px 6px;white-space:nowrap}}
 @media print{.top,.tabs,.sync,#toast{display:none}}
 </style>
@@ -87,7 +96,7 @@ tr.cl{cursor:pointer}tr.cl:hover{background:var(--surface2)}
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const NS = (() => { const p = location.pathname.replace(/[^/]*$/, "").replace(/\/+$/, ""); return (p === "" || p === "/controle-de-estoque") ? "estoque" : "estoque@" + p; })();
-const K = {sess:NS + ".ck.sessao", fil:NS + ".ck.filial", user:NS + ".ck.login", fila:NS + ".ck.fila", estSess:NS + ".sessao", estCfg:NS + ".config"};
+const K = {tok:NS + ".ck.token", sess:NS + ".ck.sessao", fil:NS + ".ck.filial", user:NS + ".ck.login", fila:NS + ".ck.fila", estSess:NS + ".sessao", estCfg:NS + ".config"};
 const LS = {get:(k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set:(k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }, del:k => { try { localStorage.removeItem(k); } catch (e) {} }};
 const S = {view:"hoje", data:"", fil:{}, hist:null};
 const TURNOS = {manha:"☀️ Manhã", tarde:"🌤️ Tarde", noite:"🌙 Noite"};
@@ -144,7 +153,8 @@ async function token(){
 
 /* ---------- visual (cores) definido pelo administrador: vale para todos os aparelhos ---------- */
 const TEMAS = {
-  padrao:{nome:"Azul noite (padrão)", bg:"#060b16", surface:"#0e1829", surface2:"#122038", ink:"#e6eef9", muted:"#8597b2", line:"#1f2f4a", cyan:"#22d3ee", brand:"#f97316", top:"#0a1426", dark:1},
+  moderno:{nome:"Moderno (padrão)", bg:"#eef2f7", surface:"#ffffff", surface2:"#f1f5f9", ink:"#0f172a", muted:"#64748b", line:"#e2e8f0", cyan:"#2563eb", brand:"#f97316", top:"#ffffff", dark:0, grad:1},
+  padrao:{nome:"Azul noite", bg:"#060b16", surface:"#0e1829", surface2:"#122038", ink:"#e6eef9", muted:"#8597b2", line:"#1f2f4a", cyan:"#22d3ee", brand:"#f97316", top:"#0a1426", dark:1},
   aldo:{nome:"Laranja Aldo", bg:"#140b05", surface:"#21140a", surface2:"#2c1b0e", ink:"#fff4ea", muted:"#c9a98e", line:"#3d2815", cyan:"#fb923c", brand:"#f97316", top:"#1b1007", dark:1},
   verde:{nome:"Verde", bg:"#04140e", surface:"#0a2119", surface2:"#0f2c21", ink:"#e7fbf2", muted:"#8fb8a6", line:"#184332", cyan:"#34d399", brand:"#22c55e", top:"#06190f", dark:1},
   vermelho:{nome:"Vermelho", bg:"#160608", surface:"#220b0e", surface2:"#2d1014", line:"#44191e", ink:"#fff0f1", muted:"#c79a9f", cyan:"#f87171", brand:"#ef4444", top:"#1c080b", dark:1},
@@ -155,20 +165,20 @@ const TEMAS = {
 const corTexto = h => { const n = parseInt(String(h).slice(1), 16), r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255; return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? "#111111" : "#ffffff"; };
 const hexRgb = h => { const n = parseInt(String(h).slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255].join(","); };
 function aplicaVisual(v){
-  v = v || {}; const t = {...(TEMAS[v.tema] || TEMAS.padrao)}; if (/^#[0-9a-f]{6}$/i.test(v.destaque || "")) t.cyan = v.destaque; if (/^#[0-9a-f]{6}$/i.test(v.botao || "")) t.brand = v.botao;
+  v = v || {}; const t = {...(TEMAS[v.tema] || TEMAS.moderno)}; if (/^#[0-9a-f]{6}$/i.test(v.destaque || "")) t.cyan = v.destaque; if (/^#[0-9a-f]{6}$/i.test(v.botao || "")) t.brand = v.botao;
   let el = document.getElementById("ckVisual"); if (!el) { el = document.createElement("style"); el.id = "ckVisual"; document.head.appendChild(el); }
-  el.textContent = `:root{--bg:${t.bg};--surface:${t.surface};--surface2:${t.surface2};--ink:${t.ink};--muted:${t.muted};--line:${t.line};--cyan:${t.cyan};--brand:${t.brand};--top:${t.top};--on-cyan:${corTexto(t.cyan)};--on-brand:${corTexto(t.brand)};--gridc:rgba(${hexRgb(t.cyan)},${v.grade === false ? 0 : t.dark ? .045 : .07});color-scheme:${t.dark ? "dark" : "light"}}${v.letra === "grande" ? "body{zoom:1.15}" : ""}`;
+  el.textContent = `:root{--bg:${t.bg};--surface:${t.surface};--surface2:${t.surface2};--ink:${t.ink};--muted:${t.muted};--line:${t.line};--cyan:${t.cyan};--brand:${t.brand};--top:${t.top};--on-cyan:${corTexto(t.cyan)};--on-brand:${corTexto(t.brand)};--gridc:rgba(${hexRgb(t.cyan)},${v.grade === false || (t.grad && v.grade !== true) ? 0 : t.dark ? .045 : .07});color-scheme:${t.dark ? "dark" : "light"}}${v.letra === "grande" ? "body{zoom:1.15}" : ""}${t.grad && v.grade !== true ? "body{background-image:radial-gradient(circle at 0% 0%,rgba(37,99,235,.10),transparent 45%),radial-gradient(circle at 100% 0%,rgba(249,115,22,.10),transparent 40%);background-attachment:fixed}" : ""}`;
   const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t.top;
 }
 aplicaVisual(LS.get(NS + ".ck.visual", null));
 function telaVisual(){
-  const v = S.visTmp || (S.visTmp = {tema:"padrao", letra:"normal", grade:true, ...((S.cfg || {}).visual || {})});
+  const v = S.visTmp || (S.visTmp = {tema:"moderno", letra:"normal", grade:false, ...((S.cfg || {}).visual || {})});
   aplicaVisual(v);
   return `<div class="card"><h2>🎨 Cores e visual</h2><p class="meta">Escolha o modelo. A prévia aparece na hora nesta tela; depois de salvar, vale para todos os celulares dos colaboradores.</p>
     <div class="tiles" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">${Object.entries(TEMAS).map(([k, t]) => `<button onclick="S.visTmp.tema='${k}';render()" style="text-align:left;cursor:pointer;border-radius:12px;padding:10px;background:${t.surface};color:${t.ink};border:2px solid ${v.tema === k ? t.cyan : t.line}">
       <div style="display:flex;gap:4px;margin-bottom:6px">${[t.bg, t.surface2, t.cyan, t.brand].map(c => `<i style="width:20px;height:20px;border-radius:6px;background:${c};border:1px solid ${t.line}"></i>`).join("")}</div><b style="font-size:13px">${t.nome}</b>${v.tema === k ? ` <span style="color:${t.cyan}">✔</span>` : ""}</button>`).join("")}</div>
-    <div class="grid2" style="margin-top:8px"><label class="f">Cor de destaque (abas e títulos)<div class="row"><input type="color" value="${v.destaque || (TEMAS[v.tema] || TEMAS.padrao).cyan}" oninput="S.visTmp.destaque=this.value;aplicaVisual(S.visTmp)" style="width:56px;height:40px;border:0;background:none">${v.destaque ? `<button class="btn sm" onclick="delete S.visTmp.destaque;render()">usar do modelo</button>` : ""}</div></label>
-      <label class="f">Cor dos botões principais<div class="row"><input type="color" value="${v.botao || (TEMAS[v.tema] || TEMAS.padrao).brand}" oninput="S.visTmp.botao=this.value;aplicaVisual(S.visTmp)" style="width:56px;height:40px;border:0;background:none">${v.botao ? `<button class="btn sm" onclick="delete S.visTmp.botao;render()">usar do modelo</button>` : ""}</div></label></div>
+    <div class="grid2" style="margin-top:8px"><label class="f">Cor de destaque (abas e títulos)<div class="row"><input type="color" value="${v.destaque || (TEMAS[v.tema] || TEMAS.moderno).cyan}" oninput="S.visTmp.destaque=this.value;aplicaVisual(S.visTmp)" style="width:56px;height:40px;border:0;background:none">${v.destaque ? `<button class="btn sm" onclick="delete S.visTmp.destaque;render()">usar do modelo</button>` : ""}</div></label>
+      <label class="f">Cor dos botões principais<div class="row"><input type="color" value="${v.botao || (TEMAS[v.tema] || TEMAS.moderno).brand}" oninput="S.visTmp.botao=this.value;aplicaVisual(S.visTmp)" style="width:56px;height:40px;border:0;background:none">${v.botao ? `<button class="btn sm" onclick="delete S.visTmp.botao;render()">usar do modelo</button>` : ""}</div></label></div>
     <div class="chk" style="margin-top:8px"><label><input type="checkbox" ${v.letra === "grande" ? "checked" : ""} onchange="S.visTmp.letra=this.checked?'grande':'normal';aplicaVisual(S.visTmp)">🔠 Letras e botões maiores</label><label><input type="checkbox" ${v.grade !== false ? "checked" : ""} onchange="S.visTmp.grade=this.checked;aplicaVisual(S.visTmp)">▦ Fundo quadriculado</label></div>
     <div class="task" style="margin-top:10px"><div class="h">08:00</div><div class="n">🧹 Prévia: Limpeza da loja</div><div class="meta">Loja · 📷 Foto antes e depois</div><span class="pill p-pend">🔴 Pendente</span> <span class="pill p-ok">🟢 Concluído</span><button class="btn pri">▶️ INICIAR SERVIÇO</button></div>
     <div class="row"><button class="btn pri" style="flex:1" onclick="salvaVisual(this)">💾 Salvar para todos</button><button class="btn" style="flex:1" onclick="S.visTmp=null;aplicaVisual((S.cfg||{}).visual);render()">↩️ Desfazer</button></div></div>`;
@@ -184,7 +194,7 @@ async function salvaVisual(b){
 (async function start(){
   try {
     const qs = new URLSearchParams(location.search), qf = qs.get("f"), qu = qs.get("u");
-    if (qf) LS.set(K.fil, qf.trim()); if (qu) LS.set(K.user, qu.trim());
+    if (qf) LS.set(K.fil, qf.trim()); if (qu) LS.set(K.user, qu.trim()); const qt = qs.get("t"); if (qt) { if (qt !== LS.get(K.tok, "")) { LS.del(K.sess); LS.del(NS + ".ck.perfil"); } LS.set(K.tok, qt.trim()); }
     if (location.search) history.replaceState(null, "", location.pathname);
   } catch (e) {}
   S.filial = LS.get(K.fil, "") || (LS.get(K.estCfg, {}) || {}).filial || "";
@@ -218,9 +228,9 @@ async function entrar(){
   if (!u || !p) return toast("Digite o login e a senha.");
   b.disabled = true;
   try {
-    let email = u.includes("@") ? u.toLowerCase() : await rpc("ck_email_para_entrar", {p_filial:S.filial, p_login:u}, {token:false});
+    const tk = LS.get(K.tok, ""); let email = u.includes("@") ? u.toLowerCase() : tk ? await rpc("ck_email_link", {p_filial:S.filial, p_login:u, p_token:tk}, {token:false}).catch(() => null) : null;
     if (!email) email = await rpc("email_para_entrar", {p_filial:S.filial, p_login:u}, {token:false}).catch(() => null); /* administrador do estoque */
-    if (!email) throw new Error("Login não encontrado.");
+    if (!email) throw new Error(tk ? "Este link não vale mais. Peça o link novo ao administrador." : "Login não encontrado. Colaborador e líder entram pelo link enviado pelo administrador.");
     S.sess = null; guarda(await api("POST", "/auth/v1/token?grant_type=password", {email, password:p}, {token:false}));
     if (!(await carregaPerfil())) { S.sess = null; LS.del(K.sess); throw new Error("Este login não tem acesso ao Checklist Serviços Gerais."); }
     LS.set(K.user, u); entrou();
@@ -243,8 +253,9 @@ async function entrou(offline){
 
 /* ================= dados ================= */
 async function carregaBase(){
-  const [us, lo, sv, fo, cf] = await Promise.all([tb("ck_usuarios", "select=*&order=nome"), tb("ck_locais", "select=*&order=ordem,nome"), tb("ck_servicos", "select=*&order=horario"), tb("ck_folgas", "select=*&order=data_ini.desc"), tb("ck_config", "select=*")]);
+  const [us, lo, sv, fo, cf] = await Promise.all([tb("ck_usuarios", "select=user_id,nome,login,funcao,turno,ativo,papel&order=nome"), tb("ck_locais", "select=*&order=ordem,nome"), tb("ck_servicos", "select=*&order=horario"), tb("ck_folgas", "select=*&order=data_ini.desc"), tb("ck_config", "select=*")]);
   Object.assign(S, {usuarios:us || [], locais:lo || [], servicos:sv || [], folgas:fo || [], cfg:(cf || [])[0] || {filial:S.filial, retencao_dias:90}});
+  if (S.admin) S.links = await rpc("ck_links").catch(() => ({})) || {};
   if (!S.visTmp) { aplicaVisual(S.cfg.visual); LS.set(NS + ".ck.visual", S.cfg.visual || {}); }
   LS.set(NS + ".ck.base", {usuarios:S.usuarios, locais:S.locais, servicos:S.servicos, folgas:S.folgas, cfg:S.cfg});
   await atualizaDia();
@@ -252,8 +263,8 @@ async function carregaBase(){
 async function atualizaDia(){
   try {
     const q = "select=*&data=eq." + S.data, gestor = S.papel !== "colaborador";
-    const [rg, aj, dm, ab, jo, at] = await Promise.all([tb("ck_registros", q), tb("ck_ajustes", q), tb("ck_demandas", q + "&order=criado_em").catch(() => []), gestor ? tb("ck_abonos", q).catch(() => []) : Promise.resolve([]), tb("ck_jornadas", q).catch(() => []), tb("ck_atividades", q + "&order=inicio").catch(() => [])]);
-    S.fil[S.data] = {reg:rg || [], aj:aj || [], dem:dm || [], ab:ab || [], jor:jo || [], atv:at || []}; LS.set(NS + ".ck.dia." + S.data, S.fil[S.data]);
+    const [rg, aj, dm, ab, jo, at, te] = await Promise.all([tb("ck_registros", q), tb("ck_ajustes", q), tb("ck_demandas", q + "&order=criado_em").catch(() => []), gestor ? tb("ck_abonos", q).catch(() => []) : Promise.resolve([]), tb("ck_jornadas", q).catch(() => []), tb("ck_atividades", q + "&order=inicio").catch(() => []), gestor ? tb("ck_tentativas", "select=*&order=quando.desc&quando=gte." + new Date(S.data + "T00:00:00").toISOString() + "&quando=lt." + new Date(addDia(S.data, 1) + "T00:00:00").toISOString()).catch(() => []) : Promise.resolve([])]);
+    S.fil[S.data] = {reg:rg || [], aj:aj || [], dem:dm || [], ab:ab || [], jor:jo || [], atv:at || [], tent:te || []}; LS.set(NS + ".ck.dia." + S.data, S.fil[S.data]);
   } catch (e) { if (!S.fil[S.data]) S.fil[S.data] = LS.get(NS + ".ck.dia." + S.data, {reg:[], aj:[], dem:[], ab:[]}); }
 }
 const nomeU = id => { const u = (S.usuarios || []).find(x => x.user_id === id); return u ? u.nome : (S.perfil && id === S.perfil.user_id ? S.perfil.nome : "—"); };
@@ -273,14 +284,16 @@ function responsavel(s, d, aj){
   if (!cob) { const livre = u => u.user_id !== base && !emFolga(u.user_id, d), mesmoT = u => u.turno === s.turno; const u = ativos().find(u => /triagem/i.test(u.funcao) && livre(u) && mesmoT(u)) || ativos().find(u => /triagem/i.test(u.funcao) && livre(u)) || ativos().find(u => u.funcao === s.funcao && livre(u)) || ativos().find(livre); cob = u ? u.user_id : null; }
   return {uid:cob, cobertura:true, de:base, folga:f};
 }
+const tolerancia = () => { const t = (S.cfg || {}).tolerancia_min; return t == null ? 10 : +t; };
+const addMin = (h, n) => { const [a, b] = h.split(":").map(Number), t = Math.min(23 * 60 + 59, a * 60 + b + n); return pad(Math.floor(t / 60)) + ":" + pad(t % 60); };
 const FINAL = st => ["concluido", "concluido_obs", "nao_realizado"].includes(st);
 const janela = s => hm(s.horario) + (s.horario_fim ? "–" + hm(s.horario_fim) : "");
 function statusDe(s, reg, d){
   const h = hoje(), ag = agoraHM(), ini = hm(s.horario), fim = hm(s.horario_fim);
-  if (reg) { if (reg.status === "andamento" && (d < h || (d === h && fim && ag > fim))) return "estourado"; return reg.status; }
+  if (reg) { if (reg.status === "andamento" && (d < h || (d === h && fim && ag > addMin(fim, tolerancia())))) return "estourado"; return reg.status; }
   if (d < h) return "sem_registro";
   if (d > h) return "futuro";
-  if (fim ? ag > fim : ag > ini) return "atrasado";
+  if (ag > addMin(fim || ini, tolerancia())) return "atrasado";
   if (ag >= ini) return "agora";
   return "pendente";
 }
@@ -377,37 +390,53 @@ const pill = st => `<span class="pill ${ST[st][1]}">${ST[st][0]}</span>`;
 function telaColab(){
   const P = S.perfil, d = hoje(); S.data = d;
   $("#tSub").textContent = "Hoje · " + dBR(d);
-  const L = linhasDia(d).filter(x => x.resp === P.user_id), h = new Date().getHours(), oi = h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
-  const fora = L.filter(x => ["atrasado", "estourado"].includes(x.st) && !x.ab), cob = L.filter(x => x.rr.cobertura), urg = L.filter(x => x.s.urgente && !FINAL(x.st));
-  const atual = L.find(x => !FINAL(x.st)), feitas = L.filter(x => FINAL(x.st)).length, minhaFolga = emFolga(P.user_id, d);
-  const dem = ((S.fil[d] || {}).dem || []).filter(x => x.user_id === P.user_id);
-  $("#app").innerHTML = `<div class="card"><div style="font-family:var(--display);font-size:22px;font-weight:700">${oi}, ${esc((P.nome || "").split(" ")[0])}!</div>
-      <div class="meta" style="font-size:14px;margin-top:4px">👤 ${esc(P.nome)} · ${TURNOS[P.turno] || esc(P.turno)} · ${esc(P.funcao || "")}</div>
-      ${L.length ? `<div style="margin-top:8px"><b>${feitas} de ${L.length} etapas</b><div class="bar"><i style="width:${Math.round(feitas / L.length * 100)}%"></i></div></div>` : ""}
-      <div class="row" style="margin-top:6px"><button class="btn sm" onclick="pedeAvisos()">🔔 Ativar avisos</button><button class="btn sm" onclick="trocaSenha()">🔑 Minha senha</button></div></div>
-    ${cardExpediente(L)}
-    ${minhaFolga ? `<div class="ban info">📅 Você está de ${esc(minhaFolga.tipo)} hoje.</div>` : ""}
-    ${urg.length ? `<div class="ban crit">🚨 URGENTE: ${urg.map(x => esc(x.s.nome)).join(", ")}</div>` : ""}
-    ${fora.length ? `<div class="ban crit">⏰ Fora do horário: ${fora.map(x => janela(x.s) + " " + esc(x.s.nome)).join(" · ")}. O administrador foi avisado; ao finalizar, informe o motivo.</div>` : ""}
-    ${cob.length ? `<div class="ban warn">⚠️ COBERTURA DE FOLGA: hoje você cobre ${[...new Set(cob.map(x => nomeU(x.rr.de)))].map(esc).join(", ")}</div>` : ""}
-    ${dem.filter(x => !FINAL(x.status)).length ? `<h2 style="font-family:var(--display);font-size:15px;letter-spacing:.06em;margin:14px 2px 8px;color:var(--warn)">📌 DEMANDAS EXTRAS</h2>${dem.filter(x => !FINAL(x.status)).map(cardDemanda).join("")}` : ""}
-    ${atual ? `<div class="ban info">▶️ Etapa atual: ${janela(atual.s)} — ${esc(atual.s.nome)}</div>` : L.length ? `<div class="ban info" style="color:var(--good);border-color:var(--good)">✅ Todas as etapas de hoje foram finalizadas.</div>` : ""}
-    <h2 style="font-family:var(--display);font-size:15px;letter-spacing:.06em;margin:14px 2px 8px">ETAPAS DE HOJE (em sequência)</h2>
-    ${L.length ? L.map((x, i) => cardTarefa(x, i, L)).join("") : `<div class="msg"><b>Nenhuma etapa para você hoje</b>Se achar que está errado, fale com o administrador.</div>`}
-    ${dem.filter(x => FINAL(x.status)).length ? `<h2 style="font-family:var(--display);font-size:13px;margin:14px 2px 8px" class="meta">Demandas extras finalizadas hoje</h2>${dem.filter(x => FINAL(x.status)).map(cardDemanda).join("")}` : ""}`;
+  const L = linhasDia(d).filter(x => x.resp === P.user_id), dem = ((S.fil[d] || {}).dem || []).filter(x => x.user_id === P.user_id && !FINAL(x.status));
+  const H = horasDia(P.user_id, d), feitas = L.filter(x => FINAL(x.st)).length, atualI = L.findIndex(x => !FINAL(x.st)), h = new Date().getHours();
+  if (S.etAuto !== atualI || S.etIdx == null || S.etIdx >= L.length) { S.etIdx = atualI >= 0 ? atualI : Math.max(0, L.length - 1); S.etAuto = atualI; }
+  const cor = y => FINAL(y.st) ? (foraHorario(y) ? "late" : "ok") : ["atrasado", "estourado"].includes(y.st) ? "late" : y === L[atualI] ? "now" : "todo";
+  $("#app").innerHTML = `<div class="hero"><div><div class="oi">${h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite"}, ${esc((P.nome || "").split(" ")[0])}!</div>
+      <div class="meta">${feitas} de ${L.length} etapas · ${hhmm(H.reg)} de ${hhmm(H.meta)}</div></div><button class="btn sm" onclick="verMeuDia()">🕐 Meu dia</button></div>
+    <div class="bar" style="margin:0 0 12px"><i style="width:${L.length ? Math.round(feitas / L.length * 100) : 0}%"></i></div>
+    ${emFolga(P.user_id, d) ? `<div class="ban info">📅 Você está de ${esc(emFolga(P.user_id, d).tipo)} hoje.</div>` : ""}
+    ${dem.length ? `<button class="ban warn" style="width:100%;text-align:left;cursor:pointer;font:inherit;font-weight:700" onclick="verDemandas()">📌 ${dem.length === 1 ? "1 demanda extra" : dem.length + " demandas extras"} para você · toque para ver</button>` : ""}
+    ${L.length && atualI < 0 ? telaFimDia(H) : ""}
+    ${L.length ? `<div class="dots">${L.map((y, i) => `<button class="dot ${cor(y)} ${i === S.etIdx ? "on" : ""}" onclick="S.etIdx=${i};render()" aria-label="Etapa ${i + 1}">${FINAL(y.st) ? "✔" : hm(y.s.horario)}</button>`).join("")}</div>${cardEtapa(L[S.etIdx], S.etIdx, L, atualI)}`
+      : `<div class="msg"><b>Nenhuma etapa para você hoje</b>Se achar que está errado, fale com o administrador.</div>`}`;
+  const el = $("#etapa"); if (el) { let x0 = null; el.addEventListener("touchstart", e => { x0 = e.touches[0].clientX; }, {passive:true}); el.addEventListener("touchend", e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 60) passa(dx < 0 ? 1 : -1); }, {passive:true}); }
 }
-function cardTarefa(x, i, L){
-  const r = x.reg, st = x.st, fim = FINAL(st), antes = (L || []).slice(0, i).find(y => !FINAL(y.st)), passos = x.s.passos || [];
-  return `<div class="task ${x.s.urgente && !fim ? "urg" : ""}" style="${fim ? "opacity:.75" : ""}${!fim && !antes ? ";border-color:var(--cyan)" : ""}"><div class="row" style="justify-content:space-between"><div class="h">${janela(x.s)}</div><span class="meta">Etapa ${i + 1} de ${L.length}</span></div>
-    <div class="n">🧹 ${esc(x.s.nome)}</div><div class="meta">${esc(x.local)}${x.s.foto !== "nao" ? " · " + FOTO[x.s.foto] : ""}${passos.length ? " · " + passos.length + " passos" : ""}</div>
-    ${x.s.urgente && !fim ? `<b style="color:var(--crit)">🚨 URGENTE</b>` : ""}
-    ${x.s.observacao ? `<div class="meta" style="color:${x.s.urgente ? "var(--crit)" : "var(--warn)"};margin-top:4px">📌 ${esc(x.s.observacao)}</div>` : ""}
-    ${x.rr.cobertura ? `<div class="meta" style="color:var(--warn)">⚠️ Cobertura de folga (${esc(nomeU(x.rr.de))})</div>` : ""}
-    ${pill(st)} ${r && r._pend ? `<span class="pill p-and">🟠 aguardando sincronização</span>` : ""}${r && +r.atraso_min > 0 ? ` <span class="pill p-atr">⏰ ${r.atraso_min} min depois do horário</span>` : ""}
-    ${r && r.iniciado_em ? `<div class="meta" style="margin-top:4px">Iniciado ${hmTs(r.iniciado_em)}${r.concluido_em ? " · " + (st === "nao_realizado" ? "registrado" : "concluído") + " às <b>" + hmTs(r.concluido_em) + "</b>" : ""}</div>` : ""}
-    ${!r && !fim ? (antes ? `<div class="meta" style="margin-top:8px">🔒 Libera depois da etapa ${janela(antes.s)}</div>` : `<button class="btn pri" onclick="iniciar(${x.s.id})">▶️ INICIAR ETAPA</button>`) : ""}
-    ${r && (st === "andamento" || st === "estourado") ? `<button class="btn ok" onclick="finalizar(${x.s.id})">✅ FINALIZAR ETAPA</button>` : ""}</div>`;
+function passa(n){ const L = linhasDia(hoje()).filter(x => x.resp === S.perfil.user_id); S.etIdx = Math.max(0, Math.min(L.length - 1, (S.etIdx || 0) + n)); render(); }
+const minEntre = (a, b) => { const [h1, m1] = a.split(":").map(Number), [h2, m2] = b.split(":").map(Number); return (h2 * 60 + m2) - (h1 * 60 + m1); };
+const passosKey = x => NS + ".ck.passos." + x.s.id + "|" + x.d;
+function marcaPasso(id, k){ const x = linhaDe(id); if (!x) return; const l = LS.get(passosKey(x), []); LS.set(passosKey(x), l.includes(k) ? l.filter(v => v !== k) : l.concat(k)); render(); }
+function cardEtapa(x, i, L, atualI){
+  const r = x.reg, st = x.st, fim = FINAL(st), passos = x.s.passos || [], marc = fim && r ? passos.map((p, k) => (r.passos || []).includes(p) ? k : -1).filter(k => k >= 0) : LS.get(passosKey(x), []);
+  const ag = agoraHM(), ini = hm(x.s.horario), fh = hm(x.s.horario_fim), tol = tolerancia();
+  let rel = "", rc = "";
+  if (fim) { rel = (st === "nao_realizado" ? "❌ Registrada como não realizada às " : "✅ Concluída às ") + hmTs(r && r.concluido_em); rc = st === "nao_realizado" ? "crit" : "good"; }
+  else if (r) { const f = fh ? minEntre(ag, fh) : null; rel = f == null ? "▶️ Em andamento" : f >= 0 ? "⏱️ Faltam " + f + " min para terminar" : "⏰ Passou " + (-f) + " min do horário"; rc = f == null || f >= 0 ? "info" : (-f > tol ? "crit" : "warn"); }
+  else if (i === atualI) { const f = minEntre(ag, ini); rel = f > 0 ? "🕐 Começa em " + f + " min (" + ini + ")" : (st === "atrasado" ? "⏰ Atrasada: comece agora" : "▶️ Hora de começar"); rc = f > 0 ? "info" : st === "atrasado" ? "crit" : "warn"; }
+  else { rel = "🔒 Libera depois da etapa anterior"; rc = "muted"; }
+  return `<div class="etapa ${x.s.urgente && !fim ? "urg" : ""}" id="etapa">
+    <div class="row" style="justify-content:space-between"><span class="meta" style="letter-spacing:.08em">ETAPA ${i + 1} DE ${L.length}</span>${x.s.urgente && !fim ? `<b style="color:var(--crit)">🚨 URGENTE</b>` : ""}</div>
+    <div class="janela">${janela(x.s)}</div><div class="nome">${esc(x.s.nome)}</div>
+    <div class="meta">📍 ${esc(x.local)}${x.s.foto !== "nao" ? " · " + FOTO[x.s.foto] : ""}${x.rr.cobertura ? ` · <b style="color:var(--warn)">⚠️ cobrindo ${esc(nomeU(x.rr.de))}</b>` : ""}</div>
+    ${x.s.observacao ? `<div class="meta" style="color:var(--warn);margin-top:4px">📌 ${esc(x.s.observacao)}</div>` : ""}
+    <div class="relogio ${rc}">${rel}</div>
+    ${passos.length ? `<div class="passos">${passos.map((p, k) => `<button class="passo ${marc.includes(k) ? "ok" : ""}" ${r && !fim ? `onclick="marcaPasso(${x.s.id},${k})"` : "disabled"}><span>${marc.includes(k) ? "✔" : k + 1}</span>${esc(p)}</button>`).join("")}</div>` : ""}
+    ${r && r._pend ? `<div class="meta" style="color:var(--warn)">🟠 Guardado no celular · envia quando tiver internet</div>` : ""}
+    ${!r && !fim && i === atualI ? `<button class="btn pri xl" onclick="iniciar(${x.s.id})">▶️ INICIAR ETAPA</button>` : ""}
+    ${r && !fim ? `<button class="btn ok xl" onclick="finalizar(${x.s.id})">✅ CONCLUIR ETAPA</button><button class="btn sm" style="width:100%;margin-top:8px" onclick="finalizar(${x.s.id},true)">❌ Não deu para fazer</button>` : ""}
+    <div class="nav"><button class="btn sm" onclick="passa(-1)" ${i === 0 ? "disabled" : ""}>◀ Anterior</button><span class="meta">deslize para o lado</span><button class="btn sm" onclick="passa(1)" ${i === L.length - 1 ? "disabled" : ""}>Próxima ▶</button></div></div>`;
 }
+function telaFimDia(H){
+  return `<div class="card" style="text-align:center"><div style="font-size:40px">🎉</div><h2>Etapas de hoje concluídas!</h2>
+    ${H.falta ? `<p class="meta">Faltam <b>${hhmm(H.falta)}</b> para completar o dia. Registre o que você fez nesse tempo, com foto.</p>
+      ${H.gaps.map(([a, b]) => `<button class="btn sm" style="width:100%" onclick="formAtividade(${a},${b})">📝 ${hmTs(a)}–${hmTs(b)} · justificar</button>`).join("")}
+      <button class="btn pri" onclick="formAtividade()">➕ Registrar o que fiz</button>` : `<p class="meta" style="color:var(--good)">✅ Horas do dia completas.</p>`}
+    ${H.J && !H.J.saida ? `<button class="btn" onclick="encerrarDia()">🏁 Encerrar o dia</button>` : ""}</div>`;
+}
+function verMeuDia(){ const L = linhasDia(hoje()).filter(x => x.resp === S.perfil.user_id); openSheet(cardExpediente(L).replace('<div class="card">', '<div>') + `<button class="btn" onclick="closeSheet()">Fechar</button>`); }
+function verDemandas(){ const D = ((S.fil[hoje()] || {}).dem || []).filter(x => x.user_id === S.perfil.user_id); openSheet(`<h2>📌 Demandas extras</h2>${D.map(cardDemanda).join("") || `<p class="meta">Nenhuma.</p>`}<button class="btn" onclick="closeSheet()">Fechar</button>`); }
 const linhaDe = id => linhasDia(hoje()).find(x => x.s.id === id);
 function regBase(x){ const P = S.perfil; return {filial:S.filial, servico_id:x.s.id, data:x.d, user_id:P.user_id, colaborador:P.nome, servico:x.s.nome, local:x.local, horario_previsto:hm(x.s.horario), horario_fim:hm(x.s.horario_fim) || null, cobertura:!!x.rr.cobertura}; }
 let fotosTmp = [];
@@ -435,17 +464,17 @@ async function pegaFoto(inp, tipo, camera){
   } catch (e) { console.error(e); toast("Não foi possível ler a foto."); }
   inp.value = "";
 }
-function finalizar(id){
-  const x = linhaDe(id); if (!x) return; fotosTmp = [];
-  const passos = x.s.passos || [], fim = hm(x.s.horario_fim), atrasado = fim && agoraHM() > fim;
+function finalizar(id, nao){
+  const x = linhaDe(id); if (!x) return; fotosTmp = []; const marc = LS.get(passosKey(x), []);
+  const passos = x.s.passos || [], fim = hm(x.s.horario_fim), atrasado = fim && agoraHM() > addMin(fim, tolerancia());
   const pede = x.s.foto === "antes_depois" ? slotFoto("depois", "📷 Foto DEPOIS (obrigatória)") : slotFoto("foto", x.s.foto === "sim" ? "📷 Foto da etapa (obrigatória)" : "📷 Foto (opcional)");
   openSheet(`<h2>${esc(x.s.nome)}</h2><p class="meta">${janela(x.s)} · ${esc(x.local)}</p>
-    ${passos.length ? `<div class="fslot"><b>Passo a passo</b>${passos.map((p, i) => `<label style="display:flex;gap:10px;align-items:center;padding:9px 2px;border-bottom:1px solid var(--line);font-size:15px"><input type="checkbox" data-passo="${i}" style="width:22px;height:22px">${esc(p)}</label>`).join("")}</div>` : ""}
+    ${passos.length ? `<div class="fslot"><b>Passo a passo</b>${passos.map((p, i) => `<label style="display:flex;gap:10px;align-items:center;padding:9px 2px;border-bottom:1px solid var(--line);font-size:15px"><input type="checkbox" data-passo="${i}" ${marc.includes(i) ? "checked" : ""} style="width:22px;height:22px">${esc(p)}</label>`).join("")}</div>` : ""}
     ${pede}
     ${atrasado ? `<div class="ban crit" style="margin-top:10px">⏰ Esta etapa devia terminar às ${fim}. Informe por que não foi concluída no horário (obrigatório).<textarea id="fJus" class="inp" rows="2" placeholder="Ex.: fui chamado para limpar a pista"></textarea></div>` : ""}
     <label class="f">Observação (opcional)<textarea id="fObs" class="inp" rows="2" placeholder="Ex.: Faltou produto de limpeza."></textarea></label>
     <button class="btn ok" style="font-size:17px" onclick="envia(${id},'concluido')">✅ CONCLUÍDO</button>
-    <details style="margin-top:12px"><summary class="btn no" style="list-style:none">❌ NÃO REALIZADO</summary>
+    <details style="margin-top:12px" ${nao ? "open" : ""}><summary class="btn no" style="list-style:none">❌ NÃO REALIZADO</summary>
       <label class="f">Motivo (obrigatório)<select id="fMot" class="inp"><option value="">Escolha…</option>${MOTIVOS.map(m => `<option>${m}</option>`).join("")}</select></label>
       <label class="f">Por que a etapa não foi realizada?<textarea id="fMotTx" class="inp" rows="2"></textarea></label>
       <button class="btn no" onclick="envia(${id},'nao_realizado')">Enviar como NÃO REALIZADO</button></details>
@@ -455,7 +484,7 @@ function envia(id, tipo){
   const x = linhaDe(id); if (!x) return;
   const k = x.s.id + "|" + x.d, ant = filaLocal()[k] || x.reg || {}, obs = ($("#fObs").value || "").trim(), passos = x.s.passos || [];
   const marcados = $$("[data-passo]").filter(c => c.checked).map(c => passos[+c.dataset.passo]);
-  const fim = hm(x.s.horario_fim), atraso = fim && agoraHM() > fim ? Math.round((Date.now() - new Date(x.d + "T" + fim + ":00").getTime()) / 60000) : 0, jus = (($("#fJus") || {}).value || "").trim();
+  const fim = hm(x.s.horario_fim), atraso = fim && agoraHM() > addMin(fim, tolerancia()) ? Math.round((Date.now() - new Date(x.d + "T" + fim + ":00").getTime()) / 60000) : 0, jus = (($("#fJus") || {}).value || "").trim();
   const fotos = (ant.fotos || []).concat(fotosTmp);
   let status = tipo, motivo = "";
   if (tipo === "concluido") {
@@ -472,7 +501,7 @@ function envia(id, tipo){
   }
   const base = filaLocal()[k] ? {} : {...regBase(x), iniciado_em:(x.reg && x.reg.iniciado_em) || new Date().toISOString()};
   if (!salvaFila(k, {...base, status, motivo, observacao:obs, fotos, passos:marcados, atraso_min:Math.max(0, atraso), justificativa:jus || (atraso > 0 ? motivo : ""), concluido_em:new Date().toISOString()})) return;
-  fotosTmp = []; closeSheet(); render(); sincroniza(); toast(tipo === "concluido" ? "✅ Etapa concluída às " + agoraHM() + (atraso > 0 ? " (" + atraso + " min depois do horário)" : "") : "Registrado como não realizado.");
+  LS.del(passosKey(x)); fotosTmp = []; closeSheet(); render(); sincroniza(); toast(tipo === "concluido" ? "✅ Etapa concluída às " + agoraHM() + (atraso > 0 ? " (" + atraso + " min depois do horário)" : "") : "Registrado como não realizado.");
 }
 /* avisos internos */
 let avisados = {};
@@ -521,6 +550,7 @@ function telaHoje(){
     ${fora.length ? `<div class="card" style="border-color:var(--crit)"><h2 style="color:var(--crit)">⏰ Fora do horário (${fora.length})</h2>${fora.map(x => `<div style="border-bottom:1px solid var(--line);padding:8px 0"><b>${janela(x.s)} · ${esc(x.s.nome)}</b> — ${esc(x.resp ? nomeU(x.resp) : "sem responsável")} ${pill(x.st)}
         ${x.reg && +x.reg.atraso_min > 0 ? `<div class="meta">Concluída ${x.reg.atraso_min} min depois do horário.</div>` : ""}${x.reg && x.reg.justificativa ? `<div class="meta" style="color:var(--warn)">💬 Motivo: ${esc(x.reg.justificativa)}</div>` : ""}
         <div class="row">${x.resp && x.d === hoje() ? `<button class="btn sm" onclick="formDemanda('${x.resp}')">📌 Passar demanda extra</button>` : ""}<button class="btn sm" onclick="detalhe(${x.s.id},'${x.d}')">Ver</button></div></div>`).join("")}</div>` : ""}
+    ${((S.fil[d] || {}).tent || []).map(t => `<div class="ban crit">📍 ${esc(t.nome || nomeU(t.user_id))} tentou abrir o link fora do posto às ${hmTs(t.quando)} (${t.distancia_m >= 1000 ? (t.distancia_m / 1000).toFixed(1).replace(".", ",") + " km" : t.distancia_m + " m"} de distância).</div>`).join("")}
     ${cardHoras(d)}
     ${(S.fil[d] && S.fil[d].jor || []).filter(j => j.saida && horasDia(j.user_id, d).falta).map(j => `<div class="ban crit">🚨 ${esc(nomeU(j.user_id))} encerrou o dia com ${hhmm(horasDia(j.user_id, d).falta)} sem registro.</div>`).join("")}
     ${sem.length ? `<div class="ban warn">⚠️ ${sem.length} etapa(s) sem responsável: cadastre o colaborador da função/turno ou troque o responsável.</div>` : ""}
@@ -674,12 +704,13 @@ async function criaIniciais(b){
   } catch (e) { toast(e.message); if (b) b.disabled = false; }
 }
 /* ---------- admin: equipe ---------- */
-function linkDe(u){ return new URL("checklist.html", location.href).href.split("?")[0] + "?f=" + encodeURIComponent(S.filial) + "&u=" + encodeURIComponent(u.login); }
+function linkDe(u){ return new URL("checklist.html", location.href).href.split("?")[0] + "?f=" + encodeURIComponent(S.filial) + "&u=" + encodeURIComponent(u.login) + "&t=" + encodeURIComponent((S.links || {})[u.user_id] || ""); }
+async function resetarLink(id){ const u = S.usuarios.find(x => x.user_id === id); if (!confirm("Resetar o link de " + u.nome + "? O link antigo para de funcionar e o celular dele é desconectado.")) return; try { const t = await rpc("ck_resetar_link", {p_user:id}); S.links = {...(S.links || {}), [id]:t}; toast("Link novo gerado."); enviaLink(id); } catch (e) { toast(/ck_resetar/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); } }
 function telaEquipe(){
   const U = S.usuarios || [];
   $("#app").innerHTML = `<div class="card"><h2>👥 Colaboradores e líderes</h2><p class="meta">Cada pessoa tem login próprio só do checklist (não entra no estoque nem nas metas) e o próprio link, que abre direto a tela dela. <b>Líder</b>: acompanha as demandas do dia e passa demandas extras (que abonam o horário da etapa); não mexe em etapas, equipe nem configurações.</p><button class="btn pri" onclick="formUser()">+ Novo colaborador ou líder</button></div>
     ${U.map(u => `<div class="card" style="${u.ativo ? "" : "opacity:.55"}"><div><b style="font-size:16px">${esc(u.nome)}</b> ${u.papel === "lider" ? `<span class="pill p-and">⭐ Líder</span>` : ""} ${u.ativo ? "" : `<span class="pill p-fut">inativo</span>`}<div class="meta">login: ${esc(u.login)}${u.papel === "lider" ? "" : " · " + esc(u.funcao) + " · " + (TURNOS[u.turno] || esc(u.turno))}</div></div>
-      <div class="row"><button class="btn sm" onclick="enviaLink('${u.user_id}')">📤 Enviar link</button><button class="btn sm" onclick="formUser('${u.user_id}')">✏️ Editar</button><button class="btn sm" onclick="senhaUser('${u.user_id}')">🔑 Nova senha</button>${u.papel === "lider" ? "" : `<button class="btn sm" onclick="histUser('${u.user_id}')">📜 Histórico</button>`}</div></div>`).join("") || `<p class="meta">Ninguém cadastrado ainda.</p>`}`;
+      <div class="row"><button class="btn sm" onclick="enviaLink('${u.user_id}')">📤 Enviar link</button><button class="btn sm" onclick="resetarLink('${u.user_id}')">🔄 Resetar link</button><button class="btn sm" onclick="formUser('${u.user_id}')">✏️ Editar</button><button class="btn sm" onclick="senhaUser('${u.user_id}')">🔑 Nova senha</button>${u.papel === "lider" ? "" : `<button class="btn sm" onclick="histUser('${u.user_id}')">📜 Histórico</button>`}</div></div>`).join("") || `<p class="meta">Ninguém cadastrado ainda.</p>`}`;
 }
 async function enviaLink(id){
   const u = S.usuarios.find(x => x.user_id === id), url = linkDe(u), t = `✅ CHECKLIST SERVIÇOS GERAIS · ${S.perfil.nome_filial || ""}\nOlá, ${u.nome.split(" ")[0]}! Este é o seu link. Abra no seu celular, entre com a sua senha e registre os seus serviços. Os horários são atualizados sozinhos.`;
@@ -861,26 +892,27 @@ function pegaLocal(){
     navigator.geolocation.getCurrentPosition(p => ok({lat:p.coords.latitude, lng:p.coords.longitude, prec:p.coords.accuracy}), () => ok(null), {enableHighAccuracy:true, timeout:15000, maximumAge:60000}); });
 }
 async function abrirJornada(){
-  if (S.papel !== "colaborador") return true;
+  if (S.papel === "admin") return true;
+  if (S.papel === "lider") { try { const j = await rpc("ck_abrir_jornada", {p_lat:null, p_lng:null, p_prec:null, p_token:LS.get(K.tok, "")}); if (j && j.erro) { telaBloqueio(j); return false; } } catch (e) {} return true; }
   const cache = LS.get(NS + ".ck.jor", null);
   if (!navigator.onLine) { if (cache && cache.data === hoje() && Date.now() < new Date(cache.ate).getTime()) { S.jor = cache; return true; } telaBloqueio({erro:"offline"}); return false; }
   $("#app").innerHTML = `<div class="msg"><b>📍 Conferindo o local…</b>Permita o acesso à localização quando o celular pedir.</div>`;
   const g = await pegaLocal();
-  let j; try { j = await rpc("ck_abrir_jornada", {p_lat:g && g.lat, p_lng:g && g.lng, p_prec:g && g.prec}); } catch (e) { if (cache && cache.data === hoje() && Date.now() < new Date(cache.ate).getTime()) { S.jor = cache; return true; } telaBloqueio({erro:"rede", msg:e.message}); return false; }
+  let j; try { j = await rpc("ck_abrir_jornada", {p_lat:g && g.lat, p_lng:g && g.lng, p_prec:g && g.prec, p_token:LS.get(K.tok, "")}); } catch (e) { if (cache && cache.data === hoje() && Date.now() < new Date(cache.ate).getTime()) { S.jor = cache; return true; } telaBloqueio({erro:"rede", msg:e.message}); return false; }
   if (!j || !j.ok) { telaBloqueio(j || {}); return false; }
   S.jor = {data:hoje(), entrada:j.entrada, ate:j.ate, saida:j.saida || null}; LS.set(NS + ".ck.jor", S.jor);
   if (j.nova) toast("🕐 Entrada registrada às " + hmTs(j.entrada) + ". Link aberto até " + hmTs(j.ate) + ".");
   return true;
 }
 function telaBloqueio(j){
-  $("#tabs").innerHTML = ""; S.bloqueado = true;
+  $("#tabs").innerHTML = ""; S.bloqueado = true; if (j.erro === "link_resetado") { S.sess = null; LS.del(K.sess); LS.del(NS + ".ck.perfil"); LS.del(K.tok); }
   const dh = t => t ? new Date(t).toLocaleString("pt-BR", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"}) : "";
-  const M = {fora_local:["📍 Você não está no posto", `Você está a <b>${j.distancia} m</b> do posto. O checklist só abre no local de trabalho (até ${j.raio || 200} m).`],
+  const M = {fora_local:["📍 Você não está no posto", `Você está a <b>${j.distancia} m</b> do posto. O checklist só abre no local de trabalho (até ${j.raio || 200} m).<br><b style="color:var(--crit)">O administrador foi avisado desta tentativa.</b>`],
     sem_gps:["📍 Localização desligada", "Ative a localização do celular e permita o acesso para este site. Depois toque em Tentar de novo."],
     encerrada:["🔒 Expediente de hoje encerrado", `O link de hoje fechou às <b>${dh(j.ate)}</b>. Abre de novo em <b>${dh(j.libera_em)}</b>.<br>Se precisar antes, peça ao administrador para liberar.`],
     descanso:["🔒 Ainda no horário de descanso", `O link abre de novo em <b>${dh(j.libera_em)}</b> (10 horas depois do fim do expediente).<br>Se precisar antes, peça ao administrador para liberar.`],
     offline:["📶 Sem internet", "Conecte à internet para abrir o checklist pela primeira vez hoje."],
-    rede:["📶 Não foi possível conferir", "Confira a internet e tente de novo."], sem_acesso:["🔒 Sem acesso", "Seu login está desativado. Fale com o administrador."]};
+    link_resetado:["🔄 Este link foi trocado", "O administrador gerou um link novo para você. Abra o link novo que ele mandar."], rede:["📶 Não foi possível conferir", "Confira a internet e tente de novo."], sem_acesso:["🔒 Sem acesso", "Seu login está desativado. Fale com o administrador."]};
   const [t, d] = M[j.erro] || ["🔒 Acesso bloqueado", "Fale com o administrador."];
   $("#app").innerHTML = `<div class="msg"><b>${t}</b>${d}<br><br><button class="btn pri" style="max-width:320px;margin:0 auto" onclick="S.bloqueado=false;abrirJornada().then(ok=>{if(ok){S.bloqueado=false;render()}})">🔄 Tentar de novo</button></div>`;
 }
@@ -965,13 +997,15 @@ function telaLocal(){
     <p class="meta">Esteja no posto e toque no botão abaixo. Depois disso, o link dos colaboradores só abre dentro do raio escolhido.</p>
     <label class="f">Raio permitido<select id="lcR" class="inp">${[100, 200, 300, 500].map(n => `<option value="${n}" ${(+c.posto_raio || 200) === n ? "selected" : ""}>${n} metros</option>`).join("")}</select></label>
     <button class="btn pri" onclick="gravaLocal(this)">📍 Gravar minha localização atual como o posto</button>
+    <label class="f">Tolerância de atraso em cada etapa<select class="inp" onchange="salvaTol(this.value)">${[0, 5, 10, 15, 20].map(n => `<option value="${n}" ${tolerancia() === n ? "selected" : ""}>${n} minutos</option>`).join("")}</select></label>
     <p class="meta" style="margin-top:10px">🕐 Expediente: <b>8h</b> no total, com <b>1h de intervalo às ${hm(c.intervalo_ini || "12:00")}</b>. O link fica aberto <b>${c.janela_horas || 8}h</b> desde a 1ª abertura do dia e só abre de novo <b>${c.descanso_horas || 10}h</b> depois. Para liberar antes, use 🔓 em ⏱️ Horas do dia.</p></div>`;
 }
+async function salvaTol(v){ try { await api("POST", "/rest/v1/ck_config?on_conflict=filial", {filial:S.filial, retencao_dias:+(S.cfg || {}).retencao_dias || 90, tolerancia_min:+v}, {prefer:"resolution=merge-duplicates,return=minimal"}); S.cfg = {...S.cfg, tolerancia_min:+v}; toast("Tolerância: " + v + " min."); } catch (e) { toast(e.message); } }
 async function gravaLocal(b){
   b.disabled = true; toast("Pegando a localização…"); const g = await pegaLocal(); b.disabled = false;
   if (!g) return toast("Não foi possível pegar a localização. Permita o acesso e tente de novo.");
   if (g.prec > 150 && !confirm("A precisão está baixa (" + Math.round(g.prec) + " m). Gravar assim mesmo? Melhor tentar ao ar livre.")) return;
-  try { await api("POST", "/rest/v1/ck_config?on_conflict=filial", {filial:S.filial, retencao_dias:+(S.cfg || {}).retencao_dias || 90, posto_lat:g.lat, posto_lng:g.lng, posto_raio:+$("#lcR").value}, {prefer:"resolution=merge-duplicates,return=minimal"}); await carregaBase(); render(); toast("Local do posto gravado."); } catch (e) { toast(/posto_/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); }
+  try { await api("POST", "/rest/v1/ck_config?on_conflict=filial", {filial:S.filial, retencao_dias:+(S.cfg || {}).retencao_dias || 90, posto_lat:g.lat, posto_lng:g.lng, posto_raio:+(($("#lcR") || {}).value || (S.cfg || {}).posto_raio || 200)}, {prefer:"resolution=merge-duplicates,return=minimal"}); await carregaBase(); render(); toast("Local do posto gravado."); } catch (e) { toast(/posto_/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); }
 }
 /* abono: só pelo botão da demanda extra (etapa que o colaborador não cumpriu por causa dela) */
 function abonarDemanda(id){
