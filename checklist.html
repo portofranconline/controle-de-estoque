@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#060b16">
+<title>Checklist Serviços Gerais · Posto Aldo</title>
+<link rel="icon" href="logo-aldo.png">
+<!-- CHECKLIST OPERACIONAL — sistema independente do estoque e das metas.
+     Usa só as tabelas ck_* (SQL 07-checklist.sql) e a pasta de fotos "checklist". Não lê nem grava docs/app_docs. -->
+<style>
+:root{--bg:#060b16;--surface:#0e1829;--surface2:#122038;--ink:#e6eef9;--muted:#8597b2;--line:#1f2f4a;--cyan:#22d3ee;--brand:#f97316;
+  --top:#0a1426;--on-cyan:#002222;--on-brand:#1a0d02;--gridc:rgba(34,211,238,.045);--good:#34d399;--good-bg:rgba(52,211,153,.12);--warn:#fbbf24;--warn-bg:rgba(251,191,36,.12);--crit:#f87171;--crit-bg:rgba(248,113,113,.13);--info:#60a5fa;
+  --display:"Space Grotesk","Segoe UI",system-ui,sans-serif;--body:"Inter",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);-webkit-text-size-adjust:100%}
+body{min-height:100vh;background-image:linear-gradient(var(--gridc) 1px,transparent 1px),linear-gradient(90deg,var(--gridc) 1px,transparent 1px);background-size:28px 28px}
+button,input,select,textarea{font:inherit;color:inherit}
+.top{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--top);border-bottom:1px solid var(--cyan);position:sticky;top:0;z-index:5}
+.top img{height:32px;width:auto}
+.top h1{margin:0;font-family:var(--display);font-size:18px;letter-spacing:.04em;text-transform:uppercase;line-height:1.15}
+.top p{margin:2px 0 0;font-size:11px;letter-spacing:.1em;color:var(--cyan);text-transform:uppercase}
+.top .sp{flex:1}
+.wrap{max-width:860px;margin:0 auto;padding:12px 14px 90px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:10px}
+.card h2{margin:0 0 8px;font-family:var(--display);font-size:16px}
+.meta{font-size:12px;color:var(--muted)}
+.btn{display:block;width:100%;border:1px solid var(--line);background:var(--surface2);border-radius:12px;padding:13px 14px;font-weight:700;cursor:pointer;margin-top:8px;text-align:center}
+.btn.pri{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+.btn.ok{background:var(--good);border-color:var(--good);color:#04241a}
+.btn.no{background:var(--crit);border-color:var(--crit);color:#2a0606}
+.btn.sm{display:inline-block;width:auto;padding:7px 11px;font-size:13px;margin:4px 4px 0 0}
+.btn:disabled{opacity:.5}
+.inp,select.inp,textarea.inp{width:100%;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:11px;margin-top:4px;font-size:15px}
+label.f{display:block;font-size:12px;color:var(--muted);margin-top:8px}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding:10px 14px 0;max-width:860px;margin:0 auto}
+.tabs button{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 13px;font-weight:700;font-size:13px;cursor:pointer}
+.tabs button.on{background:var(--cyan);border-color:var(--cyan);color:var(--on-cyan)}
+.task{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px}
+.task.urg{border-color:var(--crit);box-shadow:0 0 0 1px var(--crit) inset}
+.task .h{font-family:var(--display);font-size:26px;font-weight:700}
+.task .n{font-size:17px;font-weight:700;margin-top:2px}
+.pill{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700;margin-top:6px}
+.p-pend{background:var(--crit-bg);color:var(--crit)}.p-and{background:var(--warn-bg);color:var(--warn)}.p-ok{background:var(--good-bg);color:var(--good)}
+.p-obs{background:var(--warn-bg);color:var(--warn)}.p-no{background:var(--crit-bg);color:var(--crit)}.p-atr{background:var(--crit);color:#2a0606}.p-fut{background:var(--surface2);color:var(--muted)}
+.ban{border-radius:12px;padding:10px 12px;margin-bottom:10px;font-weight:700;font-size:14px}
+.ban.crit{background:var(--crit-bg);color:var(--crit);border:1px solid var(--crit)}.ban.warn{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn)}.ban.info{background:rgba(96,165,250,.12);color:var(--info);border:1px solid var(--info)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.tile{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:10px}
+.tile b{display:block;font-family:var(--display);font-size:26px}
+.tile span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.bar{height:12px;border-radius:8px;background:var(--surface2);overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--good)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;color:var(--muted);text-transform:uppercase}
+tr.cl{cursor:pointer}tr.cl:hover{background:var(--surface2)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fotos{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.fotos img{width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid var(--line);cursor:pointer}
+.fslot{border:1px dashed var(--line);border-radius:12px;padding:10px;margin-top:8px}
+#veil{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;z-index:20;align-items:flex-end;justify-content:center}
+#veil.open{display:flex}
+#sheet{background:var(--surface);border:1px solid var(--line);border-radius:18px 18px 0 0;width:100%;max-width:620px;max-height:92vh;overflow:auto;padding:16px 16px calc(18px + env(safe-area-inset-bottom))}
+#sheet h2{margin:0 0 8px;font-family:var(--display);font-size:18px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(140%);background:var(--top);border:1px solid var(--cyan);border-radius:12px;padding:11px 16px;font-weight:700;z-index:30;transition:transform .25s;max-width:92vw;text-align:center}
+#toast.show{transform:translateX(-50%) translateY(0)}
+.sync{position:fixed;right:10px;bottom:10px;z-index:6;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;background:var(--top);border:1px solid var(--line)}
+.msg{text-align:center;padding:50px 20px;color:var(--muted);line-height:1.6}
+.msg b{display:block;font-family:var(--display);font-size:20px;color:var(--ink);margin-bottom:6px}
+.chk{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.chk label{display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:13px}
+@media(max-width:560px){.hide-m{display:none}.grid2{grid-template-columns:1fr}table{font-size:12px}th,td{padding:7px 3px}td .pill{font-size:10.5px;padding:2px 6px;white-space:nowrap}}
+@media print{.top,.tabs,.sync,#toast{display:none}}
+</style>
+<script src="supabase-config.js"></script>
+</head>
+<body>
+<div class="top"><img src="logo-aldo.png" alt="Aldo" onerror="this.remove()"><div><h1 id="tTit">Checklist Serviços Gerais</h1><p id="tSub">Posto Aldo</p></div><div class="sp"></div><div id="tAcoes"></div></div>
+<div id="tabs"></div>
+<div class="wrap" id="app"><div class="msg">Carregando…</div></div>
+<div id="veil"><div id="sheet"></div></div>
+<div id="toast"></div>
+<div id="sync" class="sync" hidden></div>
+<script>
+"use strict";
+/* ================= base ================= */
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const NS = (() => { const p = location.pathname.replace(/[^/]*$/, "").replace(/\/+$/, ""); return (p === "" || p === "/controle-de-estoque") ? "estoque" : "estoque@" + p; })();
+const K = {sess:NS + ".ck.sessao", fil:NS + ".ck.filial", user:NS + ".ck.login", fila:NS + ".ck.fila", estSess:NS + ".sessao", estCfg:NS + ".config"};
+const LS = {get:(k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set:(k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }, del:k => { try { localStorage.removeItem(k); } catch (e) {} }};
+const S = {view:"hoje", data:"", fil:{}, hist:null};
+const TURNOS = {manha:"☀️ Manhã", tarde:"🌤️ Tarde", noite:"🌙 Noite"};
+const FUNCOES = ["Limpeza", "Triagem", "Manutenção", "Serviços gerais"];
+const ST = {pendente:["🔴 Pendente", "p-pend"], atrasado:["🔴 Atrasado", "p-atr"], andamento:["🟡 Em andamento", "p-and"], concluido:["🟢 Concluído", "p-ok"], concluido_obs:["⚠️ Concluído c/ observação", "p-obs"], nao_realizado:["❌ Não realizado", "p-no"], sem_registro:["❌ Não realizado · sem registro", "p-no"], futuro:["⏳ Programado", "p-fut"], agora:["🔵 Hora de fazer", "p-and"], estourado:["⏰ Passou do horário", "p-atr"]};
+const MOTIVOS = ["Falta de material", "Local ocupado", "Problema estrutural", "Serviço impedido", "Falta de acesso", "Outro"];
+const DIAS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const FOTO = {nao:"Sem foto", sim:"📷 Foto obrigatória", antes_depois:"📷 Foto antes e depois"};
+let toastT;
+function toast(m){ const t = $("#toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 3400); }
+function openSheet(h){ $("#sheet").innerHTML = h; $("#veil").classList.add("open"); $("#sheet").scrollTop = 0; }
+function closeSheet(){ $("#veil").classList.remove("open"); $("#sheet").innerHTML = ""; }
+$("#veil").addEventListener("click", e => { if (e.target.id === "veil") closeSheet(); });
+const pad = n => String(n).padStart(2, "0");
+const dStr = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+const hoje = () => dStr(new Date());
+const addDia = (s, n) => { const d = new Date(s + "T12:00:00"); d.setDate(d.getDate() + n); return dStr(d); };
+const dBR = s => s ? s.slice(8, 10) + "/" + s.slice(5, 7) + "/" + s.slice(0, 4) : "";
+const hm = t => t ? String(t).slice(0, 5) : "";
+const hmTs = ts => ts ? new Date(ts).toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"}) : "";
+const dhTs = ts => ts ? new Date(ts).toLocaleString("pt-BR", {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"}) : "";
+const diaSem = s => new Date(s + "T12:00:00").getDay();
+const agoraHM = () => { const d = new Date(); return pad(d.getHours()) + ":" + pad(d.getMinutes()); };
+
+/* ================= conexão (só ck_*) ================= */
+const C = window.ESTOQUE_SUPABASE || {}, AUTH = {url:String(C.url || "").replace(/\/$/, ""), key:C.anonKey || ""};
+let refrescando = null;
+async function api(m, path, body, o = {}){
+  const h = {apikey:AUTH.key, Accept:"application/json"};
+  if (body !== undefined && !(body instanceof Blob)) h["Content-Type"] = "application/json";
+  if (o.prefer) h.Prefer = o.prefer;
+  if (o.tipo) h["Content-Type"] = o.tipo;
+  if (o.token !== false) { const t = await token(); if (t) h.Authorization = "Bearer " + t; else if (/^eyJ/.test(AUTH.key)) h.Authorization = "Bearer " + AUTH.key; }
+  const r = await fetch(AUTH.url + path, {method:m, headers:h, body:body === undefined ? undefined : (body instanceof Blob ? body : JSON.stringify(body)), cache:"no-store"});
+  const tx = await r.text(); let j = null; try { j = tx ? JSON.parse(tx) : null; } catch (e) {}
+  if (!r.ok) { const e = new Error((j && (j.message || j.msg || j.error_description || j.error)) || ("HTTP " + r.status)); e.status = r.status; throw e; }
+  return j;
+}
+const rpc = (fn, b, o) => api("POST", "/rest/v1/rpc/" + fn, b || {}, o);
+const tb = (t, q) => api("GET", "/rest/v1/" + t + "?" + (q || "select=*"));
+function guarda(j){ S.sess = {access:j.access_token, refresh:j.refresh_token, exp:Date.now() + Number(j.expires_in || 3600) * 1000, uid:(j.user && j.user.id) || (S.sess && S.sess.uid)}; LS.set(K.sess, S.sess); }
+async function token(){
+  const s = S.sess; if (!s) return null;
+  if (s.exp - 60000 > Date.now()) return s.access;
+  if (!navigator.onLine) return s.access;
+  if (s.emprestada || !s.refresh) { S.sess = null; LS.del(K.sess); if (S.perfil) { S.perfil = null; telaLogin("Sessão terminou. Entre de novo."); } return null; }
+  if (!refrescando) refrescando = (async () => {
+    try { guarda(await api("POST", "/auth/v1/token?grant_type=refresh_token", {refresh_token:s.refresh}, {token:false})); return S.sess.access; }
+    catch (e) { if (e.status === 400 || e.status === 401) { S.sess = null; LS.del(K.sess); } return null; }
+    finally { refrescando = null; }
+  })();
+  return refrescando;
+}
+
+/* ---------- visual (cores) definido pelo administrador: vale para todos os aparelhos ---------- */
+const TEMAS = {
+  padrao:{nome:"Azul noite (padrão)", bg:"#060b16", surface:"#0e1829", surface2:"#122038", ink:"#e6eef9", muted:"#8597b2", line:"#1f2f4a", cyan:"#22d3ee", brand:"#f97316", top:"#0a1426", dark:1},
+  aldo:{nome:"Laranja Aldo", bg:"#140b05", surface:"#21140a", surface2:"#2c1b0e", ink:"#fff4ea", muted:"#c9a98e", line:"#3d2815", cyan:"#fb923c", brand:"#f97316", top:"#1b1007", dark:1},
+  verde:{nome:"Verde", bg:"#04140e", surface:"#0a2119", surface2:"#0f2c21", ink:"#e7fbf2", muted:"#8fb8a6", line:"#184332", cyan:"#34d399", brand:"#22c55e", top:"#06190f", dark:1},
+  vermelho:{nome:"Vermelho", bg:"#160608", surface:"#220b0e", surface2:"#2d1014", line:"#44191e", ink:"#fff0f1", muted:"#c79a9f", cyan:"#f87171", brand:"#ef4444", top:"#1c080b", dark:1},
+  grafite:{nome:"Grafite", bg:"#111214", surface:"#1b1d21", surface2:"#24272c", ink:"#f1f2f4", muted:"#9aa0a8", line:"#33373e", cyan:"#a5b4fc", brand:"#f59e0b", top:"#16181b", dark:1},
+  claro:{nome:"Claro", bg:"#f3f5f9", surface:"#ffffff", surface2:"#eef2f7", ink:"#0f172a", muted:"#5b6b82", line:"#d6dde8", cyan:"#0e7490", brand:"#ea580c", top:"#ffffff", dark:0},
+  claroVerde:{nome:"Claro verde", bg:"#f2f8f5", surface:"#ffffff", surface2:"#e9f4ee", ink:"#0d2118", muted:"#557265", line:"#d3e6dc", cyan:"#047857", brand:"#16a34a", top:"#ffffff", dark:0}
+};
+const corTexto = h => { const n = parseInt(String(h).slice(1), 16), r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255; return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? "#111111" : "#ffffff"; };
+const hexRgb = h => { const n = parseInt(String(h).slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255].join(","); };
+function aplicaVisual(v){
+  v = v || {}; const t = {...(TEMAS[v.tema] || TEMAS.padrao)}; if (/^#[0-9a-f]{6}$/i.test(v.destaque || "")) t.cyan = v.destaque; if (/^#[0-9a-f]{6}$/i.test(v.botao || "")) t.brand = v.botao;
+  let el = document.getElementById("ckVisual"); if (!el) { el = document.createElement("style"); el.id = "ckVisual"; document.head.appendChild(el); }
+  el.textContent = `:root{--bg:${t.bg};--surface:${t.surface};--surface2:${t.surface2};--ink:${t.ink};--muted:${t.muted};--line:${t.line};--cyan:${t.cyan};--brand:${t.brand};--top:${t.top};--on-cyan:${corTexto(t.cyan)};--on-brand:${corTexto(t.brand)};--gridc:rgba(${hexRgb(t.cyan)},${v.grade === false ? 0 : t.dark ? .045 : .07});color-scheme:${t.dark ? "dark" : "light"}}${v.letra === "grande" ? "body{zoom:1.15}" : ""}`;
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t.top;
+}
+aplicaVisual(LS.get(NS + ".ck.visual", null));
+function telaVisual(){
+  const v = S.visTmp || (S.visTmp = {tema:"padrao", letra:"normal", grade:true, ...((S.cfg || {}).visual || {})});
+  aplicaVisual(v);
+  return `<div class="card"><h2>🎨 Cores e visual</h2><p class="meta">Escolha o modelo. A prévia aparece na hora nesta tela; depois de salvar, vale para todos os celulares dos colaboradores.</p>
+    <div class="tiles" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">${Object.entries(TEMAS).map(([k, t]) => `<button onclick="S.visTmp.tema='${k}';render()" style="text-align:left;cursor:pointer;border-radius:12px;padding:10px;background:${t.surface};color:${t.ink};border:2px solid ${v.tema === k ? t.cyan : t.line}">
+      <div style="display:flex;gap:4px;margin-bottom:6px">${[t.bg, t.surface2, t.cyan, t.brand].map(c => `<i style="width:20px;height:20px;border-radius:6px;background:${c};border:1px solid ${t.line}"></i>`).join("")}</div><b style="font-size:13px">${t.nome}</b>${v.tema === k ? ` <span style="color:${t.cyan}">✔</span>` : ""}</button>`).join("")}</div>
+    <div class="grid2" style="margin-top:8px"><label class="f">Cor de destaque (abas e títulos)<div class="row"><input type="color" value="${v.destaque || (TEMAS[v.tema] || TEMAS.padrao).cyan}" oninput="S.visTmp.destaque=this.value;aplicaVisual(S.visTmp)" style="width:56px;height:40px;border:0;background:none">${v.destaque ? `<button class="btn sm" onclick="delete S.visTmp.destaque;render()">usar do modelo</button>` : ""}</div></label>
+      <label class="f">Cor dos botões principais<div class="row"><input type="color" value="${v.botao || (TEMAS[v.tema] || TEMAS.padrao).brand}" oninput="S.visTmp.botao=this.value;aplicaVisual(S.visTmp)" style="width:56px;height:40px;border:0;background:none">${v.botao ? `<button class="btn sm" onclick="delete S.visTmp.botao;render()">usar do modelo</button>` : ""}</div></label></div>
+    <div class="chk" style="margin-top:8px"><label><input type="checkbox" ${v.letra === "grande" ? "checked" : ""} onchange="S.visTmp.letra=this.checked?'grande':'normal';aplicaVisual(S.visTmp)">🔠 Letras e botões maiores</label><label><input type="checkbox" ${v.grade !== false ? "checked" : ""} onchange="S.visTmp.grade=this.checked;aplicaVisual(S.visTmp)">▦ Fundo quadriculado</label></div>
+    <div class="task" style="margin-top:10px"><div class="h">08:00</div><div class="n">🧹 Prévia: Limpeza da loja</div><div class="meta">Loja · 📷 Foto antes e depois</div><span class="pill p-pend">🔴 Pendente</span> <span class="pill p-ok">🟢 Concluído</span><button class="btn pri">▶️ INICIAR SERVIÇO</button></div>
+    <div class="row"><button class="btn pri" style="flex:1" onclick="salvaVisual(this)">💾 Salvar para todos</button><button class="btn" style="flex:1" onclick="S.visTmp=null;aplicaVisual((S.cfg||{}).visual);render()">↩️ Desfazer</button></div></div>`;
+}
+async function salvaVisual(b){
+  b.disabled = true; const v = {...S.visTmp};
+  try { await api("POST", "/rest/v1/ck_config?on_conflict=filial", {filial:S.filial, retencao_dias:+(S.cfg || {}).retencao_dias || 90, visual:v}, {prefer:"resolution=merge-duplicates,return=minimal"}); S.cfg = {...S.cfg, visual:v}; LS.set(NS + ".ck.visual", v); toast("Visual salvo: os colaboradores veem na próxima atualização (até 1 minuto)."); }
+  catch (e) { toast(/visual/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase (coluna nova)." : e.message); }
+  b.disabled = false;
+}
+
+/* ================= início ================= */
+(async function start(){
+  try {
+    const qs = new URLSearchParams(location.search), qf = qs.get("f"), qu = qs.get("u");
+    if (qf) LS.set(K.fil, qf.trim()); if (qu) LS.set(K.user, qu.trim());
+    if (location.search) history.replaceState(null, "", location.pathname);
+  } catch (e) {}
+  S.filial = LS.get(K.fil, "") || (LS.get(K.estCfg, {}) || {}).filial || "";
+  if (!AUTH.url || !AUTH.key) return msg("Sem conexão com o banco", "Confira o arquivo supabase-config.js.");
+  S.sess = LS.get(K.sess, null);
+  if (!S.sess) { const e = LS.get(K.estSess, null); if (e && e.access && e.exp - 120000 > Date.now()) S.sess = {access:e.access, exp:e.exp, uid:e.uid, emprestada:true}; } /* admin já logado no estoque: só usa o acesso atual, nunca renova (não mexe na sessão do estoque) */
+  if (S.sess) { try { if (await token() && await carregaPerfil()) return entrou(); } catch (e) { console.error(e); if (!navigator.onLine && LS.get(NS + ".ck.perfil", null)) { S.perfil = LS.get(NS + ".ck.perfil", null); return entrou(true); } } }
+  S.sess = null; telaLogin();
+})();
+function msg(t, d){ $("#tabs").innerHTML = ""; $("#app").innerHTML = `<div class="msg"><b>${t}</b>${d}</div>`; }
+async function carregaPerfil(){
+  const p = await rpc("ck_meu_perfil"); if (!p || !p.filial) return false;
+  S.perfil = p; S.filial = p.filial; LS.set(K.fil, p.filial); LS.set(NS + ".ck.perfil", p); if (!S.sess.emprestada) LS.set(K.sess, S.sess); return true;
+}
+function telaLogin(erro){
+  const u = LS.get(K.user, "");
+  $("#tTit").textContent = "Checklist Serviços Gerais"; $("#tSub").textContent = (S.nomeFilial || "Posto Aldo") + " · entrar"; $("#tAcoes").innerHTML = ""; $("#tabs").innerHTML = "";
+  if (!S.filial) return ($("#app").innerHTML = `<div class="card"><h2>Abrir o checklist</h2><p class="meta">Abra pelo link que o administrador enviou, ou digite o código da filial.</p>
+    <label class="f">Código da filial<input id="lFil" class="inp" inputmode="numeric"></label><button class="btn pri" onclick="if($('#lFil').value.trim()){LS.set(K.fil,$('#lFil').value.trim());S.filial=$('#lFil').value.trim();telaLogin()}">Continuar</button></div>`);
+  $("#app").innerHTML = `<div class="card" style="max-width:420px;margin:30px auto"><h2>${u ? "Olá, " + esc(u) + "!" : "Entrar no Checklist Serviços Gerais"}</h2>
+    <p class="meta">${u ? "Digite a sua senha para abrir os seus serviços de hoje." : "Use o login e a senha que o administrador cadastrou."}</p>
+    <label class="f" ${u ? "hidden" : ""}>Login<input id="lUser" class="inp" autocapitalize="none" autocomplete="username" value="${esc(u)}"></label>
+    <label class="f">Senha<input id="lSenha" class="inp" type="password" autocomplete="current-password" ${u ? "autofocus" : ""}></label>
+    ${erro ? `<div class="ban crit" style="margin-top:10px">${esc(erro)}</div>` : ""}
+    <button class="btn pri" id="btEntrar">Entrar</button>
+    ${u ? `<button class="btn" onclick="LS.del(K.user);telaLogin()">Não sou ${esc(u)}</button>` : ""}</div>`;
+  $("#btEntrar").onclick = entrar; $("#lSenha").onkeydown = e => { if (e.key === "Enter") entrar(); };
+}
+async function entrar(){
+  const b = $("#btEntrar"), u = ($("#lUser").value || "").trim(), p = $("#lSenha").value;
+  if (!u || !p) return toast("Digite o login e a senha.");
+  b.disabled = true;
+  try {
+    let email = u.includes("@") ? u.toLowerCase() : await rpc("ck_email_para_entrar", {p_filial:S.filial, p_login:u}, {token:false});
+    if (!email) email = await rpc("email_para_entrar", {p_filial:S.filial, p_login:u}, {token:false}).catch(() => null); /* administrador do estoque */
+    if (!email) throw new Error("Login não encontrado.");
+    S.sess = null; guarda(await api("POST", "/auth/v1/token?grant_type=password", {email, password:p}, {token:false}));
+    if (!(await carregaPerfil())) { S.sess = null; LS.del(K.sess); throw new Error("Este login não tem acesso ao Checklist Serviços Gerais."); }
+    LS.set(K.user, u); entrou();
+  } catch (e) { console.error(e); telaLogin(e.status === 400 || /invalid/i.test(e.message) ? "Login ou senha incorretos." : e.message); }
+}
+function sair(){ S.sess = null; LS.del(K.sess); LS.del(NS + ".ck.perfil"); location.reload(); }
+async function entrou(offline){
+  S.papel = S.perfil.papel || "colaborador"; S.admin = S.papel === "admin"; S.lider = S.papel === "lider"; S.data = hoje();
+  $("#tTit").textContent = "Checklist Serviços Gerais"; S.nomeFilial = S.perfil.nome_filial || "";
+  $("#tAcoes").innerHTML = `<button class="btn sm" onclick="sair()">🚪 Sair</button>`;
+  if (!offline) await carregaBase().catch(e => { console.error(e); toast("Sem internet: usando os dados guardados."); });
+  else Object.assign(S, LS.get(NS + ".ck.base", {}));
+  render(); sincroniza(); avisos();
+  setInterval(async () => { if (S.view === "hoje" || S.view === "dem" || !S.admin) { if (S.papel === "colaborador") await carregaBase().catch(() => {}); else await atualizaDia(); if (!$("#veil.open") && !(document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))) render(); } avisos(); if (S.admin) contaPedidos(); sincroniza(); }, 60000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && !S.admin) carregaBase().then(render).catch(() => {}); });
+  if (S.admin) contaPedidos();
+  if (S.admin) setTimeout(limpezaAuto, 3000);
+}
+
+/* ================= dados ================= */
+async function carregaBase(){
+  const [us, lo, sv, fo, cf] = await Promise.all([tb("ck_usuarios", "select=*&order=nome"), tb("ck_locais", "select=*&order=ordem,nome"), tb("ck_servicos", "select=*&order=horario"), tb("ck_folgas", "select=*&order=data_ini.desc"), tb("ck_config", "select=*")]);
+  Object.assign(S, {usuarios:us || [], locais:lo || [], servicos:sv || [], folgas:fo || [], cfg:(cf || [])[0] || {filial:S.filial, retencao_dias:90}});
+  if (!S.visTmp) { aplicaVisual(S.cfg.visual); LS.set(NS + ".ck.visual", S.cfg.visual || {}); }
+  LS.set(NS + ".ck.base", {usuarios:S.usuarios, locais:S.locais, servicos:S.servicos, folgas:S.folgas, cfg:S.cfg});
+  await atualizaDia();
+}
+async function atualizaDia(){
+  try {
+    const q = "select=*&data=eq." + S.data, gestor = S.papel !== "colaborador";
+    const [rg, aj, dm, ab] = await Promise.all([tb("ck_registros", q), tb("ck_ajustes", q), tb("ck_demandas", q + "&order=criado_em").catch(() => []), gestor ? tb("ck_abonos", q).catch(() => []) : Promise.resolve([])]);
+    S.fil[S.data] = {reg:rg || [], aj:aj || [], dem:dm || [], ab:ab || []}; LS.set(NS + ".ck.dia." + S.data, S.fil[S.data]);
+  } catch (e) { if (!S.fil[S.data]) S.fil[S.data] = LS.get(NS + ".ck.dia." + S.data, {reg:[], aj:[], dem:[], ab:[]}); }
+}
+const nomeU = id => { const u = (S.usuarios || []).find(x => x.user_id === id); return u ? u.nome : (S.perfil && id === S.perfil.user_id ? S.perfil.nome : "—"); };
+const nomeL = id => { const l = (S.locais || []).find(x => x.id === id); return l ? l.nome : ""; };
+const emFolga = (uid, d) => (S.folgas || []).find(f => f.user_id === uid && f.data_ini <= d && f.data_fim >= d);
+const ativos = () => (S.usuarios || []).filter(u => u.ativo && u.papel !== "lider");
+function programa(s, d){ return s.ativo && (s.dias || [0, 1, 2, 3, 4, 5, 6]).includes(diaSem(d)) && !(s.criado_em && d < dStr(new Date(s.criado_em))); }
+/* quem faz o serviço no dia: troca manual > responsável fixo > mesma função e turno; de folga -> cobertura */
+function responsavel(s, d, aj){
+  const a = (aj || []).find(x => x.servico_id === s.id);
+  if (a) return {uid:a.responsavel, troca:true};
+  let base = s.responsavel && ativos().some(u => u.user_id === s.responsavel) ? s.responsavel : null;
+  if (!base) { const u = ativos().find(u => u.funcao === s.funcao && u.turno === s.turno && !emFolga(u.user_id, d)) || ativos().find(u => u.funcao === s.funcao && u.turno === s.turno); base = u ? u.user_id : null; }
+  const f = base && emFolga(base, d);
+  if (!f) return {uid:base};
+  let cob = f.cobertura && !emFolga(f.cobertura, d) ? f.cobertura : null;
+  if (!cob) { const livre = u => u.user_id !== base && !emFolga(u.user_id, d), mesmoT = u => u.turno === s.turno; const u = ativos().find(u => /triagem/i.test(u.funcao) && livre(u) && mesmoT(u)) || ativos().find(u => /triagem/i.test(u.funcao) && livre(u)) || ativos().find(u => u.funcao === s.funcao && livre(u)) || ativos().find(livre); cob = u ? u.user_id : null; }
+  return {uid:cob, cobertura:true, de:base, folga:f};
+}
+const FINAL = st => ["concluido", "concluido_obs", "nao_realizado"].includes(st);
+const janela = s => hm(s.horario) + (s.horario_fim ? "–" + hm(s.horario_fim) : "");
+function statusDe(s, reg, d){
+  const h = hoje(), ag = agoraHM(), ini = hm(s.horario), fim = hm(s.horario_fim);
+  if (reg) { if (reg.status === "andamento" && (d < h || (d === h && fim && ag > fim))) return "estourado"; return reg.status; }
+  if (d < h) return "sem_registro";
+  if (d > h) return "futuro";
+  if (fim ? ag > fim : ag > ini) return "atrasado";
+  if (ag >= ini) return "agora";
+  return "pendente";
+}
+/* fora do horário: não terminou dentro da janela (e não foi abonado) */
+const foraHorario = x => !x.ab && (["atrasado", "estourado", "sem_registro"].includes(x.st) || (x.reg && +x.reg.atraso_min > 0));
+/* lista completa do dia: serviços programados + registros (nada some) */
+function linhasDia(d){
+  const D = S.fil[d] || {reg:[], aj:[], ab:[]}, fila = filaLocal(), out = [], ab = id => (D.ab || []).find(a => a.servico_id === id) || null;
+  for (const s of (S.servicos || []).filter(s => programa(s, d))) {
+    const r = responsavel(s, d, D.aj), reg = fila[s.id + "|" + d] || D.reg.find(x => x.servico_id === s.id);
+    out.push({s, d, resp:reg && reg.user_id ? reg.user_id : r.uid, rr:r, reg, st:statusDe(s, reg, d), local:nomeL(s.local_id), ab:ab(s.id)});
+  }
+  for (const reg of D.reg) if (!out.some(x => x.s.id === reg.servico_id)) { const s = (S.servicos || []).find(x => x.id === reg.servico_id) || {id:reg.servico_id, nome:reg.servico, horario:reg.horario_previsto, horario_fim:reg.horario_fim, foto:"nao", passos:[]}; out.push({s, d, resp:reg.user_id, rr:{uid:reg.user_id}, reg, st:statusDe(s, reg, d), local:reg.local || nomeL(s.local_id), ab:ab(reg.servico_id)}); }
+  return out.sort((a, b) => hm(a.s.horario).localeCompare(hm(b.s.horario)));
+}
+/* ================= fila offline (registro + fotos ficam no aparelho até sincronizar) ================= */
+const filaLocal = () => LS.get(K.fila, {});
+function salvaFila(key, row){ const f = filaLocal(); f[key] = {...(f[key] || {}), ...row, _pend:true}; if (!LS.set(K.fila, f)) { toast("Memória do aparelho cheia: conecte à internet para enviar."); return false; } return true; }
+let sincronizando = false;
+async function sincroniza(){
+  const f = filaLocal(), ks = Object.keys(f), el = $("#sync");
+  if (!ks.length) { el.hidden = false; el.textContent = "🟢 Sincronizado"; el.style.color = "var(--good)"; setTimeout(() => { if (!Object.keys(filaLocal()).length) el.hidden = true; }, 3000); return; }
+  el.hidden = false; el.textContent = "🟠 Aguardando sincronização (" + ks.length + ")"; el.style.color = "var(--warn)";
+  if (sincronizando || !navigator.onLine) return; sincronizando = true;
+  try {
+    for (const k of ks) {
+      const r = filaLocal()[k]; if (!r) continue;
+      const fotos = [];
+      for (const ft of r.fotos || []) {
+        if (ft.path) { fotos.push(ft); continue; }
+        const path = `${S.filial}/${r.data}/${r.servico_id}-${ft.tipo}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.jpg`;
+        const blob = await (await fetch(ft.dataUrl)).blob();
+        await api("POST", "/storage/v1/object/checklist/" + path, blob, {tipo:"image/jpeg"});
+        const {dataUrl, ...resto} = ft; fotos.push({...resto, path});
+        const g = filaLocal(); if (g[k]) { g[k].fotos = fotos.concat((r.fotos || []).slice(fotos.length)); LS.set(K.fila, g); }
+      }
+      const {_pend, _erro, ...row} = r; row.fotos = fotos;
+      const ex = await tb("ck_registros", `select=id,status&servico_id=eq.${r.servico_id}&data=eq.${r.data}`);
+      if (ex && ex.length) {
+        if (ex[0].status !== "andamento") { const g = filaLocal(); delete g[k]; LS.set(K.fila, g); toast("Este serviço já tinha sido enviado."); continue; }
+        const {id, filial, servico_id, data, user_id, iniciado_em, horario_previsto, ...upd} = row;
+        await api("PATCH", "/rest/v1/ck_registros?id=eq." + ex[0].id, upd, {prefer:"return=minimal"});
+      } else await api("POST", "/rest/v1/ck_registros", row, {prefer:"return=minimal"});
+      const g = filaLocal(); delete g[k]; LS.set(K.fila, g);
+    }
+    await atualizaDia(); render();
+  } catch (e) { console.error("Sincronizar:", e); }
+  finally { sincronizando = false; const n = Object.keys(filaLocal()).length; el.textContent = n ? "🟠 Aguardando sincronização (" + n + ")" : "🟢 Sincronizado"; el.style.color = n ? "var(--warn)" : "var(--good)"; if (!n) setTimeout(() => el.hidden = true, 3000); }
+}
+window.addEventListener("online", () => { toast("Internet voltou: enviando registros…"); sincroniza(); });
+
+/* ================= fotos ================= */
+function reduzFoto(file){
+  return new Promise((ok, er) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => { const M = 1280, k = Math.min(1, M / Math.max(img.width, img.height)), cv = document.createElement("canvas"); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+      const g = cv.getContext("2d"); g.drawImage(img, 0, 0, cv.width, cv.height);
+      g.font = "bold " + Math.max(16, Math.round(cv.width / 40)) + "px Arial"; const t = (S.perfil.nome || "") + " · " + new Date().toLocaleString("pt-BR");
+      g.fillStyle = "rgba(0,0,0,.55)"; g.fillRect(0, cv.height - Math.round(cv.width / 40) - 16, cv.width, Math.round(cv.width / 40) + 16); g.fillStyle = "#fff"; g.fillText(t, 10, cv.height - 10);
+      URL.revokeObjectURL(url); ok(cv.toDataURL("image/jpeg", .72)); };
+    img.onerror = er; img.src = url;
+  });
+}
+const URLS = {};
+async function urlFoto(path){
+  if (URLS[path]) return URLS[path];
+  const j = await api("POST", "/storage/v1/object/sign/checklist/" + path, {expiresIn:3600});
+  const u = j.signedURL || j.signedUrl || ""; return (URLS[path] = /^(https?|blob|data):/.test(u) ? u : AUTH.url + "/storage/v1" + u);
+}
+async function mostraFotos(el, fotos){
+  if (!el) return; el.innerHTML = (fotos || []).length ? "" : `<span class="meta">Sem foto.</span>`;
+  for (const f of fotos || []) {
+    const src = f.dataUrl || await urlFoto(f.path).catch(() => "");
+    const d = document.createElement("div"); d.style.textAlign = "center";
+    d.innerHTML = `<img src="${esc(src)}" alt="Foto ${esc(f.tipo)}" onclick="window.open(this.src)"><div class="meta">${f.tipo === "antes" ? "Antes" : f.tipo === "depois" ? "Depois" : "Foto"} · ${esc(hmTs(f.em))}${f.antiga ? `<br><b style="color:var(--crit)">⚠️ não tirada na hora</b>` : ""}</div>`;
+    el.appendChild(d);
+  }
+}
+
+/* ================= render ================= */
+function render(){
+  if (!S.perfil) return;
+  if (S.papel === "colaborador") { $("#tabs").innerHTML = `<div class="tabs">${[["hoje", "✅ Minhas etapas"], ["mat", "📦 Pedir material"]].map(([k, t]) => `<button class="${S.view === k ? "on" : ""}" onclick="S.view='${k}';render()">${t}</button>`).join("")}</div>`; return S.view === "mat" ? telaMatColab() : telaColab(); }
+  const tabs = S.admin ? [["hoje", "📊 Hoje"], ["dem", "📌 Demandas extras"], ["mat", "📦 Materiais" + (S.nPed ? " (" + S.nPed + ")" : "")], ["hist", "📜 Histórico"], ["serv", "🧹 Etapas"], ["equipe", "👥 Equipe"], ["escala", "📅 Escala"], ["cfg", "⚙️ Config"]]
+    : [["hoje", "📊 Demandas do dia"], ["dem", "📌 Demandas extras"]];
+  if (!tabs.some(t => t[0] === S.view)) S.view = "hoje";
+  $("#tabs").innerHTML = `<div class="tabs">${tabs.map(([k, t]) => `<button class="${S.view === k ? "on" : ""}" onclick="if(S.view==='cfg'&&'${k}'!=='cfg'){S.visTmp=null;aplicaVisual((S.cfg||{}).visual)}S.view='${k}';render()">${t}</button>`).join("")}</div>`;
+  $("#tSub").textContent = (S.nomeFilial ? S.nomeFilial + " · " : "") + (S.admin ? "Administrador" : "Líder · " + (S.perfil.nome || ""));
+  ({hoje:telaHoje, dem:telaDemandas, mat:telaMatAdmin, hist:telaHist, serv:telaServ, equipe:telaEquipe, escala:telaEscala, cfg:telaCfg})[S.view]();
+}
+const pill = st => `<span class="pill ${ST[st][1]}">${ST[st][0]}</span>`;
+
+/* ---------- colaborador ---------- */
+function telaColab(){
+  const P = S.perfil, d = hoje(); S.data = d;
+  $("#tSub").textContent = "Hoje · " + dBR(d);
+  const L = linhasDia(d).filter(x => x.resp === P.user_id), h = new Date().getHours(), oi = h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
+  const fora = L.filter(x => ["atrasado", "estourado"].includes(x.st)), cob = L.filter(x => x.rr.cobertura), urg = L.filter(x => x.s.urgente && !FINAL(x.st));
+  const atual = L.find(x => !FINAL(x.st)), feitas = L.filter(x => FINAL(x.st)).length, minhaFolga = emFolga(P.user_id, d);
+  const dem = ((S.fil[d] || {}).dem || []).filter(x => x.user_id === P.user_id);
+  $("#app").innerHTML = `<div class="card"><div style="font-family:var(--display);font-size:22px;font-weight:700">${oi}, ${esc((P.nome || "").split(" ")[0])}!</div>
+      <div class="meta" style="font-size:14px;margin-top:4px">👤 ${esc(P.nome)} · ${TURNOS[P.turno] || esc(P.turno)} · ${esc(P.funcao || "")}</div>
+      ${L.length ? `<div style="margin-top:8px"><b>${feitas} de ${L.length} etapas</b><div class="bar"><i style="width:${Math.round(feitas / L.length * 100)}%"></i></div></div>` : ""}
+      <div class="row" style="margin-top:6px"><button class="btn sm" onclick="pedeAvisos()">🔔 Ativar avisos</button><button class="btn sm" onclick="trocaSenha()">🔑 Minha senha</button></div></div>
+    ${minhaFolga ? `<div class="ban info">📅 Você está de ${esc(minhaFolga.tipo)} hoje.</div>` : ""}
+    ${urg.length ? `<div class="ban crit">🚨 URGENTE: ${urg.map(x => esc(x.s.nome)).join(", ")}</div>` : ""}
+    ${fora.length ? `<div class="ban crit">⏰ Fora do horário: ${fora.map(x => janela(x.s) + " " + esc(x.s.nome)).join(" · ")}. O administrador foi avisado; ao finalizar, informe o motivo.</div>` : ""}
+    ${cob.length ? `<div class="ban warn">⚠️ COBERTURA DE FOLGA: hoje você cobre ${[...new Set(cob.map(x => nomeU(x.rr.de)))].map(esc).join(", ")}</div>` : ""}
+    ${dem.filter(x => !FINAL(x.status)).length ? `<h2 style="font-family:var(--display);font-size:15px;letter-spacing:.06em;margin:14px 2px 8px;color:var(--warn)">📌 DEMANDAS EXTRAS</h2>${dem.filter(x => !FINAL(x.status)).map(cardDemanda).join("")}` : ""}
+    ${atual ? `<div class="ban info">▶️ Etapa atual: ${janela(atual.s)} — ${esc(atual.s.nome)}</div>` : L.length ? `<div class="ban info" style="color:var(--good);border-color:var(--good)">✅ Todas as etapas de hoje foram finalizadas.</div>` : ""}
+    <h2 style="font-family:var(--display);font-size:15px;letter-spacing:.06em;margin:14px 2px 8px">ETAPAS DE HOJE (em sequência)</h2>
+    ${L.length ? L.map((x, i) => cardTarefa(x, i, L)).join("") : `<div class="msg"><b>Nenhuma etapa para você hoje</b>Se achar que está errado, fale com o administrador.</div>`}
+    ${dem.filter(x => FINAL(x.status)).length ? `<h2 style="font-family:var(--display);font-size:13px;margin:14px 2px 8px" class="meta">Demandas extras finalizadas hoje</h2>${dem.filter(x => FINAL(x.status)).map(cardDemanda).join("")}` : ""}`;
+}
+function cardTarefa(x, i, L){
+  const r = x.reg, st = x.st, fim = FINAL(st), antes = (L || []).slice(0, i).find(y => !FINAL(y.st)), passos = x.s.passos || [];
+  return `<div class="task ${x.s.urgente && !fim ? "urg" : ""}" style="${fim ? "opacity:.75" : ""}${!fim && !antes ? ";border-color:var(--cyan)" : ""}"><div class="row" style="justify-content:space-between"><div class="h">${janela(x.s)}</div><span class="meta">Etapa ${i + 1} de ${L.length}</span></div>
+    <div class="n">🧹 ${esc(x.s.nome)}</div><div class="meta">${esc(x.local)}${x.s.foto !== "nao" ? " · " + FOTO[x.s.foto] : ""}${passos.length ? " · " + passos.length + " passos" : ""}</div>
+    ${x.s.urgente && !fim ? `<b style="color:var(--crit)">🚨 URGENTE</b>` : ""}
+    ${x.s.observacao ? `<div class="meta" style="color:${x.s.urgente ? "var(--crit)" : "var(--warn)"};margin-top:4px">📌 ${esc(x.s.observacao)}</div>` : ""}
+    ${x.rr.cobertura ? `<div class="meta" style="color:var(--warn)">⚠️ Cobertura de folga (${esc(nomeU(x.rr.de))})</div>` : ""}
+    ${pill(st)} ${r && r._pend ? `<span class="pill p-and">🟠 aguardando sincronização</span>` : ""}${r && +r.atraso_min > 0 ? ` <span class="pill p-atr">⏰ ${r.atraso_min} min depois do horário</span>` : ""}
+    ${r && r.iniciado_em ? `<div class="meta" style="margin-top:4px">Iniciado ${hmTs(r.iniciado_em)}${r.concluido_em ? " · " + (st === "nao_realizado" ? "registrado" : "concluído") + " às <b>" + hmTs(r.concluido_em) + "</b>" : ""}</div>` : ""}
+    ${!r && !fim ? (antes ? `<div class="meta" style="margin-top:8px">🔒 Libera depois da etapa ${janela(antes.s)}</div>` : `<button class="btn pri" onclick="iniciar(${x.s.id})">▶️ INICIAR ETAPA</button>`) : ""}
+    ${r && (st === "andamento" || st === "estourado") ? `<button class="btn ok" onclick="finalizar(${x.s.id})">✅ FINALIZAR ETAPA</button>` : ""}</div>`;
+}
+const linhaDe = id => linhasDia(hoje()).find(x => x.s.id === id);
+function regBase(x){ const P = S.perfil; return {filial:S.filial, servico_id:x.s.id, data:x.d, user_id:P.user_id, colaborador:P.nome, servico:x.s.nome, local:x.local, horario_previsto:hm(x.s.horario), horario_fim:hm(x.s.horario_fim) || null, cobertura:!!x.rr.cobertura}; }
+let fotosTmp = [];
+function iniciar(id){
+  const x = linhaDe(id); if (!x) return;
+  const L = linhasDia(hoje()).filter(y => y.resp === S.perfil.user_id), i = L.findIndex(y => y.s.id === id), antes = L.slice(0, i).find(y => !FINAL(y.st));
+  if (antes) return toast("Finalize antes a etapa " + janela(antes.s) + " — " + antes.s.nome + ".");
+  if (x.s.foto === "antes_depois") { fotosTmp = []; return openSheet(`<h2>▶️ ${esc(x.s.nome)}</h2><p class="meta">Esta etapa pede foto de ANTES e DEPOIS. Tire agora a foto de antes.</p>${slotFoto("antes", "📷 Foto ANTES (obrigatória)")}<button class="btn pri" onclick="confirmaInicio(${id})">▶️ Iniciar etapa</button><button class="btn" onclick="closeSheet()">Cancelar</button>`); }
+  confirmaInicio(id);
+}
+function confirmaInicio(id){
+  const x = linhaDe(id); if (!x) return;
+  if (x.s.foto === "antes_depois" && !fotosTmp.some(f => f.tipo === "antes")) return toast("Tire a foto de ANTES.");
+  if (!salvaFila(x.s.id + "|" + x.d, {...regBase(x), status:"andamento", iniciado_em:new Date().toISOString(), fotos:fotosTmp.slice()})) return;
+  fotosTmp = []; closeSheet(); render(); sincroniza(); toast("Etapa iniciada" + (x.s.horario_fim ? ": termine até " + hm(x.s.horario_fim) + "." : "."));
+}
+function slotFoto(tipo, rot){ return `<div class="fslot"><b>${rot}</b><div class="row" style="margin-top:6px"><label class="btn sm" style="cursor:pointer">📷 Câmera<input type="file" accept="image/*" capture="environment" hidden onchange="pegaFoto(this,'${tipo}',true)"></label><label class="btn sm" style="cursor:pointer">🖼️ Galeria<input type="file" accept="image/*" hidden onchange="pegaFoto(this,'${tipo}',false)"></label></div><div class="fotos" id="fs-${tipo}"></div></div>`; }
+async function pegaFoto(inp, tipo, camera){
+  const f = inp.files && inp.files[0]; if (!f) return;
+  try {
+    const antiga = !camera || (f.lastModified && Date.now() - f.lastModified > 10 * 60000);
+    const dataUrl = await reduzFoto(f);
+    fotosTmp = fotosTmp.filter(x => !(x.tipo === tipo && tipo !== "foto")).concat([{tipo, dataUrl, antiga, em:new Date().toISOString()}]);
+    const el = $("#fs-" + tipo); if (el) el.innerHTML = fotosTmp.filter(x => x.tipo === tipo).map(x => `<div style="text-align:center"><img src="${x.dataUrl}"><div class="meta">${x.antiga ? `<b style="color:var(--crit)">⚠️ não tirada na hora (fica registrado)</b>` : "✅ tirada agora"}</div></div>`).join("");
+  } catch (e) { console.error(e); toast("Não foi possível ler a foto."); }
+  inp.value = "";
+}
+function finalizar(id){
+  const x = linhaDe(id); if (!x) return; fotosTmp = [];
+  const passos = x.s.passos || [], fim = hm(x.s.horario_fim), atrasado = fim && agoraHM() > fim;
+  const pede = x.s.foto === "antes_depois" ? slotFoto("depois", "📷 Foto DEPOIS (obrigatória)") : slotFoto("foto", x.s.foto === "sim" ? "📷 Foto da etapa (obrigatória)" : "📷 Foto (opcional)");
+  openSheet(`<h2>${esc(x.s.nome)}</h2><p class="meta">${janela(x.s)} · ${esc(x.local)}</p>
+    ${passos.length ? `<div class="fslot"><b>Passo a passo</b>${passos.map((p, i) => `<label style="display:flex;gap:10px;align-items:center;padding:9px 2px;border-bottom:1px solid var(--line);font-size:15px"><input type="checkbox" data-passo="${i}" style="width:22px;height:22px">${esc(p)}</label>`).join("")}</div>` : ""}
+    ${pede}
+    ${atrasado ? `<div class="ban crit" style="margin-top:10px">⏰ Esta etapa devia terminar às ${fim}. Informe por que não foi concluída no horário (obrigatório).<textarea id="fJus" class="inp" rows="2" placeholder="Ex.: fui chamado para limpar a pista"></textarea></div>` : ""}
+    <label class="f">Observação (opcional)<textarea id="fObs" class="inp" rows="2" placeholder="Ex.: Faltou produto de limpeza."></textarea></label>
+    <button class="btn ok" style="font-size:17px" onclick="envia(${id},'concluido')">✅ CONCLUÍDO</button>
+    <details style="margin-top:12px"><summary class="btn no" style="list-style:none">❌ NÃO REALIZADO</summary>
+      <label class="f">Motivo (obrigatório)<select id="fMot" class="inp"><option value="">Escolha…</option>${MOTIVOS.map(m => `<option>${m}</option>`).join("")}</select></label>
+      <label class="f">Por que a etapa não foi realizada?<textarea id="fMotTx" class="inp" rows="2"></textarea></label>
+      <button class="btn no" onclick="envia(${id},'nao_realizado')">Enviar como NÃO REALIZADO</button></details>
+    <button class="btn" onclick="closeSheet()">Voltar</button>`);
+}
+function envia(id, tipo){
+  const x = linhaDe(id); if (!x) return;
+  const k = x.s.id + "|" + x.d, ant = filaLocal()[k] || x.reg || {}, obs = ($("#fObs").value || "").trim(), passos = x.s.passos || [];
+  const marcados = $$("[data-passo]").filter(c => c.checked).map(c => passos[+c.dataset.passo]);
+  const fim = hm(x.s.horario_fim), atraso = fim && agoraHM() > fim ? Math.round((Date.now() - new Date(x.d + "T" + fim + ":00").getTime()) / 60000) : 0, jus = (($("#fJus") || {}).value || "").trim();
+  const fotos = (ant.fotos || []).concat(fotosTmp);
+  let status = tipo, motivo = "";
+  if (tipo === "concluido") {
+    if (passos.length && marcados.length < passos.length && !obs) return toast("Marque todos os passos. Se algum ficou faltando, escreva em Observação.");
+    if (x.s.foto === "sim" && !fotosTmp.length && !(ant.fotos || []).some(f => f.tipo === "foto")) return toast("Tire a foto da etapa.");
+    if (x.s.foto === "antes_depois" && !fotosTmp.some(f => f.tipo === "depois")) return toast("Tire a foto de DEPOIS.");
+    if (atraso > 0 && !jus) return toast("Informe por que não foi concluída no horário.");
+    if (obs || marcados.length < passos.length) status = "concluido_obs";
+  } else {
+    const m = $("#fMot").value, t = ($("#fMotTx").value || "").trim();
+    if (!m) return toast("Escolha o motivo.");
+    if (m === "Outro" && !t) return toast("Escreva o motivo.");
+    motivo = m + (t ? ": " + t : "");
+  }
+  const base = filaLocal()[k] ? {} : {...regBase(x), iniciado_em:(x.reg && x.reg.iniciado_em) || new Date().toISOString()};
+  if (!salvaFila(k, {...base, status, motivo, observacao:obs, fotos, passos:marcados, atraso_min:Math.max(0, atraso), justificativa:jus || (atraso > 0 ? motivo : ""), concluido_em:new Date().toISOString()})) return;
+  fotosTmp = []; closeSheet(); render(); sincroniza(); toast(tipo === "concluido" ? "✅ Etapa concluída às " + agoraHM() + (atraso > 0 ? " (" + atraso + " min depois do horário)" : "") : "Registrado como não realizado.");
+}
+/* avisos internos */
+let avisados = {};
+function pedeAvisos(){ if (!("Notification" in window)) return toast("Este aparelho não tem avisos do navegador. Os avisos aparecem na tela."); Notification.requestPermission().then(p => toast(p === "granted" ? "Avisos ativados." : "Avisos não permitidos.")); }
+function notifica(t){ toast(t); try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch (e) {} try { if (window.Notification && Notification.permission === "granted") new Notification("Checklist Serviços Gerais", {body:t, icon:"logo-aldo.png"}); } catch (e) {} }
+function avisos(){
+  if (!S.perfil) return;
+  if (S.papel !== "colaborador") {
+    const ini = !S.avisouIni;
+    for (const x of linhasDia(hoje()).filter(foraHorario)) { const k = "g" + x.s.id + x.st; if (avisados[k]) continue; avisados[k] = 1; if (!ini) notifica("🚨 " + nomeU(x.resp) + ": " + x.s.nome + " (" + janela(x.s) + ") fora do horário."); }
+    S.avisouIni = true; return;
+  }
+  for (const x of linhasDia(hoje()).filter(x => x.resp === S.perfil.user_id)) {
+    const k = x.s.id + x.st; if (avisados[k]) continue;
+    let t = "";
+    if (x.st === "atrasado") t = "⏰ Fora do horário: " + x.s.nome + " (" + janela(x.s) + ") não foi feita. O administrador foi avisado.";
+    else if (x.st === "estourado") t = "⏰ O horário de " + x.s.nome + " terminou às " + hm(x.s.horario_fim) + ". Finalize e informe o motivo.";
+    else if (x.st === "agora") t = "▶️ Hora de começar: " + x.s.nome + (x.s.horario_fim ? " (até " + hm(x.s.horario_fim) + ")" : "") + ".";
+    if (!t) continue; avisados[k] = 1; notifica(t);
+  }
+  for (const d of ((S.fil[hoje()] || {}).dem || []).filter(d => d.user_id === S.perfil.user_id && d.status === "pendente")) { if (avisados["d" + d.id]) continue; avisados["d" + d.id] = 1; notifica("📌 Nova demanda extra: " + d.descricao); }
+}
+function trocaSenha(){
+  openSheet(`<h2>🔑 Trocar minha senha</h2><label class="f">Nova senha (mínimo 6)<input id="nS" class="inp" type="password" autocomplete="new-password"></label><button class="btn pri" id="btS">Salvar</button><button class="btn" onclick="closeSheet()">Voltar</button>`);
+  $("#btS").onclick = async () => { const v = $("#nS").value; if (v.length < 6) return toast("Mínimo 6 caracteres."); try { await api("PUT", "/auth/v1/user", {password:v}); closeSheet(); toast("Senha trocada."); } catch (e) { toast(e.message); } };
+}
+
+/* ---------- admin: hoje ---------- */
+function filtrosHTML(pre, comData){
+  const f = S["f" + pre] || {};
+  return `<div class="grid2" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">
+    <select class="inp" onchange="S.f${pre}.u=this.value;render()"><option value="">Todos os colaboradores</option>${ativos().map(u => `<option value="${u.user_id}" ${f.u === u.user_id ? "selected" : ""}>${esc(u.nome)}</option>`).join("")}</select>
+    <select class="inp" onchange="S.f${pre}.l=this.value;render()"><option value="">Todos os locais</option>${(S.locais || []).map(l => `<option value="${l.id}" ${String(f.l) === String(l.id) ? "selected" : ""}>${esc(l.nome)}</option>`).join("")}</select>
+    <select class="inp" onchange="S.f${pre}.t=this.value;render()"><option value="">Todos os turnos</option>${Object.entries(TURNOS).map(([k, t]) => `<option value="${k}" ${f.t === k ? "selected" : ""}>${t}</option>`).join("")}</select>
+    <select class="inp" onchange="S.f${pre}.s=this.value;render()"><option value="">Todos os status</option>${Object.entries(ST).filter(([k]) => k !== "futuro").map(([k, v]) => `<option value="${k}" ${f.s === k ? "selected" : ""}>${v[0]}</option>`).join("")}</select></div>`;
+}
+const filtra = (L, f) => L.filter(x => (!f.u || x.resp === f.u) && (!f.l || String(x.s.local_id) === String(f.l)) && (!f.t || x.s.turno === f.t) && (!f.s || x.st === f.s || (f.s === "pendente" && ["atrasado", "agora"].includes(x.st)) || (f.s === "andamento" && x.st === "estourado")) && (!f.sv || String(x.s.id) === String(f.sv)));
+function contagem(L){ const c = k => L.filter(x => k.includes(x.st)).length, tot = L.filter(x => x.st !== "futuro").length || L.length, ok = c(["concluido", "concluido_obs"]); return {tot:L.length, ok, pend:c(["pendente", "atrasado", "agora"]), and:c(["andamento", "estourado"]), no:c(["nao_realizado", "sem_registro"]), obs:L.filter(x => x.reg && (x.reg.observacao || x.st === "concluido_obs")).length, atr:c(["atrasado", "estourado"]), pct:tot ? Math.round(ok / tot * 100) : 0}; }
+function telaHoje(){
+  S.fHoje = S.fHoje || {}; const d = S.data, Lall = linhasDia(d), L = filtra(Lall, S.fHoje), c = contagem(Lall);
+  if (!(S.servicos || []).length) return ($("#app").innerHTML = S.admin ? `<div class="card"><h2>Bem-vindo ao Checklist Serviços Gerais</h2><p class="meta">Ainda não há etapas cadastradas. Crie as etapas de exemplo (06:00 banheiros, 07:00 loja, 08:00 escritório, 09:00 sala de descanso…) com um toque. Depois é só editar horários, passos e responsáveis.</p><button class="btn pri" onclick="criaIniciais(this)">✨ Criar etapas de exemplo</button><button class="btn" onclick="S.view='serv';render()">Cadastrar do zero</button></div>` : `<div class="msg"><b>Nenhuma etapa cadastrada ainda</b>O administrador ainda não cadastrou as etapas.</div>`);
+  const porU = {}; Lall.forEach(x => { const k = x.resp || "-"; (porU[k] = porU[k] || []).push(x); });
+  const fora = Lall.filter(foraHorario), sem = Lall.filter(x => !x.resp && x.st !== "futuro"), dem = ((S.fil[d] || {}).dem || []);
+  const trabalhando = ativos().filter(u => porU[u.user_id] && !emFolga(u.user_id, d));
+  $("#app").innerHTML = `<div class="card"><div class="row" style="justify-content:space-between"><button class="btn sm" onclick="mudaDia(-1)">◀</button><div style="text-align:center"><b style="font-family:var(--display);font-size:18px">${d === hoje() ? "Hoje · " : ""}${DIAS[diaSem(d)]} ${dBR(d)}</b><br><input type="date" class="inp" style="width:auto;padding:4px 8px;font-size:13px" value="${d}" onchange="vaiDia(this.value)"></div><button class="btn sm" onclick="mudaDia(1)">▶</button></div></div>
+    ${fora.length ? `<div class="card" style="border-color:var(--crit)"><h2 style="color:var(--crit)">⏰ Fora do horário (${fora.length})</h2>${fora.map(x => `<div style="border-bottom:1px solid var(--line);padding:8px 0"><b>${janela(x.s)} · ${esc(x.s.nome)}</b> — ${esc(x.resp ? nomeU(x.resp) : "sem responsável")} ${pill(x.st)}
+        ${x.reg && +x.reg.atraso_min > 0 ? `<div class="meta">Concluída ${x.reg.atraso_min} min depois do horário.</div>` : ""}${x.reg && x.reg.justificativa ? `<div class="meta" style="color:var(--warn)">💬 Motivo: ${esc(x.reg.justificativa)}</div>` : ""}
+        <div class="row">${S.admin ? `<button class="btn sm" onclick="abonar(${x.s.id},'${x.d}')">🛡️ Abonar horário</button>` : ""}${x.resp && x.d === hoje() ? `<button class="btn sm" onclick="formDemanda('${x.resp}',${x.s.id})">📌 Passar demanda extra e abonar</button>` : ""}<button class="btn sm" onclick="detalhe(${x.s.id},'${x.d}')">Ver</button></div></div>`).join("")}</div>` : ""}
+    ${sem.length ? `<div class="ban warn">⚠️ ${sem.length} etapa(s) sem responsável: cadastre o colaborador da função/turno ou troque o responsável.</div>` : ""}
+    <div class="card"><h2>Checklist diário: ${c.pct}% concluído</h2><div class="bar"><i style="width:${c.pct}%"></i></div>
+      <div class="tiles" style="margin-top:10px">${[["Etapas", c.tot], ["Concluídas", c.ok], ["Pendentes", c.pend], ["Em andamento", c.and], ["Não realizadas", c.no], ["Com observação", c.obs], ["Fora do horário", fora.length], ["Abonadas", Lall.filter(x => x.ab).length], ["Demandas extras", dem.length]].map(([t, v]) => `<div class="tile"><b>${v}</b><span>${t}</span></div>`).join("")}</div>
+      <p class="meta" style="margin:10px 0 0">👷 Trabalhando: ${trabalhando.length ? trabalhando.map(u => `<b>${esc(u.nome)}</b> (${TURNOS[u.turno] || u.turno})`).join(", ") : "—"}${(S.folgas || []).filter(f => f.data_ini <= d && f.data_fim >= d).map(f => ` · 📅 ${esc(nomeU(f.user_id))} de ${esc(f.tipo)}`).join("")}</p></div>
+    <div class="card"><h2>Por colaborador</h2>${Object.entries(porU).map(([u, l]) => { const k = contagem(l), fh = l.filter(foraHorario).length; return `<div style="margin-top:8px"><div class="row" style="justify-content:space-between"><b>${esc(u === "-" ? "Sem responsável" : nomeU(u))}</b><span class="meta">${k.ok}/${l.length} · ${k.pct}%${fh ? ` · <b style="color:var(--crit)">${fh} fora do horário</b>` : ""}</span></div><div class="bar"><i style="width:${k.pct}%;background:${k.pct >= 100 ? "var(--good)" : fh ? "var(--crit)" : "var(--warn)"}"></i></div></div>`; }).join("")}</div>
+    <div class="card"><h2>Etapas do dia</h2>${filtrosHTML("Hoje")}
+      <div style="overflow-x:auto;margin-top:8px"><table><tr><th>Horário</th><th>Etapa</th><th class="hide-m">Local</th><th>Responsável</th><th>Status</th></tr>
+      ${L.map(x => `<tr class="cl" onclick="detalhe(${x.s.id},'${x.d}')"><td><b>${janela(x.s)}</b></td><td>${x.s.urgente ? "🚨 " : ""}${esc(x.s.nome)}${x.reg && x.reg.fotos && x.reg.fotos.length ? " 📷" : ""}${x.reg && (x.reg.observacao || x.reg.justificativa) ? " 📝" : ""}</td><td class="hide-m">${esc(x.local)}</td><td>${esc(x.resp ? nomeU(x.resp) : "—")}${x.rr.cobertura ? ` <span title="cobertura de folga">⚠️</span>` : ""}${x.rr.troca ? " 🔁" : ""}</td><td>${pill(x.st)}${x.ab ? ` <span class="pill p-ok">🛡️ Abonado</span>` : ""}${x.reg && x.reg.concluido_em ? `<div class="meta">${hmTs(x.reg.concluido_em)}${+x.reg.atraso_min > 0 ? ` · <b style="color:var(--crit)">+${x.reg.atraso_min} min</b>` : ""}</div>` : ""}</td></tr>`).join("") || `<tr><td colspan="5" class="meta">Nada com esses filtros.</td></tr>`}</table></div>
+      ${S.admin ? `<div class="row"><button class="btn sm" onclick="relatorio('pdf',S.data,S.data)">📄 Relatório do dia (PDF)</button><button class="btn sm" onclick="relatorio('xls',S.data,S.data)">📊 Excel</button></div>` : ""}</div>`;
+}
+async function mudaDia(n){ S.data = addDia(S.data, n); await atualizaDia(); render(); }
+async function vaiDia(v){ if (!v) return; S.data = v; await atualizaDia(); render(); }
+async function detalhe(id, d){
+  const x = linhasDia(d).find(x => x.s.id === id); if (!x) return; const r = x.reg, dm = x.ab && x.ab.demanda_id ? ((S.fil[d] || {}).dem || []).find(q => q.id === x.ab.demanda_id) : null;
+  openSheet(`<h2>${esc(x.s.nome)}</h2><table>
+    <tr><td class="meta">Local</td><td>${esc(x.local)}</td></tr><tr><td class="meta">Data</td><td>${dBR(d)}</td></tr>
+    <tr><td class="meta">Horário</td><td>${janela(x.s)}</td></tr><tr><td class="meta">Responsável</td><td>${esc(x.resp ? nomeU(x.resp) : "—")}${x.rr.cobertura ? " · ⚠️ cobertura de " + esc(nomeU(x.rr.de)) : ""}${x.rr.troca ? " · 🔁 troca manual" : ""}</td></tr>
+    <tr><td class="meta">Status</td><td>${pill(x.st)}</td></tr>
+    ${r ? `<tr><td class="meta">Colaborador</td><td>${esc(r.colaborador || nomeU(r.user_id))}</td></tr><tr><td class="meta">Iniciado</td><td>${dhTs(r.iniciado_em)}</td></tr><tr><td class="meta">Horário realizado</td><td>${dhTs(r.concluido_em) || "—"}${+r.atraso_min > 0 ? ` · <b style="color:var(--crit)">${r.atraso_min} min depois do horário</b>` : ""}</td></tr>
+      ${r.justificativa ? `<tr><td class="meta">Motivo do atraso</td><td style="color:var(--warn)">${esc(r.justificativa)}</td></tr>` : ""}
+      ${(x.s.passos || []).length ? `<tr><td class="meta">Passos</td><td>${x.s.passos.map(p => ((r.passos || []).includes(p) ? "✅ " : "⬜ ") + esc(p)).join("<br>")}</td></tr>` : ""}
+      ${r.motivo ? `<tr><td class="meta">Motivo</td><td style="color:var(--crit)">${esc(r.motivo)}</td></tr>` : ""}<tr><td class="meta">Observação</td><td>${esc(r.observacao) || "Nenhuma"}</td></tr>
+      ${r.alterado_em ? `<tr><td class="meta">Alterado</td><td>${dhTs(r.alterado_em)} por ${esc(nomeU(r.alterado_por))} · motivo: ${esc(r.motivo_alteracao)}</td></tr>` : ""}` : ""}
+    ${x.ab ? `<tr><td class="meta">🛡️ Abono</td><td>${esc(x.ab.motivo)}<div class="meta">por ${esc(x.ab.por_nome || nomeU(x.ab.por))} · ${dhTs(x.ab.em)}</div>${dm ? `<div class="meta">📌 Demanda: ${esc(dm.descricao)} · ${esc(ST[dm.status] ? ST[dm.status][0] : dm.status)}${dm.resposta ? "<br>💬 Resposta: " + esc(dm.resposta) : ""}</div>` : ""}</td></tr>` : ""}</table>
+    ${r ? `<div class="fotos" id="dFotos"><span class="meta">Carregando fotos…</span></div>` : ""}
+    ${S.admin && !x.ab && foraHorario(x) ? `<button class="btn" onclick="abonar(${id},'${d}')">🛡️ Abonar horário</button>` : ""}
+    ${S.admin && (!r || r.status === "andamento") ? `<label class="f">🔁 Trocar responsável neste dia<select id="dResp" class="inp">${ativos().map(u => `<option value="${u.user_id}" ${u.user_id === x.resp ? "selected" : ""}>${esc(u.nome)}</option>`).join("")}</select></label><button class="btn" onclick="trocaResp(${id},'${d}')">Salvar troca</button>` : ""}
+    ${S.admin && r && r.status !== "andamento" && r.id ? `<details style="margin-top:10px"><summary class="btn">✏️ Corrigir registro (fica na auditoria)</summary>
+      <label class="f">Status<select id="cSt" class="inp">${["concluido", "concluido_obs", "nao_realizado"].map(k => `<option value="${k}" ${r.status === k ? "selected" : ""}>${ST[k][0]}</option>`).join("")}</select></label>
+      <label class="f">Observação<textarea id="cObs" class="inp" rows="2">${esc(r.observacao)}</textarea></label>
+      <label class="f">Motivo da alteração (obrigatório)<input id="cMot" class="inp"></label><button class="btn pri" onclick="corrige(${r.id})">Salvar correção</button></details>` : ""}
+    <button class="btn" onclick="closeSheet()">Fechar</button>`);
+  if (r) mostraFotos($("#dFotos"), r.fotos);
+}
+async function trocaResp(id, d){
+  const u = $("#dResp").value;
+  try { await api("POST", "/rest/v1/ck_ajustes?on_conflict=servico_id,data", {filial:S.filial, servico_id:id, data:d, responsavel:u}, {prefer:"resolution=merge-duplicates,return=minimal"}); closeSheet(); await atualizaDia(); render(); toast("Responsável trocado para " + nomeU(u) + " neste dia."); } catch (e) { toast(e.message); }
+}
+async function corrige(id){
+  const m = $("#cMot").value.trim(); if (!m) return toast("Informe o motivo da alteração.");
+  try { await api("PATCH", "/rest/v1/ck_registros?id=eq." + id, {status:$("#cSt").value, observacao:$("#cObs").value.trim(), motivo_alteracao:m}, {prefer:"return=minimal"}); closeSheet(); await atualizaDia(); render(); toast("Correção salva na auditoria."); } catch (e) { toast(e.message); }
+}
+
+/* ---------- admin: histórico e relatórios ---------- */
+async function linhasPeriodo(ini, fim){
+  if (fim > hoje()) fim = hoje();
+  const dias = []; for (let d = ini; d <= fim && dias.length < 400; d = addDia(d, 1)) dias.push(d);
+  const [rg, aj, ab] = await Promise.all([tb("ck_registros", `select=*&data=gte.${ini}&data=lte.${fim}&order=data`), tb("ck_ajustes", `select=*&data=gte.${ini}&data=lte.${fim}`), tb("ck_abonos", `select=*&data=gte.${ini}&data=lte.${fim}`).catch(() => [])]);
+  const out = [];
+  for (const d of dias) { S.fil[d] = {...(S.fil[d] || {}), reg:(rg || []).filter(r => r.data === d), aj:(aj || []).filter(a => a.data === d), ab:(ab || []).filter(a => a.data === d)}; out.push(...linhasDia(d)); }
+  return out;
+}
+function telaHist(){
+  const h = S.hist || (S.hist = {ini:addDia(hoje(), -6), fim:hoje(), g:"u", L:null}); S.fHist = S.fHist || {};
+  const L = h.L ? filtra(h.L, S.fHist) : null;
+  $("#app").innerHTML = `<div class="card"><h2>📜 Histórico de serviços</h2>
+    <div class="row">${[["Hoje", 0], ["7 dias", 6], ["30 dias", 29]].map(([t, n]) => `<button class="btn sm" onclick="S.hist.ini=addDia(hoje(),-${n});S.hist.fim=hoje();buscaHist()">${t}</button>`).join("")}<button class="btn sm" onclick="const d=new Date();S.hist.ini=dStr(new Date(d.getFullYear(),d.getMonth(),1));S.hist.fim=hoje();buscaHist()">Este mês</button></div>
+    <div class="grid2"><label class="f">Data inicial<input type="date" class="inp" value="${h.ini}" onchange="S.hist.ini=this.value"></label><label class="f">Data final<input type="date" class="inp" value="${h.fim}" onchange="S.hist.fim=this.value"></label></div>
+    <button class="btn pri" onclick="buscaHist()">🔎 Buscar</button></div>
+    ${L ? `<div class="card">${filtrosHTML("Hist")}
+      <select class="inp" style="margin-top:8px" onchange="S.fHist.sv=this.value;render()"><option value="">Todos os serviços</option>${(S.servicos || []).map(s => `<option value="${s.id}" ${String(S.fHist.sv) === String(s.id) ? "selected" : ""}>${hm(s.horario)} ${esc(s.nome)}</option>`).join("")}</select>
+      <div class="row" style="margin-top:8px"><span class="meta">Agrupar:</span><button class="btn sm" style="${h.g === "u" ? "background:var(--cyan);color:var(--on-cyan)" : ""}" onclick="S.hist.g='u';render()">Por colaborador</button><button class="btn sm" style="${h.g === "l" ? "background:var(--cyan);color:var(--on-cyan)" : ""}" onclick="S.hist.g='l';render()">Por setor</button></div>
+      <div class="row"><button class="btn sm" onclick="relatorio('pdf')">📄 PDF</button><button class="btn sm" onclick="relatorio('xls')">📊 Excel</button></div>
+      <p class="meta">${L.length} registros · ${contagem(L).pct}% concluídos</p>
+      <div style="overflow-x:auto"><table><tr><th>Data</th><th>Hora</th><th>Serviço</th><th>Colaborador</th><th>Status</th></tr>${L.slice(0, 500).map(x => `<tr class="cl" onclick="detalhe(${x.s.id},'${x.d}')"><td>${dBR(x.d).slice(0, 5)}</td><td>${hm(x.s.horario)}${x.reg && x.reg.concluido_em ? `<div class="meta">${hmTs(x.reg.concluido_em)}</div>` : ""}</td><td>${esc(x.s.nome)}<div class="meta">${esc(x.local)}</div></td><td>${esc(x.reg ? x.reg.colaborador : nomeU(x.resp))}</td><td>${pill(x.st)}${x.reg && x.reg.fotos && x.reg.fotos.length ? " 📷" : ""}</td></tr>`).join("")}</table></div></div>` : ""}`;
+}
+async function buscaHist(){ const h = S.hist; if (!h.ini || !h.fim || h.ini > h.fim) return toast("Confira as datas."); toast("Buscando…"); try { h.L = await linhasPeriodo(h.ini, h.fim); render(); } catch (e) { toast(e.message); } }
+async function relatorio(tipo, ini, fim){
+  let L, f;
+  if (ini) { L = linhasDia(ini); f = S.fHoje || {}; } else { L = S.hist.L || []; ini = S.hist.ini; fim = S.hist.fim; f = S.fHist || {}; }
+  L = filtra(L, f); const g = (S.hist && S.hist.g) || "u", chave = x => g === "l" ? (x.local || "Sem local") : nomeU(x.reg ? x.reg.user_id : x.resp);
+  const tit = (S.perfil.nome_filial || "Posto") + " — Checklist " + (ini === fim ? "diário" : "do período"), per = ini === fim ? dBR(ini) : dBR(ini) + " a " + dBR(fim);
+  const linha = x => [dBR(x.d), hm(x.s.horario), x.s.nome, x.local, x.reg ? x.reg.colaborador : nomeU(x.resp), ST[x.st][0].replace(/^\S+\s/, ""), x.reg ? hmTs(x.reg.concluido_em) : "", x.reg ? (x.reg.motivo || "") : "", x.reg ? (x.reg.observacao || "") : "", x.reg && x.reg.fotos ? x.reg.fotos.length : 0, x.reg ? +x.reg.atraso_min || 0 : "", x.reg ? (x.reg.justificativa || "") : "", x.ab ? "Sim: " + x.ab.motivo : ""];
+  const nome = (tit + " " + per).replace(/[\/\\:]+/g, "-");
+  if (tipo === "xls") {
+    const cab = ["Data", "Horário previsto", "Serviço", "Local", "Colaborador", "Status", "Horário realizado", "Motivo", "Observação", "Fotos", "Atraso (min)", "Motivo do atraso", "Abonado"];
+    const csv = "﻿" + [cab, ...L.map(linha)].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(";")).join("\r\n");
+    return baixa(new Blob([csv], {type:"text/csv;charset=utf-8"}), nome + ".csv");
+  }
+  const grupos = {}; L.forEach(x => (grupos[chave(x)] = grupos[chave(x)] || []).push(x)); const c = contagem(L);
+  const ic = {concluido:"✅", concluido_obs:"⚠️", nao_realizado:"❌", sem_registro:"❌", andamento:"🟡", pendente:"🔴", atrasado:"🔴", futuro:"⏳"};
+  const w = window.open("", "_blank"); if (!w) return toast("Permita abrir janelas para gerar o PDF.");
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(nome)}</title><style>body{font-family:Arial,sans-serif;color:#111;margin:24px}h1{font-size:20px;margin:0}h2{font-size:15px;margin:18px 0 4px;border-bottom:2px solid #f97316;padding-bottom:3px}table{width:100%;border-collapse:collapse;font-size:12px}td,th{border-bottom:1px solid #ddd;padding:4px;text-align:left;vertical-align:top}.m{color:#666;font-size:12px}@media print{button{display:none}}</style></head><body>
+    <button onclick="print()" style="float:right;padding:10px 16px;font-weight:bold">🖨️ Salvar em PDF</button><h1>${esc(tit.toUpperCase())}</h1><div class="m">Período: ${per} · ${L.length} serviços · ${c.ok} concluídos (${c.pct}%) · ${c.no} não realizados · ${c.obs} com observação · gerado em ${dhTs(new Date())}</div>
+    ${Object.entries(grupos).map(([k, l]) => `<h2>${esc(k)}</h2><table><tr><th>Data</th><th>Hora</th><th>Serviço</th>${g === "l" ? "<th>Colaborador</th>" : "<th>Local</th>"}<th>Status</th><th>Realizado</th><th>Obs./motivo</th></tr>${l.map(x => `<tr><td>${dBR(x.d)}</td><td>${hm(x.s.horario)}</td><td>${esc(x.s.nome)}</td><td>${esc(g === "l" ? (x.reg ? x.reg.colaborador : nomeU(x.resp)) : x.local)}</td><td>${ic[x.st]} ${esc(ST[x.st][0].replace(/^\S+\s/, ""))}</td><td>${x.reg ? hmTs(x.reg.concluido_em) : ""}</td><td>${esc([x.reg && x.reg.motivo, x.reg && x.reg.observacao].filter(Boolean).join(" · "))}${x.reg && x.reg.fotos && x.reg.fotos.length ? " 📷" + x.reg.fotos.length : ""}</td></tr>`).join("")}</table>`).join("")}
+    </body></html>`); w.document.close(); setTimeout(() => { try { w.print(); } catch (e) {} }, 500);
+}
+async function baixa(blob, nome){
+  try { const f = new File([blob], nome, {type:blob.type}); if (navigator.canShare && navigator.canShare({files:[f]})) { await navigator.share({files:[f], title:nome}); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+/* ---------- admin: locais e serviços ---------- */
+function telaServ(){
+  const L = S.locais || [];
+  $("#app").innerHTML = `<div class="card"><h2>⚙️ Etapas (em sequência, com horário de começo e término)</h2><div class="row"><button class="btn pri sm" onclick="formServ()">+ NOVA ETAPA</button><button class="btn sm" onclick="formLocal()">+ Novo local</button></div>
+    ${!(S.servicos || []).length ? `<button class="btn" onclick="criaIniciais(this)">✨ Criar etapas de exemplo</button>` : ""}</div>
+    ${[...L, {id:null, nome:"Sem local", ativo:true}].map(l => { const sv = (S.servicos || []).filter(s => (s.local_id || null) === l.id); if (!l.id && !sv.length) return ""; return `<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">📍 ${esc(l.nome)} ${l.ativo ? "" : `<span class="pill p-fut">inativo</span>`}</h2>${l.id ? `<button class="btn sm" onclick="formLocal(${l.id})">✏️</button>` : ""}</div>
+      ${sv.length ? `<table style="margin-top:6px">${sv.map(s => `<tr class="cl" onclick="formServ(${s.id})" style="${s.ativo ? "" : "opacity:.5"}"><td><b>${janela(s)}</b></td><td>${s.urgente ? "🚨 " : ""}${esc(s.nome)}${(s.passos || []).length ? ` <span class="meta">· ${s.passos.length} passos</span>` : ""}<div class="meta">${TURNOS[s.turno] || s.turno} · ${esc(s.funcao)} · ${esc(s.responsavel ? nomeU(s.responsavel) : "automático")} · ${freqTxt(s)}${s.foto !== "nao" ? " · " + FOTO[s.foto] : ""}${s.ativo ? "" : " · inativo"}</div></td></tr>`).join("")}</table>` : `<p class="meta">Nenhum serviço neste local.</p>`}</div>`; }).join("")}`;
+}
+function freqTxt(s){ const d = (s.dias || []).slice().sort(); if (d.length === 7) return "Todos os dias"; if (d.join() === "1,2,3,4,5") return "Seg a sex"; return d.map(i => DIAS[i]).join(", ") || "Nenhum dia"; }
+function formLocal(id){
+  const l = (S.locais || []).find(x => x.id === id) || {nome:"", descricao:"", ativo:true, ordem:(S.locais || []).length};
+  openSheet(`<h2>${id ? "Editar local" : "Novo local"}</h2><label class="f">Nome<input id="lN" class="inp" value="${esc(l.nome)}"></label><label class="f">Descrição<input id="lD" class="inp" value="${esc(l.descricao)}"></label>
+    <label class="f"><input type="checkbox" id="lA" ${l.ativo ? "checked" : ""}> Ativo</label><button class="btn pri" id="btL">Salvar</button><button class="btn" onclick="closeSheet()">Voltar</button>`);
+  $("#btL").onclick = async () => { const nome = $("#lN").value.trim(); if (!nome) return toast("Digite o nome."); const row = {filial:S.filial, nome, descricao:$("#lD").value.trim(), ativo:$("#lA").checked, ordem:l.ordem || 0};
+    try { if (id) await api("PATCH", "/rest/v1/ck_locais?id=eq." + id, row, {prefer:"return=minimal"}); else await api("POST", "/rest/v1/ck_locais", row, {prefer:"return=minimal"}); closeSheet(); await carregaBase(); render(); toast("Local salvo."); } catch (e) { toast(e.message); } };
+}
+function formServ(id){
+  const s = (S.servicos || []).find(x => x.id === id) || {nome:"", local_id:(S.locais || [])[0] && S.locais[0].id, horario:"08:00", horario_fim:"08:50", turno:"manha", funcao:"Limpeza", responsavel:null, dias:[0, 1, 2, 3, 4, 5, 6], foto:"nao", urgente:false, observacao:"", ativo:true, passos:[]};
+  const d = s.dias || [];
+  openSheet(`<h2>${id ? "Editar etapa" : "+ Nova etapa"}</h2>
+    <label class="f">Nome<input id="sN" class="inp" value="${esc(s.nome)}" placeholder="Ex.: Limpeza e higienização dos banheiros"></label>
+    <div class="grid2"><label class="f">Começa às<input id="sH" type="time" class="inp" value="${hm(s.horario)}"></label><label class="f">Termina às (tempo da etapa)<input id="sHF" type="time" class="inp" value="${hm(s.horario_fim)}"></label>
+      <label class="f">Local<select id="sL" class="inp">${(S.locais || []).filter(l => l.ativo || l.id === s.local_id).map(l => `<option value="${l.id}" ${l.id === s.local_id ? "selected" : ""}>${esc(l.nome)}</option>`).join("")}</select></label>
+      <label class="f">Turno<select id="sT" class="inp">${Object.entries(TURNOS).map(([k, t]) => `<option value="${k}" ${s.turno === k ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+      <label class="f">Função<input id="sF" class="inp" list="lFun" value="${esc(s.funcao)}"><datalist id="lFun">${FUNCOES.map(f => `<option>${f}</option>`).join("")}</datalist></label>
+      <label class="f">Responsável<select id="sR" class="inp"><option value="">Automático (função e turno)</option>${(S.usuarios || []).filter(u => u.papel !== "lider").map(u => `<option value="${u.user_id}" ${u.user_id === s.responsavel ? "selected" : ""}>${esc(u.nome)}${u.ativo ? "" : " (inativo)"}</option>`).join("")}</select></label></div>
+    <label class="f">Passo a passo (um por linha — o colaborador marca cada um)<textarea id="sP" class="inp" rows="4" placeholder="Recolher o lixo&#10;Lavar vasos e pias&#10;Repor papel e sabonete&#10;Passar pano no chão">${esc((s.passos || []).join("\n"))}</textarea></label>
+    <label class="f">Frequência</label><div class="row"><button class="btn sm" onclick="marcaDias([0,1,2,3,4,5,6])">Todos os dias</button><button class="btn sm" onclick="marcaDias([1,2,3,4,5])">Seg a sex</button></div>
+    <div class="chk">${DIAS.map((t, i) => `<label><input type="checkbox" data-dia="${i}" ${d.includes(i) ? "checked" : ""}>${t}</label>`).join("")}</div>
+    <label class="f">Foto<select id="sFo" class="inp">${Object.entries(FOTO).map(([k, t]) => `<option value="${k}" ${s.foto === k ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+    <label class="f">Observação (aparece para o colaborador)<input id="sO" class="inp" value="${esc(s.observacao)}"></label>
+    <div class="chk"><label><input type="checkbox" id="sU" ${s.urgente ? "checked" : ""}>🚨 Urgente (destaque vermelho)</label><label><input type="checkbox" id="sA" ${s.ativo ? "checked" : ""}>Ativa</label></div>
+    <button class="btn pri" id="btS">💾 Salvar</button><button class="btn" onclick="closeSheet()">Voltar</button>
+    ${id ? `<p class="meta">Para tirar uma etapa do checklist, desmarque "Ativa". O histórico continua guardado. Mudanças aparecem sozinhas no link dos colaboradores (até 1 minuto).</p>` : ""}`);
+  $("#btS").onclick = async () => {
+    const dias = $$("[data-dia]").filter(x => x.checked).map(x => +x.dataset.dia), nome = $("#sN").value.trim(), h1 = $("#sH").value, h2 = $("#sHF").value;
+    if (!nome) return toast("Digite o nome da etapa."); if (!h1) return toast("Informe o horário de começo."); if (h2 && h2 <= h1) return toast("O término tem que ser depois do começo."); if (!dias.length) return toast("Marque pelo menos um dia.");
+    const row = {filial:S.filial, nome, local_id:+$("#sL").value || null, horario:h1, horario_fim:h2 || null, passos:$("#sP").value.split("\n").map(x => x.trim()).filter(Boolean), turno:$("#sT").value, funcao:$("#sF").value.trim() || "Limpeza", responsavel:$("#sR").value || null, dias, frequencia:dias.length === 7 ? "todos" : dias.join() === "1,2,3,4,5" ? "seg-sex" : "dias", foto:$("#sFo").value, observacao:$("#sO").value.trim(), urgente:$("#sU").checked, ativo:$("#sA").checked};
+    try { if (id) await api("PATCH", "/rest/v1/ck_servicos?id=eq." + id, row, {prefer:"return=minimal"}); else await api("POST", "/rest/v1/ck_servicos", row, {prefer:"return=minimal"}); closeSheet(); await carregaBase(); render(); toast("Etapa salva."); } catch (e) { toast(/horario_fim|passos/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase (campos novos)." : e.message); }
+  };
+}
+function marcaDias(l){ $$("[data-dia]").forEach(x => x.checked = l.includes(+x.dataset.dia)); }
+async function criaIniciais(b){
+  if (b) b.disabled = true;
+  const locais = ["Banheiros", "Loja", "Escritório / prédio", "Sala de descanso", "Triagem"];
+  const P = {ban:["Recolher o lixo", "Lavar vasos e pias", "Higienizar com desinfetante", "Repor papel e sabonete", "Passar pano no chão"], loja:["Varrer", "Passar pano no chão", "Limpar balcão e vitrines", "Organizar prateleiras"], esc:["Tirar pó das mesas", "Limpar vidros", "Varrer e passar pano", "Recolher o lixo"], sala:["Limpar mesa e cadeiras", "Lavar louça", "Repor itens (copo, café, papel)", "Passar pano no chão"], tri:["Recolher o lixo", "Varrer a área", "Lavar o banheiro dos motoristas"]};
+  const sv = [["Banheiros", "06:00", "06:50", "Limpeza e higienização dos banheiros", "manha", "Limpeza", "sim", P.ban], ["Loja", "07:00", "07:50", "Limpeza da loja", "manha", "Limpeza", "antes_depois", P.loja],
+    ["Escritório / prédio", "08:00", "08:50", "Limpeza do escritório do prédio", "manha", "Limpeza", "nao", P.esc], ["Sala de descanso", "09:00", "09:40", "Limpeza da sala de descanso", "manha", "Limpeza", "sim", P.sala],
+    ["Banheiros", "10:00", "10:40", "Banheiros (2ª passada)", "manha", "Limpeza", "sim", P.ban],
+    ["Banheiros", "14:00", "14:50", "Limpeza e higienização dos banheiros", "tarde", "Limpeza", "sim", P.ban], ["Loja", "15:00", "15:50", "Limpeza da loja", "tarde", "Limpeza", "antes_depois", P.loja],
+    ["Escritório / prédio", "16:00", "16:50", "Limpeza do escritório do prédio", "tarde", "Limpeza", "nao", P.esc], ["Sala de descanso", "17:00", "17:40", "Limpeza da sala de descanso", "tarde", "Limpeza", "sim", P.sala],
+    ["Triagem", "07:00", "07:40", "Banheiros dos motoristas", "manha", "Triagem", "sim", P.tri], ["Triagem", "08:00", "08:40", "Recolhimento de lixo", "manha", "Triagem", "nao", ["Recolher lixo da pista", "Levar ao contêiner"]], ["Triagem", "09:00", "09:50", "Limpeza do pátio", "manha", "Triagem", "sim", ["Varrer o pátio", "Recolher o lixo"]]];
+  try {
+    const criados = await api("POST", "/rest/v1/ck_locais", locais.map((n, i) => ({filial:S.filial, nome:n, ordem:i})), {prefer:"return=representation"});
+    const id = n => (criados.find(l => l.nome === n) || {}).id;
+    await api("POST", "/rest/v1/ck_servicos", sv.map(([l, h, hf, n, t, f, fo, ps]) => ({filial:S.filial, nome:n, local_id:id(l), horario:h, horario_fim:hf, passos:ps, turno:t, funcao:f, foto:fo, dias:[0, 1, 2, 3, 4, 5, 6], frequencia:"todos"})), {prefer:"return=minimal"});
+    await carregaBase(); S.view = "serv"; render(); toast("Etapas de exemplo criadas. Edite horários, passos e responsáveis à vontade.");
+  } catch (e) { toast(e.message); if (b) b.disabled = false; }
+}
+/* ---------- admin: equipe ---------- */
+function linkDe(u){ return new URL("checklist.html", location.href).href.split("?")[0] + "?f=" + encodeURIComponent(S.filial) + "&u=" + encodeURIComponent(u.login); }
+function telaEquipe(){
+  const U = S.usuarios || [];
+  $("#app").innerHTML = `<div class="card"><h2>👥 Colaboradores e líderes</h2><p class="meta">Cada pessoa tem login próprio só do checklist (não entra no estoque nem nas metas) e o próprio link, que abre direto a tela dela. <b>Líder</b>: acompanha as demandas do dia e passa demandas extras (que abonam o horário da etapa); não mexe em etapas, equipe nem configurações.</p><button class="btn pri" onclick="formUser()">+ Novo colaborador ou líder</button></div>
+    ${U.map(u => `<div class="card" style="${u.ativo ? "" : "opacity:.55"}"><div><b style="font-size:16px">${esc(u.nome)}</b> ${u.papel === "lider" ? `<span class="pill p-and">⭐ Líder</span>` : ""} ${u.ativo ? "" : `<span class="pill p-fut">inativo</span>`}<div class="meta">login: ${esc(u.login)}${u.papel === "lider" ? "" : " · " + esc(u.funcao) + " · " + (TURNOS[u.turno] || esc(u.turno))}</div></div>
+      <div class="row"><button class="btn sm" onclick="enviaLink('${u.user_id}')">📤 Enviar link</button><button class="btn sm" onclick="formUser('${u.user_id}')">✏️ Editar</button><button class="btn sm" onclick="senhaUser('${u.user_id}')">🔑 Nova senha</button>${u.papel === "lider" ? "" : `<button class="btn sm" onclick="histUser('${u.user_id}')">📜 Histórico</button>`}</div></div>`).join("") || `<p class="meta">Ninguém cadastrado ainda.</p>`}`;
+}
+async function enviaLink(id){
+  const u = S.usuarios.find(x => x.user_id === id), url = linkDe(u), t = `✅ CHECKLIST SERVIÇOS GERAIS · ${S.perfil.nome_filial || ""}\nOlá, ${u.nome.split(" ")[0]}! Este é o seu link. Abra no seu celular, entre com a sua senha e registre os seus serviços. Os horários são atualizados sozinhos.`;
+  if (navigator.share) { try { await navigator.share({title:"Checklist", text:t, url}); return; } catch (e) { if (e && e.name === "AbortError") return; } }
+  try { await navigator.clipboard.writeText(t + "\n" + url); toast("Link copiado."); } catch (e) { openSheet(`<h2>Link de ${esc(u.nome)}</h2><div class="inp" style="word-break:break-all">${esc(url)}</div><button class="btn" onclick="closeSheet()">Fechar</button>`); }
+}
+function histUser(id){ S.hist = {ini:addDia(hoje(), -29), fim:hoje(), g:"u", L:null}; S.fHist = {u:id}; S.view = "hist"; render(); buscaHist(); }
+function formUser(id){
+  const u = (S.usuarios || []).find(x => x.user_id === id) || {nome:"", login:"", funcao:"Limpeza", turno:"manha", ativo:true, papel:"colaborador"};
+  openSheet(`<h2>${id ? "Editar" : "Novo colaborador ou líder"}</h2>
+    <label class="f">Tipo de acesso<select id="uPa" class="inp"><option value="colaborador" ${u.papel !== "lider" ? "selected" : ""}>👷 Colaborador (faz as etapas)</option><option value="lider" ${u.papel === "lider" ? "selected" : ""}>⭐ Líder (acompanha e passa demandas extras)</option></select></label>
+    <label class="f">Nome<input id="uN" class="inp" value="${esc(u.nome)}" placeholder="Ex.: Denilde"></label>
+    ${id ? `<p class="meta">Login: <b>${esc(u.login)}</b></p>` : `<div class="grid2"><label class="f">Usuário (login)<input id="uL" class="inp" autocapitalize="none" placeholder="denilde"></label><label class="f">Senha inicial (mín. 6)<input id="uS" class="inp" type="text" autocomplete="off"></label></div>`}
+    <div class="grid2"><label class="f">Função<input id="uF" class="inp" list="lFun2" value="${esc(u.funcao)}"><datalist id="lFun2">${FUNCOES.map(f => `<option>${f}</option>`).join("")}</datalist></label>
+      <label class="f">Turno<select id="uT" class="inp">${Object.entries(TURNOS).map(([k, t]) => `<option value="${k}" ${u.turno === k ? "selected" : ""}>${t}</option>`).join("")}</select></label></div>
+    ${id ? `<label class="f"><input type="checkbox" id="uA" ${u.ativo ? "checked" : ""}> Ativo (desmarcado: não consegue mais entrar)</label>` : ""}
+    <button class="btn pri" id="btU">💾 Salvar</button><button class="btn" onclick="closeSheet()">Voltar</button>`);
+  $("#btU").onclick = async () => {
+    const nome = $("#uN").value.trim(), funcao = $("#uF").value.trim() || "Limpeza", turno = $("#uT").value, papel = $("#uPa").value; if (!nome) return toast("Digite o nome.");
+    try {
+      if (id) await api("PATCH", "/rest/v1/ck_usuarios?user_id=eq." + id, {nome, funcao, turno, papel, ativo:$("#uA").checked}, {prefer:"return=minimal"});
+      else { const l = $("#uL").value.trim(), s = $("#uS").value; if (!l) return toast("Digite o usuário."); if (s.length < 6) return toast("Senha com pelo menos 6 caracteres.");
+        const nid = await rpc("ck_criar_colaborador", {p_login:l, p_senha:s, p_nome:nome, p_funcao:funcao, p_turno:turno});
+        if (papel === "lider") await api("PATCH", "/rest/v1/ck_usuarios?user_id=eq." + nid, {papel}, {prefer:"return=minimal"}); }
+      closeSheet(); await carregaBase(); render(); toast(id ? "Salvo." : "Criado. Toque em 📤 Enviar link para mandar o acesso.");
+    } catch (e) { toast(/papel/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase (campos novos)." : e.message); }
+  };
+}
+function senhaUser(id){
+  const u = S.usuarios.find(x => x.user_id === id);
+  openSheet(`<h2>🔑 Nova senha · ${esc(u.nome)}</h2><label class="f">Nova senha (mín. 6)<input id="nP" class="inp" type="text" autocomplete="off"></label><button class="btn pri" id="btP">Salvar</button><button class="btn" onclick="closeSheet()">Voltar</button>`);
+  $("#btP").onclick = async () => { const v = $("#nP").value; if (v.length < 6) return toast("Mínimo 6 caracteres."); try { await rpc("ck_redefinir_senha", {p_user:id, p_senha:v}); closeSheet(); toast("Senha alterada."); } catch (e) { toast(e.message); } };
+}
+
+/* ---------- admin: escala ---------- */
+function telaEscala(){
+  const F = (S.folgas || []).filter(f => f.data_fim >= addDia(hoje(), -30));
+  $("#app").innerHTML = `<div class="card"><h2>📅 Escala · folgas, férias e ausências</h2><p class="meta">No dia da folga, os serviços da pessoa vão para a cobertura escolhida (ou, se ficar automático, para um colaborador da triagem). A cobertura vê o aviso ⚠️ COBERTURA DE FOLGA.</p><button class="btn pri" onclick="formFolga()">+ Nova folga / férias / ausência</button></div>
+    <div class="card">${F.length ? `<table><tr><th>Colaborador</th><th>Período</th><th>Tipo</th><th>Cobertura</th><th></th></tr>${F.map(f => `<tr><td>${esc(nomeU(f.user_id))}</td><td>${dBR(f.data_ini)}${f.data_fim !== f.data_ini ? " a " + dBR(f.data_fim) : ""}</td><td>${esc(f.tipo)}${f.motivo ? `<div class="meta">${esc(f.motivo)}</div>` : ""}</td><td>${esc(f.cobertura ? nomeU(f.cobertura) : "automática")}</td><td><button class="btn sm" onclick="apagaFolga(${f.id})">🗑️</button></td></tr>`).join("")}</table>` : `<p class="meta">Nenhuma folga cadastrada.</p>`}</div>
+    <div class="card"><h2>🔁 Troca de responsável em um dia</h2><p class="meta">Em 📊 Hoje, toque no serviço e escolha "Trocar responsável neste dia".</p></div>`;
+}
+function formFolga(){
+  openSheet(`<h2>Nova folga / férias / ausência</h2>
+    <label class="f">Colaborador<select id="fU" class="inp">${ativos().map(u => `<option value="${u.user_id}">${esc(u.nome)}</option>`).join("")}</select></label>
+    <label class="f">Tipo<select id="fT" class="inp"><option value="folga">Folga</option><option value="férias">Férias</option><option value="ausência">Ausência</option></select></label>
+    <div class="grid2"><label class="f">De<input id="fI" type="date" class="inp" value="${hoje()}"></label><label class="f">Até<input id="fF" type="date" class="inp" value="${hoje()}"></label></div>
+    <label class="f">Cobertura<select id="fC" class="inp"><option value="">Automática</option>${ativos().map(u => `<option value="${u.user_id}">${esc(u.nome)} · ${esc(u.funcao)}</option>`).join("")}</select></label>
+    <label class="f">Motivo (opcional)<input id="fM" class="inp"></label><button class="btn pri" id="btF">💾 Salvar</button><button class="btn" onclick="closeSheet()">Voltar</button>`);
+  $("#btF").onclick = async () => { const r = {filial:S.filial, user_id:$("#fU").value, tipo:$("#fT").value, data_ini:$("#fI").value, data_fim:$("#fF").value, cobertura:$("#fC").value || null, motivo:$("#fM").value.trim()};
+    if (!r.user_id || !r.data_ini || !r.data_fim || r.data_fim < r.data_ini) return toast("Confira o colaborador e as datas."); if (r.cobertura === r.user_id) return toast("A cobertura tem que ser outra pessoa.");
+    try { await api("POST", "/rest/v1/ck_folgas", r, {prefer:"return=minimal"}); closeSheet(); await carregaBase(); render(); toast("Escala salva."); } catch (e) { toast(e.message); } };
+}
+async function apagaFolga(id){ if (!confirm("Apagar esta folga da escala?")) return; try { await api("DELETE", "/rest/v1/ck_folgas?id=eq." + id); await carregaBase(); render(); } catch (e) { toast(e.message); } }
+
+/* ---------- admin: configuração, retenção e auditoria ---------- */
+async function telaCfg(){
+  const c = S.cfg || {retencao_dias:90};
+  $("#app").innerHTML = telaVisual() + `<div class="card"><h2>🗄️ Armazenamento (retenção)</h2><p class="meta">Registros, fotos e pedidos de material já respondidos mais antigos que o período escolhido são apagados automaticamente (1 vez por dia, quando o administrador abre o checklist). Padrão: 90 dias.</p>
+    <select id="cR" class="inp">${[60, 90, 120].map(n => `<option value="${n}" ${+c.retencao_dias === n ? "selected" : ""}>${n} dias</option>`).join("")}</select>
+    <button class="btn pri" onclick="salvaRet()">💾 Salvar</button><p class="meta">Última limpeza: ${c.ultima_limpeza ? dBR(c.ultima_limpeza) : "nunca"}</p></div>
+    <div class="card"><h2>🧾 Auditoria (correções do administrador)</h2><div id="aud" class="meta">Carregando…</div></div>
+    <div class="card"><h2>📲 Acesso</h2><p class="meta">O administrador entra com o mesmo login do estoque. Link do checklist do administrador:</p><div class="inp" style="word-break:break-all;font-size:12px">${esc(new URL("checklist.html", location.href).href.split("?")[0] + "?f=" + S.filial)}</div></div>`;
+  try { const A = await tb("ck_auditoria", "select=*&order=quando.desc&limit=50");
+    $("#aud").innerHTML = A.length ? `<table><tr><th>Quando</th><th>Quem</th><th>Serviço</th><th>Mudança</th><th>Motivo</th></tr>${A.map(a => `<tr><td>${dhTs(a.quando)}</td><td>${esc(nomeU(a.quem) === "—" ? "Administrador" : nomeU(a.quem))}</td><td>${esc((a.antes || {}).servico)} · ${dBR((a.antes || {}).data)}<div class="meta">${esc((a.antes || {}).colaborador)}</div></td><td>${esc(ST[(a.antes || {}).status] ? ST[a.antes.status][0] : "")} → ${esc(ST[(a.depois || {}).status] ? ST[a.depois.status][0] : "")}</td><td>${esc(a.motivo)}</td></tr>`).join("")}</table>` : "Nenhuma correção feita."; } catch (e) { $("#aud").textContent = e.message; }
+}
+async function salvaRet(){ const n = +$("#cR").value; try { await api("POST", "/rest/v1/ck_config?on_conflict=filial", {filial:S.filial, retencao_dias:n}, {prefer:"resolution=merge-duplicates,return=minimal"}); S.cfg = {...S.cfg, retencao_dias:n}; toast("Retenção: " + n + " dias."); } catch (e) { toast(e.message); } }
+async function limpezaAuto(){
+  const c = S.cfg || {}; if (c.ultima_limpeza === hoje() || !navigator.onLine) return;
+  const corte = addDia(hoje(), -(+c.retencao_dias || 90));
+  try {
+    const velhos = await tb("ck_registros", `select=id,fotos&data=lt.${corte}&limit=2000`);
+    const paths = (velhos || []).flatMap(r => (r.fotos || []).map(f => f.path).filter(Boolean));
+    for (let i = 0; i < paths.length; i += 200) await api("DELETE", "/storage/v1/object/checklist", {prefixes:paths.slice(i, i + 200)});
+    if ((velhos || []).length) await api("DELETE", "/rest/v1/ck_registros?data=lt." + corte);
+    await api("DELETE", "/rest/v1/ck_ajustes?data=lt." + corte).catch(() => {});
+    await api("DELETE", "/rest/v1/ck_abonos?data=lt." + corte).catch(() => {});
+    await api("DELETE", "/rest/v1/ck_demandas?data=lt." + corte).catch(() => {});
+    await api("DELETE", "/rest/v1/ck_solicitacoes?status=neq.pendente&criado_em=lt." + corte + "T00:00:00").catch(() => {});
+    await api("DELETE", "/rest/v1/ck_auditoria?quando=lt." + corte + "T00:00:00").catch(() => {});
+    await api("POST", "/rest/v1/ck_config?on_conflict=filial", {filial:S.filial, retencao_dias:+c.retencao_dias || 90, ultima_limpeza:hoje()}, {prefer:"resolution=merge-duplicates,return=minimal"});
+    S.cfg = {...c, ultima_limpeza:hoje()};
+  } catch (e) { console.error("Limpeza:", e); }
+}
+/* ---------- pedidos de material ---------- */
+const STP = {pendente:["🟠 Aguardando", "p-and"], atendido:["🟢 Atendido", "p-ok"], recusado:["❌ Não atendido", "p-no"]};
+async function telaMatColab(){
+  $("#tSub").textContent = "Pedir material";
+  $("#app").innerHTML = `<div class="card"><h2>📦 Pedir material</h2><p class="meta">Escreva o que está precisando. O administrador recebe na hora e responde aqui.</p>
+    <label class="f">O que você precisa?<input id="mM" class="inp" placeholder="Ex.: Detergente, saco de lixo 100 L, rodo"></label>
+    <label class="f">Quantidade<input id="mQ" class="inp" placeholder="Ex.: 2 frascos"></label>
+    <label class="f">Observação (opcional)<textarea id="mO" class="inp" rows="2" placeholder="Ex.: acabou no banheiro dos motoristas"></textarea></label>
+    <div class="chk"><label><input type="checkbox" id="mU">🚨 Urgente</label></div>
+    <button class="btn pri" id="btM">📤 Enviar pedido</button></div>
+    <div class="card"><h2>Meus pedidos</h2><div id="mL" class="meta">Carregando…</div></div>`;
+  $("#btM").onclick = async () => {
+    const material = $("#mM").value.trim(); if (!material) return toast("Escreva o material.");
+    const b = $("#btM"); b.disabled = true;
+    try { await api("POST", "/rest/v1/ck_solicitacoes", {filial:S.filial, user_id:S.perfil.user_id, colaborador:S.perfil.nome, material, quantidade:$("#mQ").value.trim(), observacao:$("#mO").value.trim(), urgente:$("#mU").checked}, {prefer:"return=minimal"}); toast("Pedido enviado ao administrador."); telaMatColab(); }
+    catch (e) { b.disabled = false; toast(navigator.onLine ? e.message : "Sem internet: tente de novo quando a conexão voltar."); }
+  };
+  try { const L = await tb("ck_solicitacoes", "select=*&order=criado_em.desc&limit=50"); if (!$("#mL")) return;
+    $("#mL").innerHTML = L.length ? L.map(x => `<div style="border-bottom:1px solid var(--line);padding:8px 0;color:var(--ink)"><b>${x.urgente ? "🚨 " : ""}${esc(x.material)}</b>${x.quantidade ? " · " + esc(x.quantidade) : ""}<div class="meta">${dhTs(x.criado_em)}${x.observacao ? " · " + esc(x.observacao) : ""}</div><span class="pill ${STP[x.status][1]}">${STP[x.status][0]}</span>${x.resposta ? `<div class="meta" style="margin-top:4px">💬 ${esc(x.resposta)}</div>` : ""}</div>`).join("") : "Nenhum pedido ainda."; }
+  catch (e) { if ($("#mL")) $("#mL").textContent = "Sem internet para carregar os pedidos."; }
+}
+async function contaPedidos(){ try { const L = await tb("ck_solicitacoes", "select=id&status=eq.pendente"); const n = (L || []).length; if (n !== S.nPed) { const novo = S.nPed !== undefined && n > S.nPed; S.nPed = n; if (novo) toast("📦 Novo pedido de material."); if (!$("#veil.open")) render(); } } catch (e) {} }
+async function telaMatAdmin(){
+  S.fMat = S.fMat === undefined ? "pendente" : S.fMat;
+  $("#app").innerHTML = `<div class="card"><h2>📦 Pedidos de material</h2><div class="row">${[["pendente", "🟠 Aguardando"], ["atendido", "🟢 Atendidos"], ["recusado", "❌ Não atendidos"], ["", "Todos"]].map(([k, t]) => `<button class="btn sm" style="${S.fMat === k ? "background:var(--cyan);color:var(--on-cyan)" : ""}" onclick="S.fMat='${k}';render()">${t}</button>`).join("")}</div></div><div id="mA" class="meta">Carregando…</div>`;
+  try { const L = await tb("ck_solicitacoes", "select=*&order=criado_em.desc&limit=200" + (S.fMat ? "&status=eq." + S.fMat : "")); if (!$("#mA")) return;
+    $("#mA").innerHTML = L.length ? L.map(x => `<div class="card" style="${x.urgente && x.status === "pendente" ? "border-color:var(--crit)" : ""}"><div class="row" style="justify-content:space-between"><b style="font-size:16px;color:var(--ink)">${x.urgente ? "🚨 " : ""}${esc(x.material)}${x.quantidade ? " · " + esc(x.quantidade) : ""}</b><span class="pill ${STP[x.status][1]}">${STP[x.status][0]}</span></div>
+      <div class="meta">👤 ${esc(x.colaborador || nomeU(x.user_id))} · ${dhTs(x.criado_em)}${x.observacao ? "<br>📝 " + esc(x.observacao) : ""}${x.resposta ? "<br>💬 " + esc(x.resposta) : ""}${x.atendido_em ? " · " + dhTs(x.atendido_em) : ""}</div>
+      ${x.status === "pendente" ? `<input class="inp" id="rp${x.id}" placeholder="Resposta (opcional). Ex.: entregue na triagem"><div class="row"><button class="btn sm" style="background:var(--good);color:#04241a" onclick="respPedido(${x.id},'atendido')">🟢 Atendido</button><button class="btn sm" onclick="respPedido(${x.id},'recusado')">❌ Não atendido</button></div>` : ""}</div>`).join("") : `<p class="meta">Nenhum pedido aqui.</p>`; }
+  catch (e) { if ($("#mA")) $("#mA").textContent = e.message; }
+}
+async function respPedido(id, st){
+  try { await api("PATCH", "/rest/v1/ck_solicitacoes?id=eq." + id, {status:st, resposta:(($("#rp" + id) || {}).value || "").trim(), atendido_em:new Date().toISOString(), atendido_por:S.perfil.user_id}, {prefer:"return=minimal"}); toast(st === "atendido" ? "Pedido atendido." : "Pedido marcado como não atendido."); S.nPed = Math.max(0, (S.nPed || 1) - 1); render(); } catch (e) { toast(e.message); }
+}
+
+/* ---------- demandas extras (admin e líder passam; abonam o horário de uma etapa) ---------- */
+function cardDemanda(x){
+  const fim = FINAL(x.status);
+  return `<div class="task" style="border-color:var(--warn);${fim ? "opacity:.75" : ""}"><div class="row" style="justify-content:space-between"><b style="color:var(--warn)">📌 DEMANDA EXTRA</b><span class="meta">${x.horario ? hm(x.horario) : hmTs(x.criado_em)}</span></div>
+    <div class="n">${esc(x.descricao)}</div><div class="meta">Passada por ${esc(x.criado_por_nome || "administrador")}</div>
+    ${pill(x.status)}${x.concluido_em ? `<div class="meta">Finalizada às ${hmTs(x.concluido_em)}</div>` : ""}
+    ${x.status === "pendente" ? `<button class="btn pri" onclick="demMuda(${x.id},'andamento')">▶️ INICIAR DEMANDA</button>` : ""}
+    ${x.status === "andamento" ? `<button class="btn ok" onclick="demFinalizar(${x.id})">✅ FINALIZAR DEMANDA</button>` : ""}</div>`;
+}
+async function demMuda(id, st, extra){
+  if (!navigator.onLine) return toast("Sem internet: tente de novo quando a conexão voltar.");
+  try { await api("PATCH", "/rest/v1/ck_demandas?id=eq." + id, {status:st, ...(st === "andamento" ? {iniciado_em:new Date().toISOString()} : {}), ...(extra || {})}, {prefer:"return=minimal"}); closeSheet(); await atualizaDia(); render(); toast(st === "andamento" ? "Demanda iniciada." : "Demanda enviada."); } catch (e) { toast(e.message); }
+}
+function demFinalizar(id){
+  fotosTmp = []; const x = ((S.fil[hoje()] || {}).dem || []).find(d => d.id === id); if (!x) return;
+  openSheet(`<h2>📌 ${esc(x.descricao)}</h2><label class="f">Resposta: o que foi feito? (obrigatório)<textarea id="dmR" class="inp" rows="3"></textarea></label>${slotFoto("foto", "📷 Foto (opcional)")}
+    <button class="btn ok" onclick="demEnvia(${id},'concluido')">✅ CONCLUÍDA</button><button class="btn no" onclick="demEnvia(${id},'nao_realizado')">❌ NÃO DEU PARA FAZER</button><button class="btn" onclick="closeSheet()">Voltar</button>`);
+}
+async function demEnvia(id, st){
+  const resp = $("#dmR").value.trim(); if (!resp) return toast("Escreva a resposta.");
+  if (!navigator.onLine) return toast("Sem internet: tente de novo quando a conexão voltar.");
+  try {
+    const fotos = [];
+    for (const f of fotosTmp) { const path = `${S.filial}/${hoje()}/demanda-${id}-${Date.now().toString(36)}.jpg`; await api("POST", "/storage/v1/object/checklist/" + path, await (await fetch(f.dataUrl)).blob(), {tipo:"image/jpeg"}); const {dataUrl, ...r} = f; fotos.push({...r, path}); }
+    fotosTmp = []; await demMuda(id, st, {resposta:resp, fotos, concluido_em:new Date().toISOString()});
+  } catch (e) { toast(e.message); }
+}
+function telaDemandas(){
+  const d = S.data, D = ((S.fil[d] || {}).dem || []).slice().reverse();
+  $("#app").innerHTML = `<div class="card"><div class="row" style="justify-content:space-between"><button class="btn sm" onclick="mudaDia(-1)">◀</button><b style="font-family:var(--display);font-size:17px">📌 Demandas extras · ${dBR(d)}</b><button class="btn sm" onclick="mudaDia(1)">▶</button></div>
+    <p class="meta">Passe uma demanda específica para um colaborador. Se ela atrapalhar uma etapa, escolha qual etapa terá o horário abonado. A resposta do colaborador aparece só aqui (administrador e líderes).</p>
+    ${d === hoje() ? `<button class="btn pri" onclick="formDemanda()">+ Nova demanda extra</button>` : ""}</div>
+    ${D.map(x => { const sv = (S.servicos || []).find(s => s.id === x.servico_abonado); return `<div class="card"><div class="row" style="justify-content:space-between"><b style="font-size:16px">${esc(x.descricao)}</b>${pill(x.status)}</div>
+      <div class="meta">👷 ${esc(x.colaborador || nomeU(x.user_id))} · passada por ${esc(x.criado_por_nome || "—")} às ${hmTs(x.criado_em)}${sv ? `<br>🛡️ Abona: ${janela(sv)} ${esc(sv.nome)}` : ""}</div>
+      ${x.resposta ? `<div style="margin-top:6px">💬 <b>Resposta:</b> ${esc(x.resposta)}</div>` : ""}${x.concluido_em ? `<div class="meta">Finalizada às ${hmTs(x.concluido_em)}</div>` : ""}
+      <div class="fotos" id="dmf${x.id}"></div></div>`; }).join("") || `<p class="meta" style="padding:0 4px">Nenhuma demanda extra neste dia.</p>`}`;
+  D.forEach(x => { if ((x.fotos || []).length) mostraFotos($("#dmf" + x.id), x.fotos); });
+}
+function formDemanda(uid, servId){
+  const col = ativos();
+  openSheet(`<h2>📌 Nova demanda extra</h2>
+    <label class="f">Colaborador<select id="dmU" class="inp">${col.map(u => `<option value="${u.user_id}" ${u.user_id === uid ? "selected" : ""}>${esc(u.nome)} · ${esc(u.funcao)} · ${TURNOS[u.turno] || ""}</option>`).join("")}</select></label>
+    <label class="f">O que precisa ser feito?<textarea id="dmD" class="inp" rows="3" placeholder="Ex.: Limpar óleo derramado na pista 3"></textarea></label>
+    <label class="f">Horário<input id="dmH" type="time" class="inp" value="${agoraHM()}"></label>
+    <label class="f">Abonar o horário de qual etapa?<select id="dmS" class="inp"></select></label>
+    <button class="btn pri" id="btDm">📤 Passar demanda</button><button class="btn" onclick="closeSheet()">Voltar</button>`);
+  const opc = () => { const u = $("#dmU").value, L = linhasDia(hoje()).filter(x => x.resp === u && !x.ab); $("#dmS").innerHTML = `<option value="">Nenhuma (só a demanda)</option>` + L.map(x => `<option value="${x.s.id}" ${x.s.id === servId ? "selected" : ""}>${janela(x.s)} ${esc(x.s.nome)} · ${ST[x.st][0]}</option>`).join(""); };
+  $("#dmU").onchange = opc; opc();
+  $("#btDm").onclick = async () => {
+    const u = $("#dmU").value, desc = $("#dmD").value.trim(), sv = +$("#dmS").value || null; if (!u || !desc) return toast("Escolha o colaborador e escreva a demanda.");
+    $("#btDm").disabled = true;
+    try {
+      const [dm] = await api("POST", "/rest/v1/ck_demandas", {filial:S.filial, user_id:u, colaborador:nomeU(u), descricao:desc, data:hoje(), horario:$("#dmH").value || null, servico_abonado:sv, criado_por_nome:S.perfil.nome || S.perfil.login}, {prefer:"return=representation"});
+      if (sv) await api("POST", "/rest/v1/ck_abonos?on_conflict=servico_id,data", {filial:S.filial, servico_id:sv, data:hoje(), motivo:"Demanda extra: " + desc, demanda_id:dm.id, por_nome:S.perfil.nome || S.perfil.login}, {prefer:"resolution=merge-duplicates,return=minimal"});
+      closeSheet(); S.data = hoje(); await atualizaDia(); S.view = "dem"; render(); toast("Demanda passada para " + nomeU(u) + (sv ? " e horário abonado." : "."));
+    } catch (e) { $("#btDm").disabled = false; toast(/ck_demandas|ck_abonos/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase (tabelas novas)." : e.message); }
+  };
+}
+function abonar(id, d){
+  const x = linhasDia(d).find(x => x.s.id === id); if (!x) return;
+  openSheet(`<h2>🛡️ Abonar horário</h2><p class="meta">${janela(x.s)} · ${esc(x.s.nome)} · ${esc(nomeU(x.resp))} · ${dBR(d)}</p>${x.reg && x.reg.justificativa ? `<div class="ban warn">💬 Motivo do colaborador: ${esc(x.reg.justificativa)}</div>` : ""}
+    <label class="f">Motivo do abono (só administrador e líderes veem)<textarea id="abM" class="inp" rows="2" placeholder="Ex.: chamado para outra demanda na pista"></textarea></label><button class="btn pri" id="btAb">🛡️ Abonar</button><button class="btn" onclick="closeSheet()">Voltar</button>`);
+  $("#btAb").onclick = async () => { const m = $("#abM").value.trim(); if (!m) return toast("Escreva o motivo do abono.");
+    try { await api("POST", "/rest/v1/ck_abonos?on_conflict=servico_id,data", {filial:S.filial, servico_id:id, data:d, motivo:m, por_nome:S.perfil.nome || S.perfil.login}, {prefer:"resolution=merge-duplicates,return=minimal"}); closeSheet(); await atualizaDia(); render(); toast("Horário abonado."); } catch (e) { toast(e.message); } };
+}
+</script>
+<script>if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js?v=31').catch(()=>{});</script>
+</body>
+</html>

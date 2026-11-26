@@ -517,7 +517,7 @@ function vHome(){
   return `<div class="top"><div><h1>${esc(tituloPosto())}</h1><p class="sub">${esc(locaisAtivos().map(nomeLocal).join(" & "))}</p></div></div><div class="pad">
     <p class="lead">Controle de estoque da unidade</p>
     <div class="big">${b}</div>
-    <div class="row" style="justify-content:center"><button class="adm" data-act="admin">⚙️ Administração</button><button class="adm" data-act="minhaSenha">🔑 Trocar minha senha</button><button class="adm" data-act="meuEmail">📧 Meu e-mail</button><button class="adm" data-act="sair">🚪 Sair</button></div>${rankingAtivo() ? `<div style="display:flex;justify-content:center;margin-top:26px"><button class="btn brand" style="max-width:340px" data-act="ranking">🏆 ACOMPANHAMENTO METAS</button></div>` : ""}</div>`;
+    <div class="row" style="justify-content:center"><button class="adm" data-act="admin">⚙️ Administração</button><button class="adm" data-act="minhaSenha">🔑 Trocar minha senha</button><button class="adm" data-act="meuEmail">📧 Meu e-mail</button><button class="adm" data-act="sair">🚪 Sair</button></div>${rankingAtivo() ? `<div style="display:flex;justify-content:center;margin-top:26px"><button class="btn brand" style="max-width:340px" data-act="ranking">🏆 ACOMPANHAMENTO METAS</button></div>` : ""}${S.admin ? `<div style="display:flex;justify-content:center;margin-top:10px"><a class="btn" style="max-width:340px;text-decoration:none;text-align:center" href="checklist.html">✅ CHECKLIST SERVIÇOS GERAIS</a></div>` : ""}</div>`;
 }
 function vLocal(){
   const c = cfg(), cats = ["Todos", ...(Array.isArray(c.categorias) ? c.categorias : [])];
