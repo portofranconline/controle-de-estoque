@@ -78,6 +78,12 @@ tr.cl{cursor:pointer}tr.cl:hover{background:var(--surface2)}
 .passos{display:grid;gap:8px;margin-top:10px}.passo{display:flex;align-items:center;gap:12px;text-align:left;border:1px solid var(--line);background:var(--surface2);border-radius:14px;padding:13px;font-size:16px;cursor:pointer}
 .passo span{flex:none;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--line);font-weight:700;font-size:13px}.passo.ok{border-color:var(--good)}.passo.ok span{background:var(--good);border-color:var(--good);color:#fff}.passo:disabled{cursor:default}
 .btn.xl{font-size:19px;padding:17px;border-radius:16px;margin-top:14px}.nav{display:flex;justify-content:space-between;align-items:center;margin-top:12px}.nav .btn{margin:0}
+.home{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}.hbtn{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;cursor:pointer;min-height:132px;box-shadow:0 6px 18px rgba(43,26,16,.06)}
+.hbtn .hic{font-size:30px}.hbtn b{font-size:16px;font-family:var(--display)}.hbtn small{color:var(--muted);font-size:12px;line-height:1.35}.hbtn.crit{border:2px solid var(--crit)}.hbtn.warn{border:2px solid var(--warn)}.hbtn:active{transform:scale(.98)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px}.cal button{border:1px solid var(--line);background:var(--surface2);border-radius:8px;padding:7px 0;font-weight:700;font-size:13px;cursor:pointer}.cal .fo{background:var(--brand);border-color:var(--brand);color:#fff}.cal .fr{background:var(--warn-bg);border-color:var(--warn);color:var(--warn)}.cal .hj{outline:2px solid var(--cyan)}
+.lg{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle;margin:0 2px 0 8px}.lg.fo{background:var(--brand)}.lg.fr{background:var(--warn-bg);border:1px solid var(--warn)}
+body.cardEscuro .etapa{background:#1c1917;border-color:#292524;color:#fafaf9;box-shadow:0 14px 34px rgba(28,25,23,.25)}body.cardEscuro .etapa .meta{color:#d6d3d1}body.cardEscuro .etapa .relogio{background:#292524}
+body.cardEscuro .passo{background:#292524;border-color:#3f3a36;color:#fafaf9}body.cardEscuro .passo span{border-color:#57534e}body.cardEscuro .etapa .btn:not(.pri):not(.ok){background:#292524;border-color:#3f3a36;color:#fafaf9}
 @media(max-width:560px){.hide-m{display:none}.grid2{grid-template-columns:1fr}table{font-size:12px}th,td{padding:7px 3px}td .pill{font-size:10.5px;padding:2px 6px;white-space:nowrap}}
 @media print{.top,.tabs,.sync,#toast{display:none}}
 </style>
@@ -153,7 +159,8 @@ async function token(){
 
 /* ---------- visual (cores) definido pelo administrador: vale para todos os aparelhos ---------- */
 const TEMAS = {
-  moderno:{nome:"Moderno (padrão)", bg:"#eef2f7", surface:"#ffffff", surface2:"#f1f5f9", ink:"#0f172a", muted:"#64748b", line:"#e2e8f0", cyan:"#2563eb", brand:"#f97316", top:"#ffffff", dark:0, grad:1},
+  laranja:{nome:"Claro laranja (padrão)", bg:"#fffaf5", surface:"#ffffff", surface2:"#fff3e8", ink:"#2b1a10", muted:"#8c6d58", line:"#f2dfcf", cyan:"#ea580c", brand:"#f97316", top:"#ffffff", dark:0, grad:2, cardEscuro:1},
+  moderno:{nome:"Moderno", bg:"#eef2f7", surface:"#ffffff", surface2:"#f1f5f9", ink:"#0f172a", muted:"#64748b", line:"#e2e8f0", cyan:"#2563eb", brand:"#f97316", top:"#ffffff", dark:0, grad:1},
   padrao:{nome:"Azul noite", bg:"#060b16", surface:"#0e1829", surface2:"#122038", ink:"#e6eef9", muted:"#8597b2", line:"#1f2f4a", cyan:"#22d3ee", brand:"#f97316", top:"#0a1426", dark:1},
   aldo:{nome:"Laranja Aldo", bg:"#140b05", surface:"#21140a", surface2:"#2c1b0e", ink:"#fff4ea", muted:"#c9a98e", line:"#3d2815", cyan:"#fb923c", brand:"#f97316", top:"#1b1007", dark:1},
   verde:{nome:"Verde", bg:"#04140e", surface:"#0a2119", surface2:"#0f2c21", ink:"#e7fbf2", muted:"#8fb8a6", line:"#184332", cyan:"#34d399", brand:"#22c55e", top:"#06190f", dark:1},
@@ -165,20 +172,21 @@ const TEMAS = {
 const corTexto = h => { const n = parseInt(String(h).slice(1), 16), r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255; return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? "#111111" : "#ffffff"; };
 const hexRgb = h => { const n = parseInt(String(h).slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255].join(","); };
 function aplicaVisual(v){
-  v = v || {}; const t = {...(TEMAS[v.tema] || TEMAS.moderno)}; if (/^#[0-9a-f]{6}$/i.test(v.destaque || "")) t.cyan = v.destaque; if (/^#[0-9a-f]{6}$/i.test(v.botao || "")) t.brand = v.botao;
+  v = v || {}; const t = {...(TEMAS[v.tema] || TEMAS.laranja)}; if (/^#[0-9a-f]{6}$/i.test(v.destaque || "")) t.cyan = v.destaque; if (/^#[0-9a-f]{6}$/i.test(v.botao || "")) t.brand = v.botao;
   let el = document.getElementById("ckVisual"); if (!el) { el = document.createElement("style"); el.id = "ckVisual"; document.head.appendChild(el); }
-  el.textContent = `:root{--bg:${t.bg};--surface:${t.surface};--surface2:${t.surface2};--ink:${t.ink};--muted:${t.muted};--line:${t.line};--cyan:${t.cyan};--brand:${t.brand};--top:${t.top};--on-cyan:${corTexto(t.cyan)};--on-brand:${corTexto(t.brand)};--gridc:rgba(${hexRgb(t.cyan)},${v.grade === false || (t.grad && v.grade !== true) ? 0 : t.dark ? .045 : .07});color-scheme:${t.dark ? "dark" : "light"}}${v.letra === "grande" ? "body{zoom:1.15}" : ""}${t.grad && v.grade !== true ? "body{background-image:radial-gradient(circle at 0% 0%,rgba(37,99,235,.10),transparent 45%),radial-gradient(circle at 100% 0%,rgba(249,115,22,.10),transparent 40%);background-attachment:fixed}" : ""}`;
+  el.textContent = `:root{--bg:${t.bg};--surface:${t.surface};--surface2:${t.surface2};--ink:${t.ink};--muted:${t.muted};--line:${t.line};--cyan:${t.cyan};--brand:${t.brand};--top:${t.top};--on-cyan:${corTexto(t.cyan)};--on-brand:${corTexto(t.brand)};--gridc:rgba(${hexRgb(t.cyan)},${v.grade === false || (t.grad && v.grade !== true) ? 0 : t.dark ? .045 : .07});color-scheme:${t.dark ? "dark" : "light"}}${v.letra === "grande" ? "body{zoom:1.15}" : ""}${t.grad === 2 && v.grade !== true ? "body{background-image:radial-gradient(circle at 0% 100%,rgba(251,146,60,.30),transparent 45%),radial-gradient(circle at 100% 0%,rgba(253,186,116,.40),transparent 42%);background-size:auto;background-attachment:fixed}" : t.grad && v.grade !== true ? "body{background-image:radial-gradient(circle at 0% 0%,rgba(37,99,235,.10),transparent 45%),radial-gradient(circle at 100% 0%,rgba(249,115,22,.10),transparent 40%);background-size:auto;background-attachment:fixed}" : ""}`;
+  document.body && document.body.classList.toggle("cardEscuro", !!t.cardEscuro);
   const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t.top;
 }
 aplicaVisual(LS.get(NS + ".ck.visual", null));
 function telaVisual(){
-  const v = S.visTmp || (S.visTmp = {tema:"moderno", letra:"normal", grade:false, ...((S.cfg || {}).visual || {})});
+  const v = S.visTmp || (S.visTmp = {tema:"laranja", letra:"normal", grade:false, ...((S.cfg || {}).visual || {})});
   aplicaVisual(v);
   return `<div class="card"><h2>🎨 Cores e visual</h2><p class="meta">Escolha o modelo. A prévia aparece na hora nesta tela; depois de salvar, vale para todos os celulares dos colaboradores.</p>
     <div class="tiles" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">${Object.entries(TEMAS).map(([k, t]) => `<button onclick="S.visTmp.tema='${k}';render()" style="text-align:left;cursor:pointer;border-radius:12px;padding:10px;background:${t.surface};color:${t.ink};border:2px solid ${v.tema === k ? t.cyan : t.line}">
       <div style="display:flex;gap:4px;margin-bottom:6px">${[t.bg, t.surface2, t.cyan, t.brand].map(c => `<i style="width:20px;height:20px;border-radius:6px;background:${c};border:1px solid ${t.line}"></i>`).join("")}</div><b style="font-size:13px">${t.nome}</b>${v.tema === k ? ` <span style="color:${t.cyan}">✔</span>` : ""}</button>`).join("")}</div>
-    <div class="grid2" style="margin-top:8px"><label class="f">Cor de destaque (abas e títulos)<div class="row"><input type="color" value="${v.destaque || (TEMAS[v.tema] || TEMAS.moderno).cyan}" oninput="S.visTmp.destaque=this.value;aplicaVisual(S.visTmp)" style="width:56px;height:40px;border:0;background:none">${v.destaque ? `<button class="btn sm" onclick="delete S.visTmp.destaque;render()">usar do modelo</button>` : ""}</div></label>
-      <label class="f">Cor dos botões principais<div class="row"><input type="color" value="${v.botao || (TEMAS[v.tema] || TEMAS.moderno).brand}" oninput="S.visTmp.botao=this.value;aplicaVisual(S.visTmp)" style="width:56px;height:40px;border:0;background:none">${v.botao ? `<button class="btn sm" onclick="delete S.visTmp.botao;render()">usar do modelo</button>` : ""}</div></label></div>
+    <div class="grid2" style="margin-top:8px"><label class="f">Cor de destaque (abas e títulos)<div class="row"><input type="color" value="${v.destaque || (TEMAS[v.tema] || TEMAS.laranja).cyan}" oninput="S.visTmp.destaque=this.value;aplicaVisual(S.visTmp)" style="width:56px;height:40px;border:0;background:none">${v.destaque ? `<button class="btn sm" onclick="delete S.visTmp.destaque;render()">usar do modelo</button>` : ""}</div></label>
+      <label class="f">Cor dos botões principais<div class="row"><input type="color" value="${v.botao || (TEMAS[v.tema] || TEMAS.laranja).brand}" oninput="S.visTmp.botao=this.value;aplicaVisual(S.visTmp)" style="width:56px;height:40px;border:0;background:none">${v.botao ? `<button class="btn sm" onclick="delete S.visTmp.botao;render()">usar do modelo</button>` : ""}</div></label></div>
     <div class="chk" style="margin-top:8px"><label><input type="checkbox" ${v.letra === "grande" ? "checked" : ""} onchange="S.visTmp.letra=this.checked?'grande':'normal';aplicaVisual(S.visTmp)">🔠 Letras e botões maiores</label><label><input type="checkbox" ${v.grade !== false ? "checked" : ""} onchange="S.visTmp.grade=this.checked;aplicaVisual(S.visTmp)">▦ Fundo quadriculado</label></div>
     <div class="task" style="margin-top:10px"><div class="h">08:00</div><div class="n">🧹 Prévia: Limpeza da loja</div><div class="meta">Loja · 📷 Foto antes e depois</div><span class="pill p-pend">🔴 Pendente</span> <span class="pill p-ok">🟢 Concluído</span><button class="btn pri">▶️ INICIAR SERVIÇO</button></div>
     <div class="row"><button class="btn pri" style="flex:1" onclick="salvaVisual(this)">💾 Salvar para todos</button><button class="btn" style="flex:1" onclick="S.visTmp=null;aplicaVisual((S.cfg||{}).visual);render()">↩️ Desfazer</button></div></div>`;
@@ -238,14 +246,14 @@ async function entrar(){
 }
 function sair(){ S.sess = null; LS.del(K.sess); LS.del(NS + ".ck.perfil"); location.reload(); }
 async function entrou(offline){
-  S.papel = S.perfil.papel || "colaborador"; S.admin = S.papel === "admin"; S.lider = S.papel === "lider"; S.data = hoje();
+  S.papel = S.perfil.papel || "colaborador"; S.admin = S.papel === "admin"; S.lider = S.papel === "lider"; S.data = hoje(); if (S.admin) S.view = "inicio";
   $("#tTit").textContent = "Checklist Serviços Gerais"; S.nomeFilial = S.perfil.nome_filial || "";
   $("#tAcoes").innerHTML = `<button class="btn sm" onclick="sair()">🚪 Sair</button>`;
   if (!offline) await carregaBase().catch(e => { console.error(e); toast("Sem internet: usando os dados guardados."); });
   else Object.assign(S, LS.get(NS + ".ck.base", {}));
   if (!(await abrirJornada())) { sincroniza(); setInterval(() => { if (S.bloqueado && document.visibilityState === "visible") abrirJornada().then(ok => { if (ok) { S.bloqueado = false; render(); } }); }, 120000); return; }
   render(); sincroniza(); avisos();
-  setInterval(async () => { if (S.bloqueado) return; if (S.papel === "colaborador" && S.jor && !S.jor.saida && Date.now() > new Date(S.jor.ate).getTime()) { abrirJornada(); return; } if (S.view === "hoje" || S.view === "dem" || !S.admin) { if (S.papel === "colaborador") await carregaBase().catch(() => {}); else await atualizaDia(); if (!$("#veil.open") && !(document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))) render(); } avisos(); if (S.admin) contaPedidos(); sincroniza(); }, 60000);
+  setInterval(async () => { if (S.bloqueado) return; if (S.papel === "colaborador" && S.jor && !S.jor.saida && Date.now() > new Date(S.jor.ate).getTime()) { abrirJornada(); return; } if (S.view === "hoje" || S.view === "dem" || S.view === "inicio" || !S.admin) { if (S.papel === "colaborador") await carregaBase().catch(() => {}); else await atualizaDia(); if (!$("#veil.open") && !(document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))) render(); } avisos(); if (S.admin) contaPedidos(); sincroniza(); }, 60000);
   document.addEventListener("visibilitychange", () => { if (document.hidden || S.papel !== "colaborador") return; abrirJornada().then(ok => { if (ok) { S.bloqueado = false; carregaBase().then(render).catch(() => render()); } }); });
   if (S.admin) contaPedidos();
   if (S.admin) setTimeout(limpezaAuto, 3000);
@@ -253,7 +261,7 @@ async function entrou(offline){
 
 /* ================= dados ================= */
 async function carregaBase(){
-  const [us, lo, sv, fo, cf] = await Promise.all([tb("ck_usuarios", "select=user_id,nome,login,funcao,turno,ativo,papel&order=nome"), tb("ck_locais", "select=*&order=ordem,nome"), tb("ck_servicos", "select=*&order=horario"), tb("ck_folgas", "select=*&order=data_ini.desc"), tb("ck_config", "select=*")]);
+  const [us, lo, sv, fo, cf] = await Promise.all([tb("ck_usuarios", "select=user_id,nome,login,funcao,turno,ativo,papel,escala,folga_dia,escala_base,cobertura&order=nome"), tb("ck_locais", "select=*&order=ordem,nome"), tb("ck_servicos", "select=*&order=horario"), tb("ck_folgas", "select=*&order=data_ini.desc"), tb("ck_config", "select=*")]);
   Object.assign(S, {usuarios:us || [], locais:lo || [], servicos:sv || [], folgas:fo || [], cfg:(cf || [])[0] || {filial:S.filial, retencao_dias:90}});
   if (S.admin) S.links = await rpc("ck_links").catch(() => ({})) || {};
   if (!S.visTmp) { aplicaVisual(S.cfg.visual); LS.set(NS + ".ck.visual", S.cfg.visual || {}); }
@@ -269,7 +277,10 @@ async function atualizaDia(){
 }
 const nomeU = id => { const u = (S.usuarios || []).find(x => x.user_id === id); return u ? u.nome : (S.perfil && id === S.perfil.user_id ? S.perfil.nome : "—"); };
 const nomeL = id => { const l = (S.locais || []).find(x => x.id === id); return l ? l.nome : ""; };
-const emFolga = (uid, d) => (S.folgas || []).find(f => f.user_id === uid && f.data_ini <= d && f.data_fim >= d);
+const emFolga = (uid, d) => { const f = (S.folgas || []).find(f => f.user_id === uid && f.data_ini <= d && f.data_fim >= d); if (f) return f; const u = (S.usuarios || []).find(x => x.user_id === uid); if (!u) return null;
+  if (u.escala === "6x1" && u.folga_dia != null && diaSem(d) === +u.folga_dia) return {tipo:"folga 6x1", cobertura:u.cobertura, auto:1};
+  if (u.escala === "12x36" && u.escala_base) { const n = Math.round((new Date(d + "T12:00:00") - new Date(u.escala_base + "T12:00:00")) / 86400000); if (((n % 2) + 2) % 2 === 1) return {tipo:"folga 12x36", cobertura:u.cobertura, auto:1}; }
+  return null; };
 const ativos = () => (S.usuarios || []).filter(u => u.ativo && u.papel !== "lider");
 function programa(s, d){ return s.ativo && (s.dias || [0, 1, 2, 3, 4, 5, 6]).includes(diaSem(d)) && !(s.criado_em && d < dStr(new Date(s.criado_em))); }
 /* quem faz o serviço no dia: troca manual > responsável fixo > mesma função e turno; de folga -> cobertura */
@@ -280,7 +291,7 @@ function responsavel(s, d, aj){
   if (!base) { const u = ativos().find(u => u.funcao === s.funcao && u.turno === s.turno && !emFolga(u.user_id, d)) || ativos().find(u => u.funcao === s.funcao && u.turno === s.turno); base = u ? u.user_id : null; }
   const f = base && emFolga(base, d);
   if (!f) return {uid:base};
-  let cob = f.cobertura && !emFolga(f.cobertura, d) ? f.cobertura : null;
+  let cob = [f.cobertura, ((S.usuarios || []).find(x => x.user_id === base) || {}).cobertura].find(c => c && !emFolga(c, d)) || null;
   if (!cob) { const livre = u => u.user_id !== base && !emFolga(u.user_id, d), mesmoT = u => u.turno === s.turno; const u = ativos().find(u => /triagem/i.test(u.funcao) && livre(u) && mesmoT(u)) || ativos().find(u => /triagem/i.test(u.funcao) && livre(u)) || ativos().find(u => u.funcao === s.funcao && livre(u)) || ativos().find(livre); cob = u ? u.user_id : null; }
   return {uid:cob, cobertura:true, de:base, folga:f};
 }
@@ -377,12 +388,12 @@ async function mostraFotos(el, fotos){
 function render(){
   if (!S.perfil) return;
   if (S.papel === "colaborador") { $("#tabs").innerHTML = `<div class="tabs">${[["hoje", "✅ Minhas etapas"], ["mat", "📦 Pedir material"]].map(([k, t]) => `<button class="${S.view === k ? "on" : ""}" onclick="S.view='${k}';render()">${t}</button>`).join("")}</div>`; return S.view === "mat" ? telaMatColab() : telaColab(); }
-  const tabs = S.admin ? [["hoje", "📊 Hoje"], ["dem", "📌 Demandas extras"], ["mat", "📦 Materiais" + (S.nPed ? " (" + S.nPed + ")" : "")], ["hist", "📜 Histórico"], ["serv", "🧹 Etapas"], ["equipe", "👥 Equipe"], ["escala", "📅 Escala"], ["cfg", "⚙️ Config"]]
+  const tabs = S.admin ? [["inicio", "🏠 Início"], ["hoje", "📊 Hoje"], ["dem", "📌 Demandas extras"], ["mat", "📦 Materiais" + (S.nPed ? " (" + S.nPed + ")" : "")], ["hist", "📜 Histórico"], ["serv", "🧹 Etapas"], ["equipe", "👥 Equipe"], ["escala", "📅 Escala"], ["cfg", "⚙️ Config"]]
     : [["hoje", "📊 Demandas do dia"], ["dem", "📌 Demandas extras"]];
-  if (!tabs.some(t => t[0] === S.view)) S.view = "hoje";
+  if (!tabs.some(t => t[0] === S.view)) S.view = S.admin ? "inicio" : "hoje";
   $("#tabs").innerHTML = `<div class="tabs">${tabs.map(([k, t]) => `<button class="${S.view === k ? "on" : ""}" onclick="if(S.view==='cfg'&&'${k}'!=='cfg'){S.visTmp=null;aplicaVisual((S.cfg||{}).visual)}S.view='${k}';render()">${t}</button>`).join("")}</div>`;
   $("#tSub").textContent = (S.nomeFilial ? S.nomeFilial + " · " : "") + (S.admin ? "Administrador" : "Líder · " + (S.perfil.nome || ""));
-  ({hoje:telaHoje, dem:telaDemandas, mat:telaMatAdmin, hist:telaHist, serv:telaServ, equipe:telaEquipe, escala:telaEscala, cfg:telaCfg})[S.view]();
+  ({inicio:telaInicio, hoje:telaHoje, dem:telaDemandas, mat:telaMatAdmin, hist:telaHist, serv:telaServ, equipe:telaEquipe, escala:telaEscala, cfg:telaCfg})[S.view]();
 }
 const pill = st => `<span class="pill ${ST[st][1]}">${ST[st][0]}</span>`;
 
@@ -747,10 +758,22 @@ function senhaUser(id){
 
 /* ---------- admin: escala ---------- */
 function telaEscala(){
-  const F = (S.folgas || []).filter(f => f.data_fim >= addDia(hoje(), -30));
-  $("#app").innerHTML = `<div class="card"><h2>📅 Escala · folgas, férias e ausências</h2><p class="meta">No dia da folga, os serviços da pessoa vão para a cobertura escolhida (ou, se ficar automático, para um colaborador da triagem). A cobertura vê o aviso ⚠️ COBERTURA DE FOLGA.</p><button class="btn pri" onclick="formFolga()">+ Nova folga / férias / ausência</button></div>
-    <div class="card">${F.length ? `<table><tr><th>Colaborador</th><th>Período</th><th>Tipo</th><th>Cobertura</th><th></th></tr>${F.map(f => `<tr><td>${esc(nomeU(f.user_id))}</td><td>${dBR(f.data_ini)}${f.data_fim !== f.data_ini ? " a " + dBR(f.data_fim) : ""}</td><td>${esc(f.tipo)}${f.motivo ? `<div class="meta">${esc(f.motivo)}</div>` : ""}</td><td>${esc(f.cobertura ? nomeU(f.cobertura) : "automática")}</td><td><button class="btn sm" onclick="apagaFolga(${f.id})">🗑️</button></td></tr>`).join("")}</table>` : `<p class="meta">Nenhuma folga cadastrada.</p>`}</div>
-    <div class="card"><h2>🔁 Troca de responsável em um dia</h2><p class="meta">Em 📊 Hoje, toque no serviço e escolha "Trocar responsável neste dia".</p></div>`;
+  const mes = S.escMes || hoje().slice(0, 7); S.escMes = mes;
+  const [a, m] = mes.split("-").map(Number), nd = new Date(a, m, 0).getDate(), dia = k => mes + "-" + pad(k), col = ativos();
+  const hojeF = col.map(u => [u, emFolga(u.user_id, hoje())]).filter(x => x[1]);
+  $("#app").innerHTML = `<div class="card"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><button class="btn sm" style="margin:0" onclick="mudaMesEsc(-1)">◀</button><b style="font-family:var(--display);font-size:16px;text-align:center;flex:1">📅 ${["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"][m - 1]} ${a}</b><button class="btn sm" style="margin:0" onclick="mudaMesEsc(1)">▶</button></div>
+    <label class="btn pri xl" style="cursor:pointer">📷 Ler foto da escala de folgas<input type="file" accept="image/*" hidden onchange="lerFotoEscala(this)"></label>
+    <p class="meta" style="margin:6px 0 0">Escolha a foto da escala: o sistema lê os dias de folga de cada um e mostra para você conferir antes de salvar. Também dá para tocar nos dias abaixo para marcar ou tirar folga.</p>
+    ${hojeF.length ? `<div class="ban warn" style="margin-top:10px">Hoje: ${hojeF.map(([u, f]) => `<b>${esc(u.nome)}</b> de folga → cobre <b>${esc(nomeU(responsavelCob(u.user_id, hoje())) || "ninguém definido")}</b>`).join(" · ")}</div>` : ""}</div>
+    ${col.map(u => { const nf = Array.from({length:nd}, (_, i) => emFolga(u.user_id, dia(i + 1))).filter(Boolean).length; return `<div class="card"><div class="row" style="justify-content:space-between"><b style="font-size:17px">${esc(u.nome)}</b><span class="meta">${esc(u.funcao)} · ${TURNOS[u.turno] || ""} · ${nf} folga(s) no mês</span></div>
+      <div class="grid2"><label class="f">Tipo de escala<select class="inp" onchange="salvaEscala('${u.user_id}','escala',this.value)">${[["livre", "Pela foto / manual"], ["6x1", "6x1 (1 folga por semana)"], ["12x36", "12x36 (dia sim, dia não)"]].map(([k, t]) => `<option value="${k}" ${(u.escala || "livre") === k ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+        ${u.escala === "6x1" ? `<label class="f">Dia da folga<select class="inp" onchange="salvaEscala('${u.user_id}','folga_dia',this.value)"><option value="">Escolha…</option>${DIAS.map((t, i) => `<option value="${i}" ${String(u.folga_dia) === String(i) ? "selected" : ""}>${t}</option>`).join("")}</select></label>` : ""}
+        ${u.escala === "12x36" ? `<label class="f">Um dia em que trabalha<input type="date" class="inp" value="${u.escala_base || ""}" onchange="salvaEscala('${u.user_id}','escala_base',this.value)"></label>` : ""}
+        <label class="f">Quem cobre as folgas<select class="inp" onchange="salvaEscala('${u.user_id}','cobertura',this.value)"><option value="">Automático (triagem)</option>${col.filter(x => x.user_id !== u.user_id).map(x => `<option value="${x.user_id}" ${u.cobertura === x.user_id ? "selected" : ""}>${esc(x.nome)}</option>`).join("")}</select></label></div>
+      <div class="cal">${Array.from({length:(new Date(a, m - 1, 1).getDay())}, () => "<i></i>").join("")}${Array.from({length:nd}, (_, i) => { const d = dia(i + 1), f = emFolga(u.user_id, d); return `<button class="${f ? (f.auto ? "fr" : "fo") : ""} ${d === hoje() ? "hj" : ""}" onclick="toggleFolga('${u.user_id}','${d}')" title="${f ? esc(f.tipo) : "trabalha"}">${i + 1}</button>`; }).join("")}</div>
+      <div class="meta" style="margin-top:4px"><span class="lg fo"></span> folga marcada/da foto <span class="lg fr"></span> folga pela regra ${u.escala === "livre" ? "" : u.escala}</div></div>`; }).join("") || `<p class="meta">Cadastre os colaboradores em 👥 Equipe.</p>`}
+    <div class="card"><h2>🏖️ Férias e ausências</h2><button class="btn" onclick="formFolga()">+ Férias / ausência / folga avulsa</button>
+      ${(S.folgas || []).filter(f => f.tipo !== "escala" && f.data_fim >= addDia(hoje(), -30)).map(f => `<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line);padding:6px 0"><span><b>${esc(nomeU(f.user_id))}</b> · ${esc(f.tipo)} · ${dBR(f.data_ini)}${f.data_fim !== f.data_ini ? " a " + dBR(f.data_fim) : ""}</span><button class="btn sm" onclick="apagaFolga(${f.id})">🗑️</button></div>`).join("") || `<p class="meta">Nenhuma.</p>`}</div>`;
 }
 function formFolga(){
   openSheet(`<h2>Nova folga / férias / ausência</h2>
@@ -1018,6 +1041,84 @@ function abonarDemanda(id){
   $("#btAb").onclick = async () => { const sv = +$("#abS").value;
     try { await api("POST", "/rest/v1/ck_abonos?on_conflict=servico_id,data", {filial:S.filial, servico_id:sv, data:dm.data, motivo:"Demanda extra: " + dm.descricao, demanda_id:dm.id, por_nome:S.perfil.nome || S.perfil.login}, {prefer:"resolution=merge-duplicates,return=minimal"});
       await api("PATCH", "/rest/v1/ck_demandas?id=eq." + dm.id, {servico_abonado:sv}, {prefer:"return=minimal"}); closeSheet(); await atualizaDia(); render(); toast("Etapa abonada."); } catch (e) { toast(e.message); } };
+}
+function mudaMesEsc(n){ const [a, m] = S.escMes.split("-").map(Number), d = new Date(a, m - 1 + n, 1); S.escMes = d.getFullYear() + "-" + pad(d.getMonth() + 1); render(); }
+const usuarioDe = id => (S.usuarios || []).find(u => u.user_id === id);
+function responsavelCob(uid, d){ const f = emFolga(uid, d), u = usuarioDe(uid) || {}; return [f && f.cobertura, u.cobertura].find(c => c && !emFolga(c, d)) || (ativos().find(x => /triagem/i.test(x.funcao) && x.user_id !== uid && !emFolga(x.user_id, d)) || {}).user_id; }
+async function salvaEscala(uid, campo, v){
+  const val = campo === "folga_dia" ? (v === "" ? null : +v) : (v || null);
+  try { await api("PATCH", "/rest/v1/ck_usuarios?user_id=eq." + uid, {[campo]:campo === "escala" ? (v || "livre") : val}, {prefer:"return=minimal"}); await carregaBase(); render(); toast("Escala salva."); } catch (e) { toast(/escala|folga_dia|cobertura/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); }
+}
+async function toggleFolga(uid, d){
+  const ex = (S.folgas || []).find(f => f.user_id === uid && f.tipo === "escala" && f.data_ini === d);
+  if (!ex && emFolga(uid, d)) return toast("Esta folga vem da regra " + (usuarioDe(uid) || {}).escala + " ou de férias. Mude a regra acima.");
+  try { if (ex) await api("DELETE", "/rest/v1/ck_folgas?id=eq." + ex.id); else await api("POST", "/rest/v1/ck_folgas", {filial:S.filial, user_id:uid, tipo:"escala", data_ini:d, data_fim:d, cobertura:(usuarioDe(uid) || {}).cobertura || null, motivo:"escala"}, {prefer:"return=minimal"}); await carregaBase(); render(); } catch (e) { toast(e.message); }
+}
+let tessP = null;
+function carregaTesseract(){ if (window.Tesseract) return Promise.resolve(window.Tesseract); if (!tessP) tessP = new Promise((ok, er) => { const sc = document.createElement("script"); sc.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"; sc.onload = () => ok(window.Tesseract); sc.onerror = () => { tessP = null; er(new Error("Sem internet para ler a foto.")); }; document.head.appendChild(sc); }); return tessP; }
+function prepImg(img, larg, lim){ const k = Math.max(1, larg / img.width), cv = document.createElement("canvas"); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k); const g = cv.getContext("2d"); g.drawImage(img, 0, 0, cv.width, cv.height); const d = g.getImageData(0, 0, cv.width, cv.height); for (let i = 0; i < d.data.length; i += 4) { const y = 0.3 * d.data[i] + 0.59 * d.data[i + 1] + 0.11 * d.data[i + 2] < lim ? 0 : 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = y; } g.putImageData(d, 0, 0); return cv; }
+const semAc = v => String(v || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
+/* lê o texto da foto: em cada linha com o nome de alguém, pega os dias de folga (números do dia, ou a grade de letras com F/X/D) */
+function parseEscala(txt, nd){
+  const res = {};
+  for (const bruto of String(txt).split(/\n+/)) {
+    const l = semAc(bruto).replace(/[|]/g, " ").replace(/\s+/g, " ").trim(); if (!l) continue;
+    const u = ativos().find(u => { const p = semAc(u.nome).split(" ")[0]; return p.length >= 3 && new RegExp("\\b" + p + "\\b").test(l); }); if (!u) continue;
+    const resto = l.slice(l.indexOf(semAc(u.nome).split(" ")[0]) + semAc(u.nome).split(" ")[0].length), toks = resto.split(" ").filter(Boolean);
+    const letras = toks.filter(t => /^[A-Z]{1,2}$/.test(t)), set = res[u.user_id] = res[u.user_id] || new Set();
+    if (letras.length >= Math.min(nd, 20)) letras.slice(0, nd).forEach((t, i) => { if (/^(F|FO|FG|X|D|DS|FL)$/.test(t)) set.add(i + 1); });
+    else (resto.match(/\b\d{1,2}\b/g) || []).map(Number).filter(n => n >= 1 && n <= nd).forEach(n => set.add(n));
+  }
+  return res;
+}
+function sugereEscala(dias, mes){
+  const l = [...dias].sort((a, b) => a - b); if (l.length < 2) return null; const dif = l.slice(1).map((v, i) => v - l[i]);
+  if (dif.every(x => x === 7)) return {escala:"6x1", folga_dia:diaSem(mes + "-" + pad(l[0])), txt:"6x1 · folga toda " + DIAS[diaSem(mes + "-" + pad(l[0]))]};
+  if (dif.every(x => x === 2)) { const t = l[0] === 1 ? 2 : 1; return {escala:"12x36", escala_base:mes + "-" + pad(t), txt:"12x36 · dia sim, dia não"}; }
+  return null;
+}
+async function lerFotoEscala(inp){
+  const f = inp.files && inp.files[0]; inp.value = ""; if (!f) return;
+  openSheet(`<h2>📷 Lendo a escala…</h2><p class="meta">Pode levar alguns segundos.</p>`);
+  try {
+    const T = await carregaTesseract(), img = await new Promise((ok, er) => { const i = new Image(); i.onload = () => ok(i); i.onerror = er; i.src = URL.createObjectURL(f); });
+    const w = await T.createWorker("por"); let txt = ""; try { for (const [larg, lim] of [[2000, 150], [2400, 170]]) txt += "\n" + (await w.recognize(prepImg(img, larg, lim))).data.text; } finally { await w.terminate(); }
+    const [a, m] = S.escMes.split("-").map(Number), nd = new Date(a, m, 0).getDate();
+    S.escLida = {mes:S.escMes, dias:Object.fromEntries(Object.entries(parseEscala(txt, nd)).map(([k, v]) => [k, [...v]]))};
+    previaEscala();
+  } catch (e) { console.error(e); openSheet(`<h2>Não foi possível ler</h2><p class="meta">${esc(e.message || "Tente uma foto mais nítida, de frente e com boa luz.")}</p><button class="btn" onclick="closeSheet()">Fechar</button>`); }
+}
+function previaEscala(){
+  const E = S.escLida, [a, m] = E.mes.split("-").map(Number), nd = new Date(a, m, 0).getDate(), col = ativos();
+  openSheet(`<h2>📅 Conferir a escala lida</h2><p class="meta">Toque nos dias para corrigir. Laranja = folga. Quem não apareceu na foto fica sem alteração.</p>
+    ${col.map(u => { const d = E.dias[u.user_id], sg = d ? sugereEscala(d, E.mes) : null; return `<div class="fslot"><div class="row" style="justify-content:space-between"><b>${esc(u.nome)}</b><span class="meta">${d ? d.length + " folga(s)" : "não encontrado na foto"}</span></div>
+      ${d ? `<div class="cal">${Array.from({length:(new Date(a, m - 1, 1).getDay())}, () => "<i></i>").join("")}${Array.from({length:nd}, (_, i) => `<button class="${d.includes(i + 1) ? "fo" : ""}" onclick="tglPrev('${u.user_id}',${i + 1})">${i + 1}</button>`).join("")}</div>
+      ${sg ? `<label class="meta" style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" data-sug="${u.user_id}" checked> Usar a regra <b>${sg.txt}</b> nos próximos meses</label>` : ""}` : `<button class="btn sm" onclick="S.escLida.dias['${u.user_id}']=[];previaEscala()">+ Marcar folgas à mão</button>`}</div>`; }).join("")}
+    <button class="btn pri xl" onclick="salvaEscalaLida(this)">💾 Salvar escala</button><button class="btn" onclick="closeSheet()">Cancelar</button>`);
+}
+function tglPrev(uid, k){ const l = S.escLida.dias[uid] || []; S.escLida.dias[uid] = l.includes(k) ? l.filter(x => x !== k) : l.concat(k); const sc = $("#sheet").scrollTop; previaEscala(); $("#sheet").scrollTop = sc; }
+async function salvaEscalaLida(b){
+  const E = S.escLida, [a, m] = E.mes.split("-").map(Number), nd = new Date(a, m, 0).getDate(), ini = E.mes + "-01", fim = E.mes + "-" + pad(nd);
+  b.disabled = true;
+  try {
+    for (const [uid, dias] of Object.entries(E.dias)) {
+      await api("DELETE", `/rest/v1/ck_folgas?user_id=eq.${uid}&tipo=eq.escala&data_ini=gte.${ini}&data_ini=lte.${fim}`);
+      const cob = (usuarioDe(uid) || {}).cobertura || null;
+      if (dias.length) await api("POST", "/rest/v1/ck_folgas", dias.map(k => ({filial:S.filial, user_id:uid, tipo:"escala", data_ini:E.mes + "-" + pad(k), data_fim:E.mes + "-" + pad(k), cobertura:cob, motivo:"foto da escala"})), {prefer:"return=minimal"});
+      const sg = $(`[data-sug="${uid}"]`); if (sg && sg.checked) { const s = sugereEscala(dias, E.mes); if (s) { const {txt, ...campos} = s; await api("PATCH", "/rest/v1/ck_usuarios?user_id=eq." + uid, campos, {prefer:"return=minimal"}); } }
+    }
+    closeSheet(); await carregaBase(); render(); toast("Escala salva. Nos dias de folga, as etapas vão para quem cobre.");
+  } catch (e) { b.disabled = false; toast(e.message); }
+}
+/* início do administrador: botões grandes */
+function telaInicio(){
+  const d = hoje(), L = linhasDia(d), c = contagem(L), fora = L.filter(foraHorario).length, pend = S.nPed || 0, folga = ativos().filter(u => emFolga(u.user_id, d));
+  const T = [["hoje", "📊", "Acompanhar o dia", `${c.ok} de ${c.tot} etapas · ${fora} fora do horário`, fora ? "crit" : ""], ["demanda", "📌", "Passar demanda extra", "Mandar uma tarefa para alguém agora", ""],
+    ["escala", "📅", "Escala e folgas", folga.length ? "Hoje de folga: " + folga.map(u => u.nome).join(", ") : "Ler a foto da escala, 6x1, 12x36", ""], ["serv", "🧹", "Etapas e horários", (S.servicos || []).filter(s => s.ativo).length + " etapas cadastradas", ""],
+    ["equipe", "👥", "Equipe e links", ativos().length + " colaboradores · enviar ou resetar link", ""], ["mat", "📦", "Pedidos de material", pend ? pend + " esperando resposta" : "Nenhum pedido novo", pend ? "warn" : ""],
+    ["hist", "📜", "Histórico e relatórios", "PDF e Excel por dia, semana ou mês", ""], ["cfg", "⚙️", "Configurações", "Local do posto, cores, tolerância", ""]];
+  $("#app").innerHTML = `<div class="hero"><div><div class="oi">Olá, ${esc((S.perfil.nome || "").split(" ")[0])}!</div><div class="meta">${DIAS[diaSem(d)]} ${dBR(d)} · checklist ${c.pct}% concluído</div></div></div><div class="bar" style="margin:0 0 14px"><i style="width:${c.pct}%"></i></div>
+    <div class="home">${T.map(([k, ic, t, sub, cl]) => `<button class="hbtn ${cl}" onclick="${k === "demanda" ? "formDemanda()" : `S.view='${k}';render()`}"><span class="hic">${ic}</span><b>${t}</b><small>${esc(sub)}</small></button>`).join("")}</div>`;
 }
 </script>
 <script>if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js?v=31').catch(()=>{});</script>
