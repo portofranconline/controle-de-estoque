@@ -63,6 +63,9 @@ tr.cl{cursor:pointer}tr.cl:hover{background:var(--surface2)}
 #veil.open{display:flex}
 #sheet{background:var(--surface);border:1px solid var(--line);border-radius:18px 18px 0 0;width:100%;max-width:620px;max-height:92vh;overflow:auto;padding:16px 16px calc(18px + env(safe-area-inset-bottom))}
 #sheet h2{margin:0 0 8px;font-family:var(--display);font-size:18px}
+.voltar{position:sticky;top:-16px;z-index:3;display:inline-flex;align-items:center;gap:6px;margin:-4px 0 10px;padding:9px 16px;border-radius:999px;border:1px solid var(--line);background:var(--surface2);color:var(--text);font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 4px 14px rgba(43,26,16,.10)}
+.etapa .voltar{position:static;margin:0 0 8px;background:#f97316;border-color:#f97316;color:#fff}
+.assin{position:relative;border:2px dashed var(--line);border-radius:14px;background:#fff;margin-top:6px;touch-action:none}.assin canvas{display:block;width:100%;height:170px;touch-action:none;cursor:crosshair}.assin .lin{position:absolute;left:16px;right:16px;bottom:38px;border-top:1.5px solid #9ca3af;pointer-events:none}.assin .x{position:absolute;left:14px;bottom:42px;color:#9ca3af;font-weight:800;pointer-events:none}.assin.ok{border:2px solid var(--good)}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(140%);background:var(--top);border:1px solid var(--cyan);border-radius:12px;padding:11px 16px;font-weight:700;z-index:30;transition:transform .25s;max-width:92vw;text-align:center}
 #toast.show{transform:translateX(-50%) translateY(0)}
 .sync{position:fixed;right:10px;bottom:10px;z-index:6;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;background:var(--top);border:1px solid var(--line)}
@@ -72,15 +75,30 @@ tr.cl{cursor:pointer}tr.cl:hover{background:var(--surface2)}
 .hero{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:2px 2px 8px}.hero .oi{font-family:var(--display);font-size:22px;font-weight:700}
 .dots{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 10px}.dot{flex:none;border:2px solid var(--line);background:var(--surface);color:var(--muted);border-radius:12px;padding:7px 10px;font-weight:700;font-size:13px;cursor:pointer}
 .dot.ok{border-color:var(--good);color:var(--good)}.dot.late{border-color:var(--crit);color:var(--crit)}.dot.now{border-color:var(--brand);color:var(--brand)}.dot.on{background:var(--cyan);border-color:var(--cyan);color:var(--on-cyan)}
-.etapa{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:18px;box-shadow:0 10px 30px rgba(15,23,42,.08);margin-bottom:12px}.etapa.urg{border:2px solid var(--crit)}
+.etapa{position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:18px;box-shadow:0 10px 30px rgba(15,23,42,.08);margin-bottom:12px}.etapa.urg{border:2px solid var(--crit)}.etapa::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:linear-gradient(90deg,#f97316,#fb923c,#38bdf8)}
 .etapa .janela{font-family:var(--display);font-size:34px;font-weight:700;letter-spacing:.02em;margin-top:6px}.etapa .nome{font-size:21px;font-weight:700;margin:2px 0 4px}
 .relogio{margin:12px 0 4px;border-radius:12px;padding:10px 12px;font-weight:700;background:var(--surface2)}.relogio.good{color:var(--good)}.relogio.crit{color:var(--crit);background:var(--crit-bg)}.relogio.warn{color:var(--warn)}.relogio.info{color:var(--cyan)}.relogio.muted{color:var(--muted)}
 .passos{display:grid;gap:8px;margin-top:10px}.passo{display:flex;align-items:center;gap:12px;text-align:left;border:1px solid var(--line);background:var(--surface2);border-radius:14px;padding:13px;font-size:16px;cursor:pointer}
 .passo span{flex:none;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--line);font-weight:700;font-size:13px}.passo.ok{border-color:var(--good)}.passo.ok span{background:var(--good);border-color:var(--good);color:#fff}.passo:disabled{cursor:default}
 .btn.xl{font-size:19px;padding:17px;border-radius:16px;margin-top:14px}.nav{display:flex;justify-content:space-between;align-items:center;margin-top:12px}.nav .btn{margin:0}
+.tec{position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;background:#1c1917;color:#fafaf9;border-radius:24px;padding:16px 16px 16px 14px;margin:2px 0 12px;box-shadow:0 16px 36px rgba(28,25,23,.28)}
+.tec::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(249,115,22,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(249,115,22,.10) 1px,transparent 1px);background-size:22px 22px;mask-image:linear-gradient(90deg,transparent,#000 60%);-webkit-mask-image:linear-gradient(90deg,transparent,#000 60%);pointer-events:none}
+.tec::after{content:"";position:absolute;left:-40%;top:0;width:40%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);animation:scan 4.5s ease-in-out infinite;pointer-events:none}
+@keyframes scan{0%{left:-40%}60%,100%{left:120%}}
+.tec .oi{font-family:var(--display);font-size:21px;font-weight:800;text-transform:lowercase;letter-spacing:-.01em}.tec .oi em{font-style:normal;color:#fb923c}.tec .meta{color:#d6d3d1}
+.anel{flex:none;width:78px;height:78px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#f97316 calc(var(--p)*1%),#3f3a36 0);box-shadow:0 0 0 3px rgba(56,189,248,.35),0 0 22px rgba(56,189,248,.45);animation:pulsa 2.6s ease-in-out infinite;position:relative;z-index:1}
+.anel b{display:grid;place-items:center;width:62px;height:62px;border-radius:50%;background:#1c1917;font-family:var(--display);font-size:18px;color:#fff}
+@keyframes pulsa{50%{box-shadow:0 0 0 5px rgba(56,189,248,.18),0 0 34px rgba(56,189,248,.6)}}
+.relp{display:inline-flex;align-items:center;gap:6px;background:#292524;border:1px solid #3f3a36;color:#fdba74;border-radius:999px;padding:4px 10px;font:700 12px/1 ui-monospace,Menlo,monospace;margin-top:6px}.relp i{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e;animation:pisca 1.4s infinite}
+@keyframes pisca{50%{opacity:.25}}
+.tec .btn{position:relative;z-index:1;background:#292524;border-color:#3f3a36;color:#fafaf9}
+.entra>*{animation:entra .5s cubic-bezier(.2,.8,.2,1) both}.entra>*:nth-child(2){animation-delay:.05s}.entra>*:nth-child(3){animation-delay:.1s}.entra>*:nth-child(4){animation-delay:.15s}.entra>*:nth-child(5){animation-delay:.2s}.entra>*:nth-child(6){animation-delay:.25s}.entra>*:nth-child(7){animation-delay:.3s}.entra>*:nth-child(8){animation-delay:.35s}
+@keyframes entra{from{opacity:0;transform:translateY(14px);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
+@media (prefers-reduced-motion:reduce){.tec::after,.anel,.relp i,.entra>*{animation:none}}
 .home{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}.hbtn{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;cursor:pointer;min-height:132px;box-shadow:0 6px 18px rgba(43,26,16,.06)}
-.hbtn .hic{font-size:30px}.hbtn b{font-size:16px;font-family:var(--display)}.hbtn small{color:var(--muted);font-size:12px;line-height:1.35}.hbtn.crit{border:2px solid var(--crit)}.hbtn.warn{border:2px solid var(--warn)}.hbtn:active{transform:scale(.98)}
-.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px}.cal button{border:1px solid var(--line);background:var(--surface2);border-radius:8px;padding:7px 0;font-weight:700;font-size:13px;cursor:pointer}.cal .fo{background:var(--brand);border-color:var(--brand);color:#fff}.cal .fr{background:var(--warn-bg);border-color:var(--warn);color:var(--warn)}.cal .hj{outline:2px solid var(--cyan)}
+.hbtn{position:relative;overflow:hidden;transition:transform .15s,box-shadow .2s}.hbtn::after{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,#f97316,#fb923c,#38bdf8);opacity:.85}.hbtn:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(249,115,22,.18)}
+.hbtn .hic{font-size:26px;width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:#1c1917;box-shadow:inset 0 0 0 1px #3f3a36,0 6px 14px rgba(28,25,23,.25)}.hbtn b{font-size:16px;font-family:var(--display)}.hbtn small{color:var(--muted);font-size:12px;line-height:1.35}.hbtn.crit{border:2px solid var(--crit)}.hbtn.warn{border:2px solid var(--warn)}.hbtn:active{transform:scale(.98)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px}.cal button{border:1px solid var(--line);background:var(--surface2);border-radius:8px;padding:7px 0;font-weight:700;font-size:13px;cursor:pointer}.cal .fo{background:var(--brand);border-color:var(--brand);color:#fff}.cal .fr{background:var(--warn-bg);border-color:var(--warn);color:var(--warn)}.cal .hj{outline:2px solid var(--cyan)}.cal .ff{background:#7c3aed;border-color:#7c3aed;color:#fff}.cal .fe{background:#0891b2;border-color:#0891b2;color:#fff}.lg.ff{background:#7c3aed}.lg.fe{background:#0891b2}
 .lg{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle;margin:0 2px 0 8px}.lg.fo{background:var(--brand)}.lg.fr{background:var(--warn-bg);border:1px solid var(--warn)}
 body.cardEscuro .etapa{background:#1c1917;border-color:#292524;color:#fafaf9;box-shadow:0 14px 34px rgba(28,25,23,.25)}body.cardEscuro .etapa .meta{color:#d6d3d1}body.cardEscuro .etapa .relogio{background:#292524}
 body.cardEscuro .passo{background:#292524;border-color:#3f3a36;color:#fafaf9}body.cardEscuro .passo span{border-color:#57534e}body.cardEscuro .etapa .btn:not(.pri):not(.ok){background:#292524;border-color:#3f3a36;color:#fafaf9}
@@ -113,7 +131,7 @@ const DIAS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const FOTO = {nao:"Sem foto", sim:"📷 Foto obrigatória", antes_depois:"📷 Foto antes e depois"};
 let toastT;
 function toast(m){ const t = $("#toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 3400); }
-function openSheet(h){ $("#sheet").innerHTML = h; $("#veil").classList.add("open"); $("#sheet").scrollTop = 0; }
+function openSheet(h){ $("#sheet").innerHTML = `<button class="voltar" onclick="closeSheet()">◀ Voltar</button>` + h; $("#veil").classList.add("open"); $("#sheet").scrollTop = 0; }
 function closeSheet(){ $("#veil").classList.remove("open"); $("#sheet").innerHTML = ""; }
 $("#veil").addEventListener("click", e => { if (e.target.id === "veil") closeSheet(); });
 const pad = n => String(n).padStart(2, "0");
@@ -261,7 +279,7 @@ async function entrou(offline){
 
 /* ================= dados ================= */
 async function carregaBase(){
-  const [us, lo, sv, fo, cf] = await Promise.all([tb("ck_usuarios", "select=user_id,nome,login,funcao,turno,ativo,papel,escala,folga_dia,escala_base,cobertura&order=nome"), tb("ck_locais", "select=*&order=ordem,nome"), tb("ck_servicos", "select=*&order=horario"), tb("ck_folgas", "select=*&order=data_ini.desc"), tb("ck_config", "select=*")]);
+  const [us, lo, sv, fo, cf] = await Promise.all([tb("ck_usuarios", "select=user_id,nome,login,funcao,turno,ativo,papel,escala,folga_dia,escala_base,cobertura,local_base&order=nome").catch(() => tb("ck_usuarios", "select=user_id,nome,login,funcao,turno,ativo,papel,escala,folga_dia,escala_base,cobertura&order=nome")), tb("ck_locais", "select=*&order=ordem,nome"), tb("ck_servicos", "select=*&order=horario"), tb("ck_folgas", "select=*&order=data_ini.desc"), tb("ck_config", "select=*")]);
   Object.assign(S, {usuarios:us || [], locais:lo || [], servicos:sv || [], folgas:fo || [], cfg:(cf || [])[0] || {filial:S.filial, retencao_dias:90}});
   if (S.admin) S.links = await rpc("ck_links").catch(() => ({})) || {};
   if (!S.visTmp) { aplicaVisual(S.cfg.visual); LS.set(NS + ".ck.visual", S.cfg.visual || {}); }
@@ -277,7 +295,9 @@ async function atualizaDia(){
 }
 const nomeU = id => { const u = (S.usuarios || []).find(x => x.user_id === id); return u ? u.nome : (S.perfil && id === S.perfil.user_id ? S.perfil.nome : "—"); };
 const nomeL = id => { const l = (S.locais || []).find(x => x.id === id); return l ? l.nome : ""; };
-const emFolga = (uid, d) => { const f = (S.folgas || []).find(f => f.user_id === uid && f.data_ini <= d && f.data_fim >= d); if (f) return f; const u = (S.usuarios || []).find(x => x.user_id === uid); if (!u) return null;
+const TIPOF = {escala:"folga", "escala-feriado":"folga feriado", "escala-ferias":"férias"}, COD = {FR:"escala", FF:"escala-feriado", FE:"escala-ferias"}, CODT = {FR:"Folga", FF:"Folga feriado", FE:"Férias"};
+const tipoF = t => TIPOF[t] || t, ehEscala = t => /^escala/.test(t || "");
+const emFolga = (uid, d) => { const f = (S.folgas || []).find(f => f.user_id === uid && f.data_ini <= d && f.data_fim >= d); if (f) return {...f, tipo:tipoF(f.tipo), cod:f.tipo}; const u = (S.usuarios || []).find(x => x.user_id === uid); if (!u) return null;
   if (u.escala === "6x1" && u.folga_dia != null && diaSem(d) === +u.folga_dia) return {tipo:"folga 6x1", cobertura:u.cobertura, auto:1};
   if (u.escala === "12x36" && u.escala_base) { const n = Math.round((new Date(d + "T12:00:00") - new Date(u.escala_base + "T12:00:00")) / 86400000); if (((n % 2) + 2) % 2 === 1) return {tipo:"folga 12x36", cobertura:u.cobertura, auto:1}; }
   return null; };
@@ -292,7 +312,7 @@ function responsavel(s, d, aj){
   const f = base && emFolga(base, d);
   if (!f) return {uid:base};
   let cob = [f.cobertura, ((S.usuarios || []).find(x => x.user_id === base) || {}).cobertura].find(c => c && !emFolga(c, d)) || null;
-  if (!cob) { const livre = u => u.user_id !== base && !emFolga(u.user_id, d), mesmoT = u => u.turno === s.turno; const u = ativos().find(u => /triagem/i.test(u.funcao) && livre(u) && mesmoT(u)) || ativos().find(u => /triagem/i.test(u.funcao) && livre(u)) || ativos().find(u => u.funcao === s.funcao && livre(u)) || ativos().find(livre); cob = u ? u.user_id : null; }
+  if (!cob) { const livre = u => u.user_id !== base && !emFolga(u.user_id, d) && !/teste/i.test(u.funcao + u.nome), mesmoT = u => u.turno === s.turno; const u = ativos().find(u => /triagem/i.test(u.funcao) && livre(u) && mesmoT(u)) || ativos().find(u => /triagem/i.test(u.funcao) && livre(u)) || ativos().find(u => u.funcao === s.funcao && livre(u)) || ativos().find(livre); cob = u ? u.user_id : null; }
   return {uid:cob, cobertura:true, de:base, folga:f};
 }
 const tolerancia = () => { const t = (S.cfg || {}).tolerancia_min; return t == null ? 10 : +t; };
@@ -379,7 +399,7 @@ async function mostraFotos(el, fotos){
   for (const f of fotos || []) {
     const src = f.dataUrl || await urlFoto(f.path).catch(() => "");
     const d = document.createElement("div"); d.style.textAlign = "center";
-    d.innerHTML = `<img src="${esc(src)}" alt="Foto ${esc(f.tipo)}" onclick="window.open(this.src)"><div class="meta">${f.tipo === "antes" ? "Antes" : f.tipo === "depois" ? "Depois" : "Foto"} · ${esc(hmTs(f.em))}${f.antiga ? `<br><b style="color:var(--crit)">⚠️ não tirada na hora</b>` : ""}</div>`;
+    d.innerHTML = `<img src="${esc(src)}" alt="Foto ${esc(f.tipo)}" onclick="window.open(this.src)"><div class="meta">${f.tipo === "antes" ? "Antes" : f.tipo === "depois" ? "Depois" : f.tipo === "assinatura" ? "✍️ Assinatura" : "Foto"} · ${esc(hmTs(f.em))}${f.antiga ? `<br><b style="color:var(--crit)">⚠️ não tirada na hora</b>` : ""}</div>`;
     el.appendChild(d);
   }
 }
@@ -405,9 +425,7 @@ function telaColab(){
   const H = horasDia(P.user_id, d), feitas = L.filter(x => FINAL(x.st)).length, atualI = L.findIndex(x => !FINAL(x.st)), h = new Date().getHours();
   if (S.etAuto !== atualI || S.etIdx == null || S.etIdx >= L.length) { S.etIdx = atualI >= 0 ? atualI : Math.max(0, L.length - 1); S.etAuto = atualI; }
   const cor = y => FINAL(y.st) ? (foraHorario(y) ? "late" : "ok") : ["atrasado", "estourado"].includes(y.st) ? "late" : y === L[atualI] ? "now" : "todo";
-  $("#app").innerHTML = `<div class="hero"><div><div class="oi">${h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite"}, ${esc((P.nome || "").split(" ")[0])}!</div>
-      <div class="meta">${feitas} de ${L.length} etapas · ${hhmm(H.reg)} de ${hhmm(H.meta)}</div></div><button class="btn sm" onclick="verMeuDia()">🕐 Meu dia</button></div>
-    <div class="bar" style="margin:0 0 12px"><i style="width:${L.length ? Math.round(feitas / L.length * 100) : 0}%"></i></div>
+  $("#app").innerHTML = heroTec(L.length ? Math.round(feitas / L.length * 100) : 0, `${h < 12 ? "bom dia" : h < 18 ? "boa tarde" : "boa noite"}, <em>${esc((P.nome || "").split(" ")[0])}</em>`, `${feitas} de ${L.length} etapas · ${hhmm(H.reg)} de ${hhmm(H.meta)}`, `<button class="btn sm" style="margin:0;flex:none" onclick="verMeuDia()">🕐 Meu dia</button>`) + `
     ${emFolga(P.user_id, d) ? `<div class="ban info">📅 Você está de ${esc(emFolga(P.user_id, d).tipo)} hoje.</div>` : ""}
     ${dem.length ? `<button class="ban warn" style="width:100%;text-align:left;cursor:pointer;font:inherit;font-weight:700" onclick="verDemandas()">📌 ${dem.length === 1 ? "1 demanda extra" : dem.length + " demandas extras"} para você · toque para ver</button>` : ""}
     ${L.length && atualI < 0 ? telaFimDia(H) : ""}
@@ -427,7 +445,9 @@ function cardEtapa(x, i, L, atualI){
   else if (r) { const f = fh ? minEntre(ag, fh) : null; rel = f == null ? "▶️ Em andamento" : f >= 0 ? "⏱️ Faltam " + f + " min para terminar" : "⏰ Passou " + (-f) + " min do horário"; rc = f == null || f >= 0 ? "info" : (-f > tol ? "crit" : "warn"); }
   else if (i === atualI) { const f = minEntre(ag, ini); rel = f > 0 ? "🕐 Começa em " + f + " min (" + ini + ")" : (st === "atrasado" ? "⏰ Atrasada: comece agora" : "▶️ Hora de começar"); rc = f > 0 ? "info" : st === "atrasado" ? "crit" : "warn"; }
   else { rel = "🔒 Libera depois da etapa anterior"; rc = "muted"; }
+  const volta = atualI >= 0 && i !== atualI ? `S.etIdx=${atualI};render()` : i > 0 ? "passa(-1)" : "";
   return `<div class="etapa ${x.s.urgente && !fim ? "urg" : ""}" id="etapa">
+    ${volta ? `<button class="voltar" onclick="${volta}">◀ Voltar${atualI >= 0 && i !== atualI ? " para a etapa de agora" : ""}</button>` : ""}
     <div class="row" style="justify-content:space-between"><span class="meta" style="letter-spacing:.08em">ETAPA ${i + 1} DE ${L.length}</span>${x.s.urgente && !fim ? `<b style="color:var(--crit)">🚨 URGENTE</b>` : ""}</div>
     <div class="janela">${janela(x.s)}</div><div class="nome">${esc(x.s.nome)}</div>
     <div class="meta">📍 ${esc(x.local)}${x.s.foto !== "nao" ? " · " + FOTO[x.s.foto] : ""}${x.rr.cobertura ? ` · <b style="color:var(--warn)">⚠️ cobrindo ${esc(nomeU(x.rr.de))}</b>` : ""}</div>
@@ -484,23 +504,42 @@ function finalizar(id, nao){
     ${pede}
     ${atrasado ? `<div class="ban crit" style="margin-top:10px">⏰ Esta etapa devia terminar às ${fim}. Informe por que não foi concluída no horário (obrigatório).<textarea id="fJus" class="inp" rows="2" placeholder="Ex.: fui chamado para limpar a pista"></textarea></div>` : ""}
     <label class="f">Observação (opcional)<textarea id="fObs" class="inp" rows="2" placeholder="Ex.: Faltou produto de limpeza."></textarea></label>
+    <div class="fslot"><div class="row" style="justify-content:space-between"><b>✍️ Assinatura de ${esc(S.perfil.nome || "")}</b><button class="btn sm" style="margin:0" onclick="limpaAssin()">Limpar</button></div><div class="assin" id="assin"><canvas id="cvAssin"></canvas><span class="x">✕</span><i class="lin"></i></div><div class="meta">Assine com o dedo na linha. Fica salva no relatório.</div></div>
     <button class="btn ok" style="font-size:17px" onclick="envia(${id},'concluido')">✅ CONCLUÍDO</button>
     <details style="margin-top:12px" ${nao ? "open" : ""}><summary class="btn no" style="list-style:none">❌ NÃO REALIZADO</summary>
       <label class="f">Motivo (obrigatório)<select id="fMot" class="inp"><option value="">Escolha…</option>${MOTIVOS.map(m => `<option>${m}</option>`).join("")}</select></label>
       <label class="f">Por que a etapa não foi realizada?<textarea id="fMotTx" class="inp" rows="2"></textarea></label>
       <button class="btn no" onclick="envia(${id},'nao_realizado')">Enviar como NÃO REALIZADO</button></details>
     <button class="btn" onclick="closeSheet()">Voltar</button>`);
+  iniciaAssin();
+}
+/* assinatura com o dedo (fica junto das fotos do registro, tipo "assinatura") */
+let assinOk = false;
+function iniciaAssin(){
+  const cv = $("#cvAssin"); if (!cv) return; assinOk = false; const r = cv.getBoundingClientRect(), k = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.round(r.width * k); cv.height = Math.round(170 * k); const g = cv.getContext("2d"); g.scale(k, k); g.lineWidth = 2.6; g.lineCap = g.lineJoin = "round"; g.strokeStyle = "#111827";
+  let ant = null; const pt = e => { const b = cv.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; };
+  cv.onpointerdown = e => { e.preventDefault(); cv.setPointerCapture(e.pointerId); ant = pt(e); g.beginPath(); g.arc(ant[0], ant[1], 1.2, 0, 7); g.fillStyle = "#111827"; g.fill(); };
+  cv.onpointermove = e => { if (!ant) return; e.preventDefault(); const p = pt(e); g.beginPath(); g.moveTo(ant[0], ant[1]); g.lineTo(p[0], p[1]); g.stroke(); ant = p; if (!assinOk) { assinOk = true; $("#assin").classList.add("ok"); } };
+  cv.onpointerup = cv.onpointercancel = () => { ant = null; };
+}
+function limpaAssin(){ const cv = $("#cvAssin"); if (!cv) return; cv.getContext("2d").clearRect(0, 0, cv.width, cv.height); assinOk = false; $("#assin").classList.remove("ok"); }
+function pegaAssin(){
+  const cv = $("#cvAssin"); if (!cv || !assinOk) return null; const o = document.createElement("canvas"); o.width = cv.width; o.height = cv.height; const g = o.getContext("2d");
+  g.fillStyle = "#fff"; g.fillRect(0, 0, o.width, o.height); g.drawImage(cv, 0, 0); g.fillStyle = "#6b7280"; g.font = Math.round(o.height / 12) + "px Arial"; g.fillText((S.perfil.nome || "") + " · " + new Date().toLocaleString("pt-BR"), 10, o.height - 10);
+  return {tipo:"assinatura", dataUrl:o.toDataURL("image/jpeg", .8), em:new Date().toISOString()};
 }
 function envia(id, tipo){
   const x = linhaDe(id); if (!x) return;
   const k = x.s.id + "|" + x.d, ant = filaLocal()[k] || x.reg || {}, obs = ($("#fObs").value || "").trim(), passos = x.s.passos || [];
   const marcados = $$("[data-passo]").filter(c => c.checked).map(c => passos[+c.dataset.passo]);
   const fim = hm(x.s.horario_fim), atraso = fim && agoraHM() > addMin(fim, tolerancia()) ? Math.round((Date.now() - new Date(x.d + "T" + fim + ":00").getTime()) / 60000) : 0, jus = (($("#fJus") || {}).value || "").trim();
-  const fotos = (ant.fotos || []).concat(fotosTmp);
+  const assin = pegaAssin(); if (!assin) return toast("✍️ Assine na linha antes de enviar.");
+  const fotos = (ant.fotos || []).filter(f => f.tipo !== "assinatura").concat(fotosTmp, [assin]);
   let status = tipo, motivo = "";
   if (tipo === "concluido") {
     if (passos.length && marcados.length < passos.length && !obs) return toast("Marque todos os passos. Se algum ficou faltando, escreva em Observação.");
-    if (x.s.foto === "sim" && !fotosTmp.length && !(ant.fotos || []).some(f => f.tipo === "foto")) return toast("Tire a foto da etapa.");
+    if (x.s.foto === "sim" && !fotosTmp.some(f => f.tipo === "foto") && !(ant.fotos || []).some(f => f.tipo === "foto")) return toast("Tire a foto da etapa.");
     if (x.s.foto === "antes_depois" && !fotosTmp.some(f => f.tipo === "depois")) return toast("Tire a foto de DEPOIS.");
     if (atraso > 0 && !jus) return toast("Informe por que não foi concluída no horário.");
     if (obs || marcados.length < passos.length) status = "concluido_obs";
@@ -567,7 +606,7 @@ function telaHoje(){
     ${sem.length ? `<div class="ban warn">⚠️ ${sem.length} etapa(s) sem responsável: cadastre o colaborador da função/turno ou troque o responsável.</div>` : ""}
     <div class="card"><h2>Checklist diário: ${c.pct}% concluído</h2><div class="bar"><i style="width:${c.pct}%"></i></div>
       <div class="tiles" style="margin-top:10px">${[["Etapas", c.tot], ["Concluídas", c.ok], ["Pendentes", c.pend], ["Em andamento", c.and], ["Não realizadas", c.no], ["Com observação", c.obs], ["Fora do horário", fora.length], ["Abonadas", Lall.filter(x => x.ab).length], ["Demandas extras", dem.length]].map(([t, v]) => `<div class="tile"><b>${v}</b><span>${t}</span></div>`).join("")}</div>
-      <p class="meta" style="margin:10px 0 0">👷 Trabalhando: ${trabalhando.length ? trabalhando.map(u => `<b>${esc(u.nome)}</b> (${TURNOS[u.turno] || u.turno})`).join(", ") : "—"}${(S.folgas || []).filter(f => f.data_ini <= d && f.data_fim >= d).map(f => ` · 📅 ${esc(nomeU(f.user_id))} de ${esc(f.tipo)}`).join("")}</p></div>
+      <p class="meta" style="margin:10px 0 0">👷 Trabalhando: ${trabalhando.length ? trabalhando.map(u => `<b>${esc(u.nome)}</b> (${TURNOS[u.turno] || u.turno})`).join(", ") : "—"}${(S.folgas || []).filter(f => f.data_ini <= d && f.data_fim >= d).map(f => ` · 📅 ${esc(nomeU(f.user_id))} de ${esc(tipoF(f.tipo))}`).join("")}</p></div>
     <div class="card"><h2>Por colaborador</h2>${Object.entries(porU).map(([u, l]) => { const k = contagem(l), fh = l.filter(foraHorario).length; return `<div style="margin-top:8px"><div class="row" style="justify-content:space-between"><b>${esc(u === "-" ? "Sem responsável" : nomeU(u))}</b><span class="meta">${k.ok}/${l.length} · ${k.pct}%${fh ? ` · <b style="color:var(--crit)">${fh} fora do horário</b>` : ""}</span></div><div class="bar"><i style="width:${k.pct}%;background:${k.pct >= 100 ? "var(--good)" : fh ? "var(--crit)" : "var(--warn)"}"></i></div></div>`; }).join("")}</div>
     <div class="card"><h2>Etapas do dia</h2>${filtrosHTML("Hoje")}
       <div style="overflow-x:auto;margin-top:8px"><table><tr><th>Horário</th><th>Etapa</th><th class="hide-m">Local</th><th>Responsável</th><th>Status</th></tr>
@@ -630,24 +669,29 @@ function telaHist(){
       <div style="overflow-x:auto"><table><tr><th>Data</th><th>Hora</th><th>Serviço</th><th>Colaborador</th><th>Status</th></tr>${L.slice(0, 500).map(x => `<tr class="cl" onclick="detalhe(${x.s.id},'${x.d}')"><td>${dBR(x.d).slice(0, 5)}</td><td>${hm(x.s.horario)}${x.reg && x.reg.concluido_em ? `<div class="meta">${hmTs(x.reg.concluido_em)}</div>` : ""}</td><td>${esc(x.s.nome)}<div class="meta">${esc(x.local)}</div></td><td>${esc(x.reg ? x.reg.colaborador : nomeU(x.resp))}</td><td>${pill(x.st)}${x.reg && x.reg.fotos && x.reg.fotos.length ? " 📷" : ""}</td></tr>`).join("")}</table></div></div>` : ""}`;
 }
 async function buscaHist(){ const h = S.hist; if (!h.ini || !h.fim || h.ini > h.fim) return toast("Confira as datas."); toast("Buscando…"); try { h.L = await linhasPeriodo(h.ini, h.fim); render(); } catch (e) { toast(e.message); } }
+const assinDe = x => x.reg && (x.reg.fotos || []).find(f => f.tipo === "assinatura");
 async function relatorio(tipo, ini, fim){
   let L, f;
   if (ini) { L = linhasDia(ini); f = S.fHoje || {}; } else { L = S.hist.L || []; ini = S.hist.ini; fim = S.hist.fim; f = S.fHist || {}; }
   L = filtra(L, f); const g = (S.hist && S.hist.g) || "u", chave = x => g === "l" ? (x.local || "Sem local") : nomeU(x.reg ? x.reg.user_id : x.resp);
   const tit = (S.perfil.nome_filial || "Posto") + " — Checklist " + (ini === fim ? "diário" : "do período"), per = ini === fim ? dBR(ini) : dBR(ini) + " a " + dBR(fim);
-  const linha = x => [dBR(x.d), hm(x.s.horario), x.s.nome, x.local, x.reg ? x.reg.colaborador : nomeU(x.resp), ST[x.st][0].replace(/^\S+\s/, ""), x.reg ? hmTs(x.reg.concluido_em) : "", x.reg ? (x.reg.motivo || "") : "", x.reg ? (x.reg.observacao || "") : "", x.reg && x.reg.fotos ? x.reg.fotos.length : 0, x.reg ? +x.reg.atraso_min || 0 : "", x.reg ? (x.reg.justificativa || "") : "", x.ab ? "Sim: " + x.ab.motivo : ""];
+  const linha = x => [dBR(x.d), hm(x.s.horario), x.s.nome, x.local, x.reg ? x.reg.colaborador : nomeU(x.resp), ST[x.st][0].replace(/^\S+\s/, ""), x.reg ? hmTs(x.reg.concluido_em) : "", x.reg ? (x.reg.motivo || "") : "", x.reg ? (x.reg.observacao || "") : "", x.reg && x.reg.fotos ? x.reg.fotos.filter(f => f.tipo !== "assinatura").length : 0, x.reg ? +x.reg.atraso_min || 0 : "", x.reg ? (x.reg.justificativa || "") : "", x.ab ? "Sim: " + x.ab.motivo : "", assinDe(x) ? "Sim · " + hmTs(assinDe(x).em) : "Não"];
   const nome = (tit + " " + per).replace(/[\/\\:]+/g, "-");
   if (tipo === "xls") {
-    const cab = ["Data", "Horário previsto", "Serviço", "Local", "Colaborador", "Status", "Horário realizado", "Motivo", "Observação", "Fotos", "Atraso (min)", "Motivo do atraso", "Abonado"];
+    const cab = ["Data", "Horário previsto", "Serviço", "Local", "Colaborador", "Status", "Horário realizado", "Motivo", "Observação", "Fotos", "Atraso (min)", "Motivo do atraso", "Abonado", "Assinado"];
     const csv = "﻿" + [cab, ...L.map(linha)].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(";")).join("\r\n");
     return baixa(new Blob([csv], {type:"text/csv;charset=utf-8"}), nome + ".csv");
   }
   const grupos = {}; L.forEach(x => (grupos[chave(x)] = grupos[chave(x)] || []).push(x)); const c = contagem(L);
   const ic = {concluido:"✅", concluido_obs:"⚠️", nao_realizado:"❌", sem_registro:"❌", andamento:"🟡", pendente:"🔴", atrasado:"🔴", futuro:"⏳"};
   const w = window.open("", "_blank"); if (!w) return toast("Permita abrir janelas para gerar o PDF.");
+  w.document.write("<p style='font-family:Arial;padding:20px'>Montando o relatório com as assinaturas…</p>");
+  const AS = {}; await Promise.all(L.filter(assinDe).map(async x => { const a = assinDe(x); AS[x.s.id + "|" + x.d] = a.dataUrl || await urlFoto(a.path).catch(() => ""); }));
+  const asTd = x => { const u = AS[x.s.id + "|" + x.d]; return u ? `<img src="${esc(u)}" style="height:34px;max-width:120px;object-fit:contain">` : `<span class="m">—</span>`; };
+  w.document.open();
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(nome)}</title><style>body{font-family:Arial,sans-serif;color:#111;margin:24px}h1{font-size:20px;margin:0}h2{font-size:15px;margin:18px 0 4px;border-bottom:2px solid #f97316;padding-bottom:3px}table{width:100%;border-collapse:collapse;font-size:12px}td,th{border-bottom:1px solid #ddd;padding:4px;text-align:left;vertical-align:top}.m{color:#666;font-size:12px}@media print{button{display:none}}</style></head><body>
     <button onclick="print()" style="float:right;padding:10px 16px;font-weight:bold">🖨️ Salvar em PDF</button><h1>${esc(tit.toUpperCase())}</h1><div class="m">Período: ${per} · ${L.length} serviços · ${c.ok} concluídos (${c.pct}%) · ${c.no} não realizados · ${c.obs} com observação · gerado em ${dhTs(new Date())}</div>
-    ${Object.entries(grupos).map(([k, l]) => `<h2>${esc(k)}</h2><table><tr><th>Data</th><th>Hora</th><th>Serviço</th>${g === "l" ? "<th>Colaborador</th>" : "<th>Local</th>"}<th>Status</th><th>Realizado</th><th>Obs./motivo</th></tr>${l.map(x => `<tr><td>${dBR(x.d)}</td><td>${hm(x.s.horario)}</td><td>${esc(x.s.nome)}</td><td>${esc(g === "l" ? (x.reg ? x.reg.colaborador : nomeU(x.resp)) : x.local)}</td><td>${ic[x.st]} ${esc(ST[x.st][0].replace(/^\S+\s/, ""))}</td><td>${x.reg ? hmTs(x.reg.concluido_em) : ""}</td><td>${esc([x.reg && x.reg.motivo, x.reg && x.reg.observacao].filter(Boolean).join(" · "))}${x.reg && x.reg.fotos && x.reg.fotos.length ? " 📷" + x.reg.fotos.length : ""}</td></tr>`).join("")}</table>`).join("")}
+    ${Object.entries(grupos).map(([k, l]) => `<h2>${esc(k)}</h2><table><tr><th>Data</th><th>Hora</th><th>Serviço</th>${g === "l" ? "<th>Colaborador</th>" : "<th>Local</th>"}<th>Status</th><th>Realizado</th><th>Obs./motivo</th><th>Assinatura</th></tr>${l.map(x => `<tr><td>${dBR(x.d)}</td><td>${hm(x.s.horario)}</td><td>${esc(x.s.nome)}</td><td>${esc(g === "l" ? (x.reg ? x.reg.colaborador : nomeU(x.resp)) : x.local)}</td><td>${ic[x.st]} ${esc(ST[x.st][0].replace(/^\S+\s/, ""))}</td><td>${x.reg ? hmTs(x.reg.concluido_em) : ""}</td><td>${esc([x.reg && x.reg.motivo, x.reg && x.reg.observacao].filter(Boolean).join(" · "))}${x.reg && x.reg.fotos && x.reg.fotos.some(f => f.tipo !== "assinatura") ? " 📷" + x.reg.fotos.filter(f => f.tipo !== "assinatura").length : ""}</td><td>${asTd(x)}</td></tr>`).join("")}</table>`).join("")}
     </body></html>`); w.document.close(); setTimeout(() => { try { w.print(); } catch (e) {} }, 500);
 }
 async function baixa(blob, nome){
@@ -659,17 +703,22 @@ async function baixa(blob, nome){
 function telaServ(){
   const L = S.locais || [];
   $("#app").innerHTML = `<div class="card"><h2>⚙️ Etapas (em sequência, com horário de começo e término)</h2><div class="row"><button class="btn pri sm" onclick="formServ()">+ NOVA ETAPA</button><button class="btn sm" onclick="formLocal()">+ Novo local</button></div>
-    ${!(S.servicos || []).length ? `<button class="btn" onclick="criaIniciais(this)">✨ Criar etapas de exemplo</button>` : ""}</div>
-    ${[...L, {id:null, nome:"Sem local", ativo:true}].map(l => { const sv = (S.servicos || []).filter(s => (s.local_id || null) === l.id); if (!l.id && !sv.length) return ""; return `<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">📍 ${esc(l.nome)} ${l.ativo ? "" : `<span class="pill p-fut">inativo</span>`}</h2>${l.id ? `<button class="btn sm" onclick="formLocal(${l.id})">✏️</button>` : ""}</div>
+    <button class="btn" onclick="formPadrao()">✨ Montar equipe e etapas padrão (Denilde, Firmino, Kayo, Teste)</button></div>
+    ${[...L, {id:null, nome:"Sem local", ativo:true}].map(l => { const sv = (S.servicos || []).filter(s => (s.local_id || null) === l.id); if (!l.id && !sv.length) return ""; return `<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">📍 ${esc(l.nome)} ${l.lat != null ? `<span class="pill p-ok">GPS próprio</span>` : ""} ${l.ativo ? "" : `<span class="pill p-fut">inativo</span>`}</h2>${l.id ? `<button class="btn sm" onclick="formLocal(${l.id})">✏️</button>` : ""}</div>
       ${sv.length ? `<table style="margin-top:6px">${sv.map(s => `<tr class="cl" onclick="formServ(${s.id})" style="${s.ativo ? "" : "opacity:.5"}"><td><b>${janela(s)}</b></td><td>${s.urgente ? "🚨 " : ""}${esc(s.nome)}${(s.passos || []).length ? ` <span class="meta">· ${s.passos.length} passos</span>` : ""}<div class="meta">${TURNOS[s.turno] || s.turno} · ${esc(s.funcao)} · ${esc(s.responsavel ? nomeU(s.responsavel) : "automático")} · ${freqTxt(s)}${s.foto !== "nao" ? " · " + FOTO[s.foto] : ""}${s.ativo ? "" : " · inativo"}</div></td></tr>`).join("")}</table>` : `<p class="meta">Nenhum serviço neste local.</p>`}</div>`; }).join("")}`;
 }
 function freqTxt(s){ const d = (s.dias || []).slice().sort(); if (d.length === 7) return "Todos os dias"; if (d.join() === "1,2,3,4,5") return "Seg a sex"; return d.map(i => DIAS[i]).join(", ") || "Nenhum dia"; }
 function formLocal(id){
   const l = (S.locais || []).find(x => x.id === id) || {nome:"", descricao:"", ativo:true, ordem:(S.locais || []).length};
   openSheet(`<h2>${id ? "Editar local" : "Novo local"}</h2><label class="f">Nome<input id="lN" class="inp" value="${esc(l.nome)}"></label><label class="f">Descrição<input id="lD" class="inp" value="${esc(l.descricao)}"></label>
+    <div class="fslot"><b>📍 GPS próprio deste local (opcional)</b><div class="meta">Use quando o local fica longe do posto (ex.: BR PARK). Quem tiver este local como "local de trabalho" (👥 Equipe) só abre o link aqui.</div>
+      <div class="grid2"><label class="f">Coordenadas<input id="lXY" class="inp" placeholder="-2.5305, -44.3002" value="${l.lat != null ? l.lat + ", " + l.lng : ""}"></label><label class="f">Raio<select id="lRa" class="inp">${[50, 100, 150, 200, 300, 500, 1000].map(n => `<option value="${n}" ${(+l.raio || 200) === n ? "selected" : ""}>${n} metros</option>`).join("")}</select></label></div>
+      <button class="btn sm" onclick="pegaLocal().then(g=>{if(!g)return toast('Permita a localização.');$('#lXY').value=g.lat.toFixed(6)+', '+g.lng.toFixed(6);toast('Localização pega · precisão '+Math.round(g.prec)+' m')})">📍 Usar minha localização atual</button></div>
     <label class="f"><input type="checkbox" id="lA" ${l.ativo ? "checked" : ""}> Ativo</label><button class="btn pri" id="btL">Salvar</button><button class="btn" onclick="closeSheet()">Voltar</button>`);
   $("#btL").onclick = async () => { const nome = $("#lN").value.trim(); if (!nome) return toast("Digite o nome."); const row = {filial:S.filial, nome, descricao:$("#lD").value.trim(), ativo:$("#lA").checked, ordem:l.ordem || 0};
-    try { if (id) await api("PATCH", "/rest/v1/ck_locais?id=eq." + id, row, {prefer:"return=minimal"}); else await api("POST", "/rest/v1/ck_locais", row, {prefer:"return=minimal"}); closeSheet(); await carregaBase(); render(); toast("Local salvo."); } catch (e) { toast(e.message); } };
+    const xy = ($("#lXY").value || "").match(/(-?\d+[.,]\d+)\s*[,; ]\s*(-?\d+[.,]\d+)/); if ($("#lXY").value.trim() && !xy) return toast("Coordenadas assim: -2.5305, -44.3002");
+    if (xy || l.lat != null) Object.assign(row, xy ? {lat:+xy[1].replace(",", "."), lng:+xy[2].replace(",", "."), raio:+$("#lRa").value} : {lat:null, lng:null, raio:null});
+    try { if (id) await api("PATCH", "/rest/v1/ck_locais?id=eq." + id, row, {prefer:"return=minimal"}); else await api("POST", "/rest/v1/ck_locais", row, {prefer:"return=minimal"}); closeSheet(); await carregaBase(); render(); toast("Local salvo."); } catch (e) { toast(/lat|lng|raio/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); } };
 }
 function formServ(id){
   const s = (S.servicos || []).find(x => x.id === id) || {nome:"", local_id:(S.locais || [])[0] && S.locais[0].id, horario:"08:00", horario_fim:"08:50", turno:"manha", funcao:"Limpeza", responsavel:null, dias:[0, 1, 2, 3, 4, 5, 6], foto:"nao", urgente:false, observacao:"", ativo:true, passos:[]};
@@ -714,13 +763,60 @@ async function criaIniciais(b){
     await carregaBase(); S.view = "serv"; render(); toast("Etapas de exemplo criadas. Edite horários, passos e responsáveis à vontade.");
   } catch (e) { toast(e.message); if (b) b.disabled = false; }
 }
+/* ---------- equipe e etapas padrão (todos os dias iguais) ---------- */
+const PADRAO = (() => {
+  const ban = ["Recolher o lixo", "Lavar vasos e pias", "Higienizar com desinfetante", "Repor papel e sabonete", "Passar pano no chão"], pat = ["Varrer o pátio", "Recolher o lixo do chão", "Esvaziar as lixeiras da pista"], lixo = ["Recolher os sacos de lixo", "Levar ao contêiner", "Lavar as lixeiras se precisar"];
+  return {
+    denilde:{nome:"Denilde", funcao:"Limpeza", etapas:[["Banheiros", "07:00", "07:50", "Limpeza e higienização dos banheiros", "sim", ban], ["Prédio / escritório", "08:00", "08:50", "Limpeza do prédio e escritório", "nao", ["Tirar pó das mesas", "Limpar vidros", "Varrer e passar pano", "Recolher o lixo"]], ["Loja", "09:00", "09:50", "Limpeza da loja", "antes_depois", ["Varrer", "Passar pano no chão", "Limpar balcão e vitrines", "Organizar prateleiras"]],
+      ["Sala de descanso", "10:00", "10:40", "Limpeza da sala de descanso", "sim", ["Limpar mesa e cadeiras", "Lavar a louça", "Repor copo, café e papel", "Passar pano no chão"]], ["Banheiros", "11:00", "11:50", "Banheiros (2ª passada)", "sim", ban], ["Banheiros", "13:00", "13:50", "Banheiros (3ª passada)", "sim", ban], ["Prédio / escritório", "14:00", "14:50", "Prédio: corredores e escadas", "nao", ["Varrer os corredores", "Passar pano nas escadas", "Limpar corrimãos e portas", "Recolher o lixo"]]]},
+    firmino:{nome:"Firmino", funcao:"Serviços gerais", etapas:[["Pátio", "07:00", "07:50", "Limpeza do pátio", "sim", pat], ["Lixo e contêiner", "08:00", "08:50", "Recolhimento do lixo", "nao", lixo], ["Banheiros dos motoristas", "09:00", "09:50", "Banheiros dos motoristas", "sim", ban],
+      ["Área externa", "10:00", "11:50", "Manutenção e área externa", "nao", ["Conferir lâmpadas e torneiras", "Varrer e capinar os canteiros", "Anotar o que precisa de conserto"]], ["Pátio", "13:00", "13:50", "Pátio (2ª passada)", "sim", pat], ["Lixo e contêiner", "14:00", "14:50", "Lixo da tarde", "nao", lixo]]},
+    kayo:{nome:"Kayo", funcao:"Serviços gerais", etapas:[["BR PARK", "07:00", "07:50", "BR PARK · Limpeza do pátio", "sim", pat], ["BR PARK", "08:00", "08:50", "BR PARK · Banheiros", "sim", ban], ["BR PARK", "09:00", "09:50", "BR PARK · Recolhimento do lixo", "nao", lixo],
+      ["BR PARK", "10:00", "11:50", "BR PARK · Estacionamento e área externa", "nao", ["Varrer o estacionamento", "Recolher o lixo", "Conferir iluminação e placas"]], ["BR PARK", "13:00", "13:50", "BR PARK · Banheiros (2ª passada)", "sim", ban], ["BR PARK", "14:00", "14:50", "BR PARK · Pátio (2ª passada)", "sim", pat]]},
+    teste:{nome:"Teste", funcao:"Teste", etapas:[["Treino (teste)", "08:00", "08:20", "Etapa de teste 1", "nao", ["Passo 1", "Passo 2"]], ["Treino (teste)", "10:00", "10:20", "Etapa de teste 2", "sim", ["Passo 1", "Passo 2"]], ["Treino (teste)", "14:00", "14:20", "Etapa de teste 3", "nao", ["Passo 1"]]]}};
+})();
+const slugU = v => String(v || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+const achaU = k => (S.usuarios || []).find(u => u.papel !== "lider" && (slugU(u.login) === k || slugU(u.nome).startsWith(k)));
+function formPadrao(){
+  const linha = (k, txt) => { const u = achaU(k); return `<label style="display:flex;gap:10px;align-items:flex-start;padding:9px 2px;border-bottom:1px solid var(--line)"><input type="checkbox" data-pd="${k}" checked style="width:22px;height:22px;flex:none"><span><b>${PADRAO[k].nome}</b> ${u ? `<span class="pill p-ok">já cadastrado</span>` : `<span class="pill p-and">será criado</span>`}<br><span class="meta">${txt}</span></span></label>`; };
+  openSheet(`<h2>✨ Equipe e etapas padrão</h2><p class="meta">Cria quem falta e as etapas de todos os dias. Depois tudo continua editável em 🧹 Etapas e 👥 Equipe.</p>
+    ${linha("denilde", "Limpeza · começa pelos <b>banheiros</b> (07:00), depois prédio, loja e sala")}
+    ${linha("firmino", "Serviços gerais · começa pelo <b>pátio</b> (07:00) · <b>cobre a Denilde</b> nas folgas e férias (banheiros e prédio)")}
+    ${linha("kayo", "Serviços gerais no <b>BR PARK</b> · etapas próprias do BR PARK · o link abre no GPS do BR PARK")}
+    ${linha("teste", "Usuário de teste · 3 etapas de treino · nunca entra como cobertura")}
+    <label class="f">Senha inicial de quem será criado (mín. 6)<input id="pdS" class="inp" type="text" autocomplete="off"></label>
+    <div class="chk"><label><input type="checkbox" id="pdEt" checked> Criar as etapas padrão</label><label><input type="checkbox" id="pdOld" checked> Desativar as etapas antigas (o histórico fica guardado)</label></div>
+    <button class="btn pri xl" onclick="montaPadrao(this)">✨ Montar agora</button><button class="btn" onclick="closeSheet()">Cancelar</button>`);
+}
+async function montaPadrao(b){
+  const ks = $$("[data-pd]").filter(x => x.checked).map(x => x.dataset.pd), senha = $("#pdS").value, etapas = $("#pdEt").checked, old = $("#pdOld").checked;
+  if (!ks.length) return toast("Marque pelo menos uma pessoa.");
+  if (ks.some(k => !achaU(k)) && senha.length < 6) return toast("Digite a senha inicial (mín. 6) para quem será criado.");
+  b.disabled = true; b.textContent = "Montando…";
+  try {
+    for (const k of ks) { const u = achaU(k); if (!u) await rpc("ck_criar_colaborador", {p_login:k, p_senha:senha, p_nome:PADRAO[k].nome, p_funcao:PADRAO[k].funcao, p_turno:"manha"}); else if (u.funcao !== PADRAO[k].funcao) await api("PATCH", "/rest/v1/ck_usuarios?user_id=eq." + u.user_id, {funcao:PADRAO[k].funcao}, {prefer:"return=minimal"}); }
+    await carregaBase();
+    const nomes = [...new Set(ks.flatMap(k => PADRAO[k].etapas.map(e => e[0])))], tem = n => (S.locais || []).find(l => slugU(l.nome) === slugU(n));
+    const novos = nomes.filter(n => !tem(n)); if (novos.length) await api("POST", "/rest/v1/ck_locais", novos.map((n, i) => ({filial:S.filial, nome:n, ordem:(S.locais || []).length + i})), {prefer:"return=minimal"});
+    await carregaBase();
+    if (etapas) {
+      if (old) for (const s of (S.servicos || []).filter(s => s.ativo)) await api("PATCH", "/rest/v1/ck_servicos?id=eq." + s.id, {ativo:false}, {prefer:"return=minimal"});
+      await api("POST", "/rest/v1/ck_servicos", ks.flatMap(k => PADRAO[k].etapas.map(([l, h, hf, n, fo, ps]) => ({filial:S.filial, nome:n, local_id:tem(l).id, horario:h, horario_fim:hf, passos:ps, turno:+h.slice(0, 2) < 12 ? "manha" : "tarde", funcao:PADRAO[k].funcao, responsavel:achaU(k).user_id, foto:fo, dias:[0, 1, 2, 3, 4, 5, 6], frequencia:"todos"}))), {prefer:"return=minimal"});
+    }
+    const dn = achaU("denilde"), fm = achaU("firmino"), ky = achaU("kayo");
+    if (dn && fm && ks.includes("firmino")) await api("PATCH", "/rest/v1/ck_usuarios?user_id=eq." + dn.user_id, {cobertura:fm.user_id}, {prefer:"return=minimal"});
+    if (ky && ks.includes("kayo")) await api("PATCH", "/rest/v1/ck_usuarios?user_id=eq." + ky.user_id, {local_base:tem("BR PARK").id}, {prefer:"return=minimal"}).catch(() => toast("Rode de novo o arquivo 07-checklist.sql para o local do Kayo."));
+    closeSheet(); await carregaBase(); S.view = "serv"; render();
+    toast("✅ Pronto! Grave o GPS do BR PARK em 🧹 Etapas → ✏️ BR PARK e envie os links em 👥 Equipe.");
+  } catch (e) { b.disabled = false; b.textContent = "✨ Montar agora"; toast(e.message); }
+}
 /* ---------- admin: equipe ---------- */
 function linkDe(u){ return new URL("checklist.html", location.href).href.split("?")[0] + "?f=" + encodeURIComponent(S.filial) + "&u=" + encodeURIComponent(u.login) + "&t=" + encodeURIComponent((S.links || {})[u.user_id] || ""); }
 async function resetarLink(id){ const u = S.usuarios.find(x => x.user_id === id); if (!confirm("Resetar o link de " + u.nome + "? O link antigo para de funcionar e o celular dele é desconectado.")) return; try { const t = await rpc("ck_resetar_link", {p_user:id}); S.links = {...(S.links || {}), [id]:t}; toast("Link novo gerado."); enviaLink(id); } catch (e) { toast(/ck_resetar/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); } }
 function telaEquipe(){
   const U = S.usuarios || [];
-  $("#app").innerHTML = `<div class="card"><h2>👥 Colaboradores e líderes</h2><p class="meta">Cada pessoa tem login próprio só do checklist (não entra no estoque nem nas metas) e o próprio link, que abre direto a tela dela. <b>Líder</b>: acompanha as demandas do dia e passa demandas extras (que abonam o horário da etapa); não mexe em etapas, equipe nem configurações.</p><button class="btn pri" onclick="formUser()">+ Novo colaborador ou líder</button></div>
-    ${U.map(u => `<div class="card" style="${u.ativo ? "" : "opacity:.55"}"><div><b style="font-size:16px">${esc(u.nome)}</b> ${u.papel === "lider" ? `<span class="pill p-and">⭐ Líder</span>` : ""} ${u.ativo ? "" : `<span class="pill p-fut">inativo</span>`}<div class="meta">login: ${esc(u.login)}${u.papel === "lider" ? "" : " · " + esc(u.funcao) + " · " + (TURNOS[u.turno] || esc(u.turno))}</div></div>
+  $("#app").innerHTML = `<div class="card"><h2>👥 Colaboradores e líderes</h2><p class="meta">Cada pessoa tem login próprio só do checklist (não entra no estoque nem nas metas) e o próprio link, que abre direto a tela dela. <b>Líder</b>: acompanha as demandas do dia e passa demandas extras (que abonam o horário da etapa); não mexe em etapas, equipe nem configurações.</p><button class="btn pri" onclick="formUser()">+ Novo colaborador ou líder</button><button class="btn" onclick="formPadrao()">✨ Montar equipe e etapas padrão (Denilde, Firmino, Kayo, Teste)</button></div>
+    ${U.map(u => `<div class="card" style="${u.ativo ? "" : "opacity:.55"}"><div><b style="font-size:16px">${esc(u.nome)}</b> ${u.papel === "lider" ? `<span class="pill p-and">⭐ Líder</span>` : ""} ${u.ativo ? "" : `<span class="pill p-fut">inativo</span>`}<div class="meta">login: ${esc(u.login)}${u.papel === "lider" ? "" : " · " + esc(u.funcao) + " · " + (TURNOS[u.turno] || esc(u.turno))}${u.local_base ? " · 📍 " + esc(nomeL(u.local_base)) : ""}</div></div>
       <div class="row"><button class="btn sm" onclick="enviaLink('${u.user_id}')">📤 Enviar link</button><button class="btn sm" onclick="resetarLink('${u.user_id}')">🔄 Resetar link</button><button class="btn sm" onclick="formUser('${u.user_id}')">✏️ Editar</button><button class="btn sm" onclick="senhaUser('${u.user_id}')">🔑 Nova senha</button>${u.papel === "lider" ? "" : `<button class="btn sm" onclick="histUser('${u.user_id}')">📜 Histórico</button>`}</div></div>`).join("") || `<p class="meta">Ninguém cadastrado ainda.</p>`}`;
 }
 async function enviaLink(id){
@@ -737,15 +833,17 @@ function formUser(id){
     ${id ? `<p class="meta">Login: <b>${esc(u.login)}</b></p>` : `<div class="grid2"><label class="f">Usuário (login)<input id="uL" class="inp" autocapitalize="none" placeholder="denilde"></label><label class="f">Senha inicial (mín. 6)<input id="uS" class="inp" type="text" autocomplete="off"></label></div>`}
     <div class="grid2"><label class="f">Função<input id="uF" class="inp" list="lFun2" value="${esc(u.funcao)}"><datalist id="lFun2">${FUNCOES.map(f => `<option>${f}</option>`).join("")}</datalist></label>
       <label class="f">Turno<select id="uT" class="inp">${Object.entries(TURNOS).map(([k, t]) => `<option value="${k}" ${u.turno === k ? "selected" : ""}>${t}</option>`).join("")}</select></label></div>
+    <label class="f">Local de trabalho (onde o link abre)<select id="uLb" class="inp"><option value="">🏢 Posto (Config)</option>${(S.locais || []).filter(l => l.lat != null || l.id === u.local_base).map(l => `<option value="${l.id}" ${l.id === u.local_base ? "selected" : ""}>📍 ${esc(l.nome)}</option>`).join("")}</select></label>
     ${id ? `<label class="f"><input type="checkbox" id="uA" ${u.ativo ? "checked" : ""}> Ativo (desmarcado: não consegue mais entrar)</label>` : ""}
     <button class="btn pri" id="btU">💾 Salvar</button><button class="btn" onclick="closeSheet()">Voltar</button>`);
   $("#btU").onclick = async () => {
     const nome = $("#uN").value.trim(), funcao = $("#uF").value.trim() || "Limpeza", turno = $("#uT").value, papel = $("#uPa").value; if (!nome) return toast("Digite o nome.");
     try {
-      if (id) await api("PATCH", "/rest/v1/ck_usuarios?user_id=eq." + id, {nome, funcao, turno, papel, ativo:$("#uA").checked}, {prefer:"return=minimal"});
+      const lb = +$("#uLb").value || null, extra = lb || u.local_base ? {local_base:lb} : {};
+      if (id) await api("PATCH", "/rest/v1/ck_usuarios?user_id=eq." + id, {nome, funcao, turno, papel, ativo:$("#uA").checked, ...extra}, {prefer:"return=minimal"});
       else { const l = $("#uL").value.trim(), s = $("#uS").value; if (!l) return toast("Digite o usuário."); if (s.length < 6) return toast("Senha com pelo menos 6 caracteres.");
         const nid = await rpc("ck_criar_colaborador", {p_login:l, p_senha:s, p_nome:nome, p_funcao:funcao, p_turno:turno});
-        if (papel === "lider") await api("PATCH", "/rest/v1/ck_usuarios?user_id=eq." + nid, {papel}, {prefer:"return=minimal"}); }
+        if (papel === "lider" || lb) await api("PATCH", "/rest/v1/ck_usuarios?user_id=eq." + nid, {papel, ...extra}, {prefer:"return=minimal"}); }
       closeSheet(); await carregaBase(); render(); toast(id ? "Salvo." : "Criado. Toque em 📤 Enviar link para mandar o acesso.");
     } catch (e) { toast(/papel/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase (campos novos)." : e.message); }
   };
@@ -763,22 +861,22 @@ function telaEscala(){
   const hojeF = col.map(u => [u, emFolga(u.user_id, hoje())]).filter(x => x[1]);
   $("#app").innerHTML = `<div class="card"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><button class="btn sm" style="margin:0" onclick="mudaMesEsc(-1)">◀</button><b style="font-family:var(--display);font-size:16px;text-align:center;flex:1">📅 ${["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"][m - 1]} ${a}</b><button class="btn sm" style="margin:0" onclick="mudaMesEsc(1)">▶</button></div>
     <label class="btn pri xl" style="cursor:pointer">📷 Ler foto da escala de folgas<input type="file" accept="image/*" hidden onchange="lerFotoEscala(this)"></label>
-    <p class="meta" style="margin:6px 0 0">Escolha a foto da escala: o sistema lê os dias de folga de cada um e mostra para você conferir antes de salvar. Também dá para tocar nos dias abaixo para marcar ou tirar folga.</p>
+    <p class="meta" style="margin:6px 0 0">Escolha a foto da escala: o sistema lê <b>FR</b> (folga), <b>FF</b> (folga feriado) e <b>FÉRIAS</b> de cada um e mostra para você conferir antes de salvar. Em folga ou férias, outro colaborador assume as etapas automaticamente. Também dá para tocar nos dias abaixo para marcar ou tirar folga.</p>
     ${hojeF.length ? `<div class="ban warn" style="margin-top:10px">Hoje: ${hojeF.map(([u, f]) => `<b>${esc(u.nome)}</b> de folga → cobre <b>${esc(nomeU(responsavelCob(u.user_id, hoje())) || "ninguém definido")}</b>`).join(" · ")}</div>` : ""}</div>
     ${col.map(u => { const nf = Array.from({length:nd}, (_, i) => emFolga(u.user_id, dia(i + 1))).filter(Boolean).length; return `<div class="card"><div class="row" style="justify-content:space-between"><b style="font-size:17px">${esc(u.nome)}</b><span class="meta">${esc(u.funcao)} · ${TURNOS[u.turno] || ""} · ${nf} folga(s) no mês</span></div>
       <div class="grid2"><label class="f">Tipo de escala<select class="inp" onchange="salvaEscala('${u.user_id}','escala',this.value)">${[["livre", "Pela foto / manual"], ["6x1", "6x1 (1 folga por semana)"], ["12x36", "12x36 (dia sim, dia não)"]].map(([k, t]) => `<option value="${k}" ${(u.escala || "livre") === k ? "selected" : ""}>${t}</option>`).join("")}</select></label>
         ${u.escala === "6x1" ? `<label class="f">Dia da folga<select class="inp" onchange="salvaEscala('${u.user_id}','folga_dia',this.value)"><option value="">Escolha…</option>${DIAS.map((t, i) => `<option value="${i}" ${String(u.folga_dia) === String(i) ? "selected" : ""}>${t}</option>`).join("")}</select></label>` : ""}
         ${u.escala === "12x36" ? `<label class="f">Um dia em que trabalha<input type="date" class="inp" value="${u.escala_base || ""}" onchange="salvaEscala('${u.user_id}','escala_base',this.value)"></label>` : ""}
         <label class="f">Quem cobre as folgas<select class="inp" onchange="salvaEscala('${u.user_id}','cobertura',this.value)"><option value="">Automático (triagem)</option>${col.filter(x => x.user_id !== u.user_id).map(x => `<option value="${x.user_id}" ${u.cobertura === x.user_id ? "selected" : ""}>${esc(x.nome)}</option>`).join("")}</select></label></div>
-      <div class="cal">${Array.from({length:(new Date(a, m - 1, 1).getDay())}, () => "<i></i>").join("")}${Array.from({length:nd}, (_, i) => { const d = dia(i + 1), f = emFolga(u.user_id, d); return `<button class="${f ? (f.auto ? "fr" : "fo") : ""} ${d === hoje() ? "hj" : ""}" onclick="toggleFolga('${u.user_id}','${d}')" title="${f ? esc(f.tipo) : "trabalha"}">${i + 1}</button>`; }).join("")}</div>
-      <div class="meta" style="margin-top:4px"><span class="lg fo"></span> folga marcada/da foto <span class="lg fr"></span> folga pela regra ${u.escala === "livre" ? "" : u.escala}</div></div>`; }).join("") || `<p class="meta">Cadastre os colaboradores em 👥 Equipe.</p>`}
+      <div class="cal">${Array.from({length:(new Date(a, m - 1, 1).getDay())}, () => "<i></i>").join("")}${Array.from({length:nd}, (_, i) => { const d = dia(i + 1), f = emFolga(u.user_id, d); return `<button class="${f ? (f.auto ? "fr" : f.cod === "escala-ferias" || f.cod === "férias" ? "fe" : f.cod === "escala-feriado" ? "ff" : "fo") : ""} ${d === hoje() ? "hj" : ""}" onclick="toggleFolga('${u.user_id}','${d}')" title="${f ? esc(f.tipo) : "trabalha"}">${i + 1}</button>`; }).join("")}</div>
+      <div class="meta" style="margin-top:4px"><span class="lg fo"></span> FR folga <span class="lg ff"></span> FF feriado <span class="lg fe"></span> férias <span class="lg fr"></span> pela regra ${u.escala === "livre" ? "" : u.escala}</div></div>`; }).join("") || `<p class="meta">Cadastre os colaboradores em 👥 Equipe.</p>`}
     <div class="card"><h2>🏖️ Férias e ausências</h2><button class="btn" onclick="formFolga()">+ Férias / ausência / folga avulsa</button>
-      ${(S.folgas || []).filter(f => f.tipo !== "escala" && f.data_fim >= addDia(hoje(), -30)).map(f => `<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line);padding:6px 0"><span><b>${esc(nomeU(f.user_id))}</b> · ${esc(f.tipo)} · ${dBR(f.data_ini)}${f.data_fim !== f.data_ini ? " a " + dBR(f.data_fim) : ""}</span><button class="btn sm" onclick="apagaFolga(${f.id})">🗑️</button></div>`).join("") || `<p class="meta">Nenhuma.</p>`}</div>`;
+      ${(S.folgas || []).filter(f => !ehEscala(f.tipo) && f.data_fim >= addDia(hoje(), -30)).map(f => `<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line);padding:6px 0"><span><b>${esc(nomeU(f.user_id))}</b> · ${esc(f.tipo)} · ${dBR(f.data_ini)}${f.data_fim !== f.data_ini ? " a " + dBR(f.data_fim) : ""}</span><button class="btn sm" onclick="apagaFolga(${f.id})">🗑️</button></div>`).join("") || `<p class="meta">Nenhuma.</p>`}</div>`;
 }
 function formFolga(){
   openSheet(`<h2>Nova folga / férias / ausência</h2>
     <label class="f">Colaborador<select id="fU" class="inp">${ativos().map(u => `<option value="${u.user_id}">${esc(u.nome)}</option>`).join("")}</select></label>
-    <label class="f">Tipo<select id="fT" class="inp"><option value="folga">Folga</option><option value="férias">Férias</option><option value="ausência">Ausência</option></select></label>
+    <label class="f">Tipo<select id="fT" class="inp"><option value="folga">Folga</option><option value="folga feriado">Folga feriado</option><option value="férias">Férias</option><option value="ausência">Ausência</option></select></label>
     <div class="grid2"><label class="f">De<input id="fI" type="date" class="inp" value="${hoje()}"></label><label class="f">Até<input id="fF" type="date" class="inp" value="${hoje()}"></label></div>
     <label class="f">Cobertura<select id="fC" class="inp"><option value="">Automática</option>${ativos().map(u => `<option value="${u.user_id}">${esc(u.nome)} · ${esc(u.funcao)}</option>`).join("")}</select></label>
     <label class="f">Motivo (opcional)<input id="fM" class="inp"></label><button class="btn pri" id="btF">💾 Salvar</button><button class="btn" onclick="closeSheet()">Voltar</button>`);
@@ -933,7 +1031,7 @@ function telaBloqueio(j){
   const M = {fora_local:["📍 Você não está no posto", `Você está a <b>${j.distancia} m</b> do posto. O checklist só abre no local de trabalho (até ${j.raio || 200} m).<br><b style="color:var(--crit)">O administrador foi avisado desta tentativa.</b>`],
     sem_gps:["📍 Localização desligada", "Ative a localização do celular e permita o acesso para este site. Depois toque em Tentar de novo."],
     encerrada:["🔒 Expediente de hoje encerrado", `O link de hoje fechou às <b>${dh(j.ate)}</b>. Abre de novo em <b>${dh(j.libera_em)}</b>.<br>Se precisar antes, peça ao administrador para liberar.`],
-    descanso:["🔒 Ainda no horário de descanso", `O link abre de novo em <b>${dh(j.libera_em)}</b> (10 horas depois do fim do expediente).<br>Se precisar antes, peça ao administrador para liberar.`],
+    descanso:["🔒 Ainda no horário de descanso", `O link abre de novo em <b>${dh(j.libera_em)}</b> (${(S.cfg || {}).descanso_horas == null ? 10 : S.cfg.descanso_horas} horas depois do fim do expediente).<br>Se precisar antes, peça ao administrador para liberar.`],
     offline:["📶 Sem internet", "Conecte à internet para abrir o checklist pela primeira vez hoje."],
     link_resetado:["🔄 Este link foi trocado", "O administrador gerou um link novo para você. Abra o link novo que ele mandar."], rede:["📶 Não foi possível conferir", "Confira a internet e tente de novo."], sem_acesso:["🔒 Sem acesso", "Seu login está desativado. Fale com o administrador."]};
   const [t, d] = M[j.erro] || ["🔒 Acesso bloqueado", "Fale com o administrador."];
@@ -960,7 +1058,7 @@ function cardExpediente(L){
   const H = horasDia(S.perfil.user_id, hoje()), J = H.J, todas = L.length && L.every(x => FINAL(x.st)), pct = Math.min(100, Math.round(H.reg / H.meta * 100));
   return `<div class="card"><h2>🕐 Meu expediente</h2>
     ${J ? `<div class="meta">Entrada <b>${hmTs(J.entrada)}</b> · ${J.saida ? `encerrado às <b>${hmTs(J.saida)}</b>` : `link aberto até <b>${hmTs(J.ate)}</b>`} · intervalo ${H.intervalo}</div>` : ""}
-    <div style="margin-top:8px"><b style="font-size:18px">${hhmm(H.reg)}</b> <span class="meta">registradas de ${hhmm(H.meta)} (8h com 1h de intervalo)</span></div><div class="bar"><i style="width:${pct}%;background:${H.falta ? "var(--warn)" : "var(--good)"}"></i></div>
+    <div style="margin-top:8px"><b style="font-size:18px">${hhmm(H.reg)}</b> <span class="meta">registradas de ${hhmm(H.meta)} (${+((S.cfg || {}).jornada_horas) || 8}h com intervalo)</span></div><div class="bar"><i style="width:${pct}%;background:${H.falta ? "var(--warn)" : "var(--good)"}"></i></div>
     ${H.falta ? `<div class="meta" style="margin-top:4px">Faltam <b>${hhmm(H.falta)}</b>. ${todas ? "Você terminou as etapas: registre o que fez no tempo restante, com foto." : "Termine as etapas; o tempo que sobrar você justifica com foto."}</div>` : `<div class="meta" style="color:var(--good);margin-top:4px">✅ Horas do dia completas.</div>`}
     ${H.gaps.length ? `<div class="fslot"><b>⏳ Tempo sem registro</b>${H.gaps.map(([a, b]) => `<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line);padding:6px 0"><span>${hmTs(a)}–${hmTs(b)} · ${hhmm(Math.round((b - a) / 60000))}</span><button class="btn sm" onclick="formAtividade(${a},${b})">📝 Justificar</button></div>`).join("")}</div>` : ""}
     ${J && !J.saida ? `<div class="row"><button class="btn sm" onclick="formAtividade()">➕ Registrar o que fiz (com foto)</button><button class="btn sm" onclick="encerrarDia()">🏁 Encerrar o dia</button></div>` : ""}</div>`;
@@ -994,7 +1092,7 @@ async function encerrarDia(){
 function cardHoras(d){
   const us = ativos().filter(u => ((S.fil[d] || {}).jor || []).some(j => j.user_id === u.user_id) || linhasDia(d).some(x => x.resp === u.user_id));
   if (!us.length) return "";
-  return `<div class="card"><h2>⏱️ Horas do dia</h2><p class="meta">Meta: 8h por dia, já com 1h de intervalo (${hm((S.cfg || {}).intervalo_ini || "12:00")}). Etapas + demandas extras + atividades justificadas com foto.</p><div style="overflow-x:auto"><table><tr><th>Colaborador</th><th>Entrada</th><th>Saída</th><th>Registrado</th><th>Falta</th><th></th></tr>
+  return `<div class="card"><h2>⏱️ Horas do dia</h2><p class="meta">Meta: ${+((S.cfg || {}).jornada_horas) || 8}h por dia, já com o intervalo (${hm((S.cfg || {}).intervalo_ini || "12:00")}). Etapas + demandas extras + atividades justificadas com foto.</p><div style="overflow-x:auto"><table><tr><th>Colaborador</th><th>Entrada</th><th>Saída</th><th>Registrado</th><th>Falta</th><th></th></tr>
     ${us.map(u => { const H = horasDia(u.user_id, d), J = H.J; return `<tr class="cl" onclick="horasDetalhe('${u.user_id}','${d}')"><td><b>${esc(u.nome)}</b></td><td>${J ? hmTs(J.entrada) : "—"}</td><td>${J ? (J.saida ? hmTs(J.saida) : "até " + hmTs(J.ate)) : "—"}</td><td>${hhmm(H.reg)}</td><td style="color:${H.falta ? "var(--crit)" : "var(--good)"}">${H.falta ? hhmm(H.falta) : "✅"}</td><td>${S.admin ? `<button class="btn sm" onclick="event.stopPropagation();liberarAcesso('${u.user_id}')">🔓</button>` : ""}</td></tr>`; }).join("")}</table></div></div>`;
 }
 async function horasDetalhe(uid, d){
@@ -1013,15 +1111,27 @@ async function liberarAcesso(uid){
   const h = prompt("Liberar o link de " + nomeU(uid) + " por quantas horas a partir de agora?", "8"); if (!h) return;
   try { await rpc("ck_liberar_jornada", {p_user:uid, p_horas:Math.max(1, Math.min(12, parseInt(h) || 8))}); closeSheet(); await atualizaDia(); render(); toast("Acesso liberado para " + nomeU(uid) + "."); } catch (e) { toast(/ck_liberar/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); }
 }
+async function salvaCfg(campos, txt){
+  try { await api("POST", "/rest/v1/ck_config?on_conflict=filial", {filial:S.filial, retencao_dias:+(S.cfg || {}).retencao_dias || 90, ...campos}, {prefer:"resolution=merge-duplicates,return=minimal"}); S.cfg = {...S.cfg, ...campos}; toast(txt || "Salvo."); if (S.view === "cfg") render(); }
+  catch (e) { toast(/column|posto_|jornada|intervalo|janela|descanso/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); }
+}
+function salvaCoord(){ const m = ($("#lcXY").value || "").match(/(-?\d+[.,]\d+)\s*[,; ]\s*(-?\d+[.,]\d+)/); if (!m) return toast("Cole assim: -2.5305, -44.3002 (do Google Maps)."); salvaCfg({posto_lat:+m[1].replace(",", "."), posto_lng:+m[2].replace(",", ".")}, "Local do posto gravado."); }
 function telaLocal(){
   const c = S.cfg || {};
   return `<div class="card"><h2>📍 Local do posto e expediente</h2>
     ${c.posto_lat != null ? `<p>✅ Local gravado · raio de <b>${c.posto_raio || 200} m</b> · <a href="https://www.google.com/maps?q=${c.posto_lat},${c.posto_lng}" target="_blank" rel="noopener" style="color:var(--cyan)">ver no mapa</a></p>` : `<div class="ban warn">⚠️ Local ainda não gravado: por enquanto o link abre em qualquer lugar.</div>`}
     <p class="meta">Esteja no posto e toque no botão abaixo. Depois disso, o link dos colaboradores só abre dentro do raio escolhido.</p>
-    <label class="f">Raio permitido<select id="lcR" class="inp">${[100, 200, 300, 500].map(n => `<option value="${n}" ${(+c.posto_raio || 200) === n ? "selected" : ""}>${n} metros</option>`).join("")}</select></label>
+    <label class="f">Raio permitido<select id="lcR" class="inp" onchange="salvaCfg({posto_raio:+this.value},'Raio: '+this.value+' m')">${[50, 100, 150, 200, 300, 500, 1000].map(n => `<option value="${n}" ${(+c.posto_raio || 200) === n ? "selected" : ""}>${n} metros</option>`).join("")}</select></label>
     <button class="btn pri" onclick="gravaLocal(this)">📍 Gravar minha localização atual como o posto</button>
+    <details><summary class="btn sm">✏️ Digitar as coordenadas (Google Maps)</summary><div class="row" style="margin-top:6px"><input id="lcXY" class="inp" style="flex:1" placeholder="-2.5305, -44.3002" value="${c.posto_lat != null ? c.posto_lat + ", " + c.posto_lng : ""}"><button class="btn sm pri" onclick="salvaCoord()">Salvar</button>${c.posto_lat != null ? `<button class="btn sm" onclick="if(confirm('Tirar o local do posto? O link volta a abrir em qualquer lugar.'))salvaCfg({posto_lat:null,posto_lng:null},'Local removido.')">Tirar</button>` : ""}</div></details>
     <label class="f">Tolerância de atraso em cada etapa<select class="inp" onchange="salvaTol(this.value)">${[0, 5, 10, 15, 20].map(n => `<option value="${n}" ${tolerancia() === n ? "selected" : ""}>${n} minutos</option>`).join("")}</select></label>
-    <p class="meta" style="margin-top:10px">🕐 Expediente: <b>8h</b> no total, com <b>1h de intervalo às ${hm(c.intervalo_ini || "12:00")}</b>. O link fica aberto <b>${c.janela_horas || 8}h</b> desde a 1ª abertura do dia e só abre de novo <b>${c.descanso_horas || 10}h</b> depois. Para liberar antes, use 🔓 em ⏱️ Horas do dia.</p></div>`;
+    <h2 style="margin-top:16px">🕐 Expediente (tudo editável)</h2>
+    <div class="grid2"><label class="f">Horas no dia (com intervalo)<select class="inp" onchange="salvaCfg({jornada_horas:+this.value},'Expediente: '+this.value+'h')">${[4, 6, 7, 8, 9, 10, 12].map(n => `<option value="${n}" ${(+c.jornada_horas || 8) === n ? "selected" : ""}>${n} horas</option>`).join("")}</select></label>
+      <label class="f">Intervalo começa às<input type="time" class="inp" value="${hm(c.intervalo_ini || "12:00")}" onchange="this.value&&salvaCfg({intervalo_ini:this.value},'Intervalo às '+this.value)"></label>
+      <label class="f">Duração do intervalo<select class="inp" onchange="salvaCfg({intervalo_min:+this.value},'Intervalo: '+this.value+' min')">${[0, 15, 30, 60, 90, 120].map(n => `<option value="${n}" ${(c.intervalo_min == null ? 60 : +c.intervalo_min) === n ? "selected" : ""}>${n ? n + " min" : "sem intervalo"}</option>`).join("")}</select></label>
+      <label class="f">Link fica aberto por<select class="inp" onchange="salvaCfg({janela_horas:+this.value},'Link aberto por '+this.value+'h')">${[6, 8, 9, 10, 12, 14].map(n => `<option value="${n}" ${(+c.janela_horas || 8) === n ? "selected" : ""}>${n} horas</option>`).join("")}</select></label>
+      <label class="f">Descanso até abrir de novo<select class="inp" onchange="salvaCfg({descanso_horas:+this.value},'Descanso: '+this.value+'h')">${[0, 6, 8, 10, 11, 12].map(n => `<option value="${n}" ${(c.descanso_horas == null ? 10 : +c.descanso_horas) === n ? "selected" : ""}>${n ? n + " horas" : "sem bloqueio"}</option>`).join("")}</select></label></div>
+    <p class="meta" style="margin-top:10px">Hoje: <b>${+c.jornada_horas || 8}h</b> no total, com <b>${c.intervalo_min == null ? 60 : +c.intervalo_min} min de intervalo às ${hm(c.intervalo_ini || "12:00")}</b>. O link fica aberto <b>${c.janela_horas || 8}h</b> desde a 1ª abertura do dia e só abre de novo <b>${c.descanso_horas == null ? 10 : c.descanso_horas}h</b> depois. Para liberar antes, use 🔓 em ⏱️ Horas do dia. Locais com GPS próprio (ex.: BR PARK) ficam em 🧹 Etapas → ✏️ do local.</p></div>`;
 }
 async function salvaTol(v){ try { await api("POST", "/rest/v1/ck_config?on_conflict=filial", {filial:S.filial, retencao_dias:+(S.cfg || {}).retencao_dias || 90, tolerancia_min:+v}, {prefer:"resolution=merge-duplicates,return=minimal"}); S.cfg = {...S.cfg, tolerancia_min:+v}; toast("Tolerância: " + v + " min."); } catch (e) { toast(e.message); } }
 async function gravaLocal(b){
@@ -1050,7 +1160,7 @@ async function salvaEscala(uid, campo, v){
   try { await api("PATCH", "/rest/v1/ck_usuarios?user_id=eq." + uid, {[campo]:campo === "escala" ? (v || "livre") : val}, {prefer:"return=minimal"}); await carregaBase(); render(); toast("Escala salva."); } catch (e) { toast(/escala|folga_dia|cobertura/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); }
 }
 async function toggleFolga(uid, d){
-  const ex = (S.folgas || []).find(f => f.user_id === uid && f.tipo === "escala" && f.data_ini === d);
+  const ex = (S.folgas || []).find(f => f.user_id === uid && ehEscala(f.tipo) && f.data_ini === d);
   if (!ex && emFolga(uid, d)) return toast("Esta folga vem da regra " + (usuarioDe(uid) || {}).escala + " ou de férias. Mude a regra acima.");
   try { if (ex) await api("DELETE", "/rest/v1/ck_folgas?id=eq." + ex.id); else await api("POST", "/rest/v1/ck_folgas", {filial:S.filial, user_id:uid, tipo:"escala", data_ini:d, data_fim:d, cobertura:(usuarioDe(uid) || {}).cobertura || null, motivo:"escala"}, {prefer:"return=minimal"}); await carregaBase(); render(); } catch (e) { toast(e.message); }
 }
@@ -1065,9 +1175,11 @@ function parseEscala(txt, nd){
     const l = semAc(bruto).replace(/[|]/g, " ").replace(/\s+/g, " ").trim(); if (!l) continue;
     const u = ativos().find(u => { const p = semAc(u.nome).split(" ")[0]; return p.length >= 3 && new RegExp("\\b" + p + "\\b").test(l); }); if (!u) continue;
     const resto = l.slice(l.indexOf(semAc(u.nome).split(" ")[0]) + semAc(u.nome).split(" ")[0].length), toks = resto.split(" ").filter(Boolean);
-    const letras = toks.filter(t => /^[A-Z]{1,2}$/.test(t)), set = res[u.user_id] = res[u.user_id] || new Set();
-    if (letras.length >= Math.min(nd, 20)) letras.slice(0, nd).forEach((t, i) => { if (/^(F|FO|FG|X|D|DS|FL)$/.test(t)) set.add(i + 1); });
-    else (resto.match(/\b\d{1,2}\b/g) || []).map(Number).filter(n => n >= 1 && n <= nd).forEach(n => set.add(n));
+    const letras = toks.filter(t => /^([A-Z]{1,2}|FERIAS?|FER)$/.test(t)), set = res[u.user_id] = res[u.user_id] || {};
+    const cod = t => /^(FF|FFE|FD)$/.test(t) ? "FF" : /^(FE|FER|FERIA|FERIAS)$/.test(t) ? "FE" : /^(FR|F|FO|FG|X|D|DS|FL)$/.test(t) ? "FR" : null;
+    if (letras.length >= Math.min(nd, 20)) letras.slice(0, nd).forEach((t, i) => { const c = cod(t); if (c) set[i + 1] = c; });
+    else { let c = "FR"; for (const t of resto.replace(/(\d{1,2})\s*(?:A|ATE|-)\s*(\d{1,2})/g, "$1~$2").split(" ")) { if (/^(FF|FERIADO)$/.test(t)) c = "FF"; else if (/^FERIAS?$/.test(t)) c = "FE"; else if (/^(FR|FOLGA|FOLGAS)$/.test(t)) c = "FR";
+      const m = t.match(/^(\d{1,2})(?:~(\d{1,2}))?$/); if (m) for (let n = +m[1]; n <= +(m[2] || m[1]); n++) if (n >= 1 && n <= nd) set[n] = c; } }
   }
   return res;
 }
@@ -1084,41 +1196,43 @@ async function lerFotoEscala(inp){
     const T = await carregaTesseract(), img = await new Promise((ok, er) => { const i = new Image(); i.onload = () => ok(i); i.onerror = er; i.src = URL.createObjectURL(f); });
     const w = await T.createWorker("por"); let txt = ""; try { for (const [larg, lim] of [[2000, 150], [2400, 170]]) txt += "\n" + (await w.recognize(prepImg(img, larg, lim))).data.text; } finally { await w.terminate(); }
     const [a, m] = S.escMes.split("-").map(Number), nd = new Date(a, m, 0).getDate();
-    S.escLida = {mes:S.escMes, dias:Object.fromEntries(Object.entries(parseEscala(txt, nd)).map(([k, v]) => [k, [...v]]))};
+    S.escLida = {mes:S.escMes, dias:parseEscala(txt, nd)};
     previaEscala();
   } catch (e) { console.error(e); openSheet(`<h2>Não foi possível ler</h2><p class="meta">${esc(e.message || "Tente uma foto mais nítida, de frente e com boa luz.")}</p><button class="btn" onclick="closeSheet()">Fechar</button>`); }
 }
 function previaEscala(){
   const E = S.escLida, [a, m] = E.mes.split("-").map(Number), nd = new Date(a, m, 0).getDate(), col = ativos();
-  openSheet(`<h2>📅 Conferir a escala lida</h2><p class="meta">Toque nos dias para corrigir. Laranja = folga. Quem não apareceu na foto fica sem alteração.</p>
-    ${col.map(u => { const d = E.dias[u.user_id], sg = d ? sugereEscala(d, E.mes) : null; return `<div class="fslot"><div class="row" style="justify-content:space-between"><b>${esc(u.nome)}</b><span class="meta">${d ? d.length + " folga(s)" : "não encontrado na foto"}</span></div>
-      ${d ? `<div class="cal">${Array.from({length:(new Date(a, m - 1, 1).getDay())}, () => "<i></i>").join("")}${Array.from({length:nd}, (_, i) => `<button class="${d.includes(i + 1) ? "fo" : ""}" onclick="tglPrev('${u.user_id}',${i + 1})">${i + 1}</button>`).join("")}</div>
-      ${sg ? `<label class="meta" style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" data-sug="${u.user_id}" checked> Usar a regra <b>${sg.txt}</b> nos próximos meses</label>` : ""}` : `<button class="btn sm" onclick="S.escLida.dias['${u.user_id}']=[];previaEscala()">+ Marcar folgas à mão</button>`}</div>`; }).join("")}
+  openSheet(`<h2>📅 Conferir a escala lida</h2><p class="meta">Toque no dia para trocar: trabalha → <b>FR</b> folga → <b>FF</b> folga feriado → <b>FÉRIAS</b>. Nos dias de folga e férias as etapas vão sozinhas para quem cobre. Quem não apareceu na foto fica sem alteração.</p>
+    ${col.map(u => { const d = E.dias[u.user_id], fr = d ? Object.keys(d).filter(k => d[k] === "FR").map(Number) : [], sg = d ? sugereEscala(fr, E.mes) : null, n = c => d ? Object.values(d).filter(v => v === c).length : 0; return `<div class="fslot"><div class="row" style="justify-content:space-between"><b>${esc(u.nome)}</b><span class="meta">${d ? `FR ${n("FR")} · FF ${n("FF")} · férias ${n("FE")}` : "não encontrado na foto"}</span></div>
+      ${d ? `<div class="cal">${Array.from({length:(new Date(a, m - 1, 1).getDay())}, () => "<i></i>").join("")}${Array.from({length:nd}, (_, i) => `<button class="${({FR:"fo", FF:"ff", FE:"fe"})[d[i + 1]] || ""}" onclick="tglPrev('${u.user_id}',${i + 1})">${d[i + 1] ? `<small style="display:block;font-size:9px">${d[i + 1] === "FE" ? "FÉR" : d[i + 1]}</small>` : ""}${i + 1}</button>`).join("")}</div>
+      ${sg ? `<label class="meta" style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" data-sug="${u.user_id}" checked> Usar a regra <b>${sg.txt}</b> nos próximos meses</label>` : ""}` : `<button class="btn sm" onclick="S.escLida.dias['${u.user_id}']={};previaEscala()">+ Marcar folgas à mão</button>`}</div>`; }).join("")}
     <button class="btn pri xl" onclick="salvaEscalaLida(this)">💾 Salvar escala</button><button class="btn" onclick="closeSheet()">Cancelar</button>`);
 }
-function tglPrev(uid, k){ const l = S.escLida.dias[uid] || []; S.escLida.dias[uid] = l.includes(k) ? l.filter(x => x !== k) : l.concat(k); const sc = $("#sheet").scrollTop; previaEscala(); $("#sheet").scrollTop = sc; }
+function tglPrev(uid, k){ const l = S.escLida.dias[uid] = S.escLida.dias[uid] || {}, prox = {undefined:"FR", FR:"FF", FF:"FE", FE:undefined}[l[k]]; if (prox) l[k] = prox; else delete l[k]; const sc = $("#sheet").scrollTop; previaEscala(); $("#sheet").scrollTop = sc; }
 async function salvaEscalaLida(b){
   const E = S.escLida, [a, m] = E.mes.split("-").map(Number), nd = new Date(a, m, 0).getDate(), ini = E.mes + "-01", fim = E.mes + "-" + pad(nd);
   b.disabled = true;
   try {
     for (const [uid, dias] of Object.entries(E.dias)) {
-      await api("DELETE", `/rest/v1/ck_folgas?user_id=eq.${uid}&tipo=eq.escala&data_ini=gte.${ini}&data_ini=lte.${fim}`);
-      const cob = (usuarioDe(uid) || {}).cobertura || null;
-      if (dias.length) await api("POST", "/rest/v1/ck_folgas", dias.map(k => ({filial:S.filial, user_id:uid, tipo:"escala", data_ini:E.mes + "-" + pad(k), data_fim:E.mes + "-" + pad(k), cobertura:cob, motivo:"foto da escala"})), {prefer:"return=minimal"});
-      const sg = $(`[data-sug="${uid}"]`); if (sg && sg.checked) { const s = sugereEscala(dias, E.mes); if (s) { const {txt, ...campos} = s; await api("PATCH", "/rest/v1/ck_usuarios?user_id=eq." + uid, campos, {prefer:"return=minimal"}); } }
+      await api("DELETE", `/rest/v1/ck_folgas?user_id=eq.${uid}&tipo=like.escala*&data_ini=gte.${ini}&data_ini=lte.${fim}`);
+      const cob = (usuarioDe(uid) || {}).cobertura || null, ks = Object.keys(dias).map(Number);
+      if (ks.length) await api("POST", "/rest/v1/ck_folgas", ks.map(k => ({filial:S.filial, user_id:uid, tipo:COD[dias[k]] || "escala", data_ini:E.mes + "-" + pad(k), data_fim:E.mes + "-" + pad(k), cobertura:cob, motivo:"foto da escala · " + (CODT[dias[k]] || "Folga")})), {prefer:"return=minimal"});
+      const sg = $(`[data-sug="${uid}"]`); if (sg && sg.checked) { const s = sugereEscala(ks.filter(k => dias[k] === "FR"), E.mes); if (s) { const {txt, ...campos} = s; await api("PATCH", "/rest/v1/ck_usuarios?user_id=eq." + uid, campos, {prefer:"return=minimal"}); } }
     }
     closeSheet(); await carregaBase(); render(); toast("Escala salva. Nos dias de folga, as etapas vão para quem cobre.");
   } catch (e) { b.disabled = false; toast(e.message); }
 }
 /* início do administrador: botões grandes */
+setInterval(() => { const ag = agoraHM(); document.querySelectorAll("[data-relogio]").forEach(e => e.textContent = ag); }, 15000);
+const heroTec = (pct, titulo, sub, extra) => `<div class="tec"><div class="anel" style="--p:${pct}"><b>${pct}%</b></div><div style="position:relative;z-index:1;flex:1;min-width:0"><div class="oi">${titulo}</div><div class="meta">${sub}</div><span class="relp"><i></i>agora <span data-relogio>${agoraHM()}</span></span></div>${extra || ""}</div>`;
 function telaInicio(){
   const d = hoje(), L = linhasDia(d), c = contagem(L), fora = L.filter(foraHorario).length, pend = S.nPed || 0, folga = ativos().filter(u => emFolga(u.user_id, d));
   const T = [["hoje", "📊", "Acompanhar o dia", `${c.ok} de ${c.tot} etapas · ${fora} fora do horário`, fora ? "crit" : ""], ["demanda", "📌", "Passar demanda extra", "Mandar uma tarefa para alguém agora", ""],
     ["escala", "📅", "Escala e folgas", folga.length ? "Hoje de folga: " + folga.map(u => u.nome).join(", ") : "Ler a foto da escala, 6x1, 12x36", ""], ["serv", "🧹", "Etapas e horários", (S.servicos || []).filter(s => s.ativo).length + " etapas cadastradas", ""],
     ["equipe", "👥", "Equipe e links", ativos().length + " colaboradores · enviar ou resetar link", ""], ["mat", "📦", "Pedidos de material", pend ? pend + " esperando resposta" : "Nenhum pedido novo", pend ? "warn" : ""],
     ["hist", "📜", "Histórico e relatórios", "PDF e Excel por dia, semana ou mês", ""], ["cfg", "⚙️", "Configurações", "Local do posto, cores, tolerância", ""]];
-  $("#app").innerHTML = `<div class="hero"><div><div class="oi">Olá, ${esc((S.perfil.nome || "").split(" ")[0])}!</div><div class="meta">${DIAS[diaSem(d)]} ${dBR(d)} · checklist ${c.pct}% concluído</div></div></div><div class="bar" style="margin:0 0 14px"><i style="width:${c.pct}%"></i></div>
-    <div class="home">${T.map(([k, ic, t, sub, cl]) => `<button class="hbtn ${cl}" onclick="${k === "demanda" ? "formDemanda()" : `S.view='${k}';render()`}"><span class="hic">${ic}</span><b>${t}</b><small>${esc(sub)}</small></button>`).join("")}</div>`;
+  $("#app").innerHTML = heroTec(c.pct, `olá, <em>${esc((S.perfil.nome || "").split(" ")[0])}</em>`, `${DIAS[diaSem(d)]} ${dBR(d)} · ${c.ok} de ${c.tot} etapas concluídas`) + `
+    <div class="home entra">${T.map(([k, ic, t, sub, cl]) => `<button class="hbtn ${cl}" onclick="${k === "demanda" ? "formDemanda()" : `S.view='${k}';render()`}"><span class="hic">${ic}</span><b>${t}</b><small>${esc(sub)}</small></button>`).join("")}</div>`;
 }
 </script>
 <script>if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js?v=31').catch(()=>{});</script>
