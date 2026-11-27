@@ -91,6 +91,7 @@ tr.cl{cursor:pointer}tr.cl:hover{background:var(--surface2)}
 @keyframes pulsa{50%{box-shadow:0 0 0 5px rgba(56,189,248,.18),0 0 34px rgba(56,189,248,.6)}}
 .relp{display:inline-flex;align-items:center;gap:6px;background:#292524;border:1px solid #3f3a36;color:#fdba74;border-radius:999px;padding:4px 10px;font:700 12px/1 ui-monospace,Menlo,monospace;margin-top:6px}.relp i{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e;animation:pisca 1.4s infinite}
 @keyframes pisca{50%{opacity:.25}}
+.tecl{flex-basis:100%;position:relative;z-index:1;display:grid;gap:6px;margin-top:4px}.tecr{background:#292524;border:1px solid #3f3a36;border-radius:12px;padding:8px 10px;font-size:13px;color:#e7e5e4}.tecr b{color:#fff}.tecr.ok{border-color:#ca8a04}.tecr.warn{border-color:#f97316;background:#431407}.tecr.crit{border-color:#ef4444;background:#450a0a}
 .tec .btn{position:relative;z-index:1;background:#292524;border-color:#3f3a36;color:#fafaf9}
 .entra>*{animation:entra .5s cubic-bezier(.2,.8,.2,1) both}.entra>*:nth-child(2){animation-delay:.05s}.entra>*:nth-child(3){animation-delay:.1s}.entra>*:nth-child(4){animation-delay:.15s}.entra>*:nth-child(5){animation-delay:.2s}.entra>*:nth-child(6){animation-delay:.25s}.entra>*:nth-child(7){animation-delay:.3s}.entra>*:nth-child(8){animation-delay:.35s}
 @keyframes entra{from{opacity:0;transform:translateY(14px);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
@@ -105,7 +106,7 @@ tr.cl{cursor:pointer}tr.cl:hover{background:var(--surface2)}
 .home{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}.hbtn{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;cursor:pointer;min-height:132px;box-shadow:0 6px 18px rgba(43,26,16,.06)}
 .hbtn{position:relative;overflow:hidden;transition:transform .15s,box-shadow .2s}.hbtn::after{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,#f97316,#fb923c,#38bdf8);opacity:.85}.hbtn:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(249,115,22,.18)}
 .hbtn .hic{font-size:26px;width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:#1c1917;box-shadow:inset 0 0 0 1px #3f3a36,0 6px 14px rgba(28,25,23,.25)}.hbtn b{font-size:16px;font-family:var(--display)}.hbtn small{color:var(--muted);font-size:12px;line-height:1.35}.hbtn.crit{border:2px solid var(--crit)}.hbtn.warn{border:2px solid var(--warn)}.hbtn:active{transform:scale(.98)}
-.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px}.cal button{border:1px solid var(--line);background:var(--surface2);border-radius:8px;padding:7px 0;font-weight:700;font-size:13px;cursor:pointer}.cal .fo{background:#2563eb;border-color:#2563eb;color:#fff}.cal .fr{background:var(--warn-bg);border-color:var(--warn);color:var(--warn)}.cal .hj{outline:2px solid var(--cyan)}.cal .ff{background:#7c3aed;border-color:#7c3aed;color:#fff}.cal .fe{background:#0d9488;border-color:#0d9488;color:#fff}.lg.ff{background:#7c3aed}.lg.fe{background:#0d9488}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px}.cal button{border:1px solid var(--line);background:var(--surface2);border-radius:8px;padding:7px 0;font-weight:700;font-size:13px;cursor:pointer}.cal .fo{background:#2563eb;border-color:#2563eb;color:#fff}.cal .fr{background:var(--warn-bg);border-color:var(--warn);color:var(--warn)}.cal .hj{outline:3px solid var(--brand);outline-offset:1px}.cal button{color:var(--ink);font-size:15px;min-height:40px}.cal b{text-align:center;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;padding:2px 0}.cal .ff{background:#7c3aed;border-color:#7c3aed;color:#fff}.cal .fe{background:#0d9488;border-color:#0d9488;color:#fff}.lg.ff{background:#7c3aed}.lg.fe{background:#0d9488}
 .lg{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle;margin:0 2px 0 8px}.lg.fo{background:#2563eb}.lg.fr{background:var(--warn-bg);border:1px solid var(--warn)}
 body.cardEscuro .etapa{background:#1c1917;border-color:#292524;color:#fafaf9;box-shadow:0 14px 34px rgba(28,25,23,.25)}body.cardEscuro .etapa .meta{color:#d6d3d1}body.cardEscuro .etapa .relogio{background:#292524}
 body.cardEscuro .passo{background:#292524;border-color:#3f3a36;color:#fafaf9}body.cardEscuro .passo span{border-color:#57534e}body.cardEscuro .etapa .btn:not(.pri):not(.ok){background:#292524;border-color:#3f3a36;color:#fafaf9}
@@ -605,6 +606,7 @@ function avisos(){
   if (!S.perfil) return;
   if (S.papel !== "colaborador") {
     const ini = !S.avisouIni;
+    { const ag = agoraHM(); for (const x of linhasDia(hoje()).filter(x => x.resp && !x.reg && x.st === "agora" && ag > addMin(hm(x.s.horario), tolerancia()))) { const k = "par" + x.s.id; if (avisados[k]) continue; avisados[k] = 1; if (!ini) notifica("⏸️ " + nomeU(x.resp) + " ainda não começou " + x.s.nome + " (era às " + hm(x.s.horario) + ")."); } }
     for (const x of linhasDia(hoje()).filter(foraHorario)) { const k = "g" + x.s.id + x.st; if (avisados[k]) continue; avisados[k] = 1; if (!ini) notifica("🚨 " + nomeU(x.resp) + ": " + x.s.nome + " (" + janela(x.s) + ") fora do horário."); }
     S.avisouIni = true; return;
   }
@@ -613,6 +615,7 @@ function avisos(){
     let t = "";
     if (x.st === "atrasado") t = "⏰ Fora do horário: " + x.s.nome + " (" + janela(x.s) + ") não foi feita. O administrador foi avisado.";
     else if (x.st === "estourado") t = "⏰ O horário de " + x.s.nome + " terminou às " + hm(x.s.horario_fim) + ". Finalize e informe o motivo.";
+    else if (x.st === "agora" && !x.reg && agoraHM() > addMin(hm(x.s.horario), tolerancia())) { if (avisados["par" + x.s.id]) continue; avisados["par" + x.s.id] = 1; notifica("⏸️ Já passou do começo de " + x.s.nome + " (" + hm(x.s.horario) + "). Comece agora: o administrador foi avisado."); continue; }
     else if (x.st === "agora") t = "▶️ Hora de começar: " + x.s.nome + (x.s.horario_fim ? " (até " + hm(x.s.horario_fim) + ")" : "") + ".";
     if (!t) continue; avisados[k] = 1; notifica(t);
   }
@@ -924,13 +927,13 @@ function telaEscala(){
   $("#app").innerHTML = `<div class="card"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><button class="btn sm" style="margin:0" onclick="mudaMesEsc(-1)">◀</button><b style="font-family:var(--display);font-size:16px;text-align:center;flex:1">📅 ${["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"][m - 1]} ${a}</b><button class="btn sm" style="margin:0" onclick="mudaMesEsc(1)">▶</button></div>
     <label class="btn pri xl" style="cursor:pointer">📷 Ler foto da escala de folgas<input type="file" accept="image/*" hidden onchange="lerFotoEscala(this)"></label>
     <p class="meta" style="margin:6px 0 0">Escolha a foto da escala: o sistema acha a linha dos <b>dias do mês</b> e, na linha de cada colaborador, vê em qual dia está <b>FR</b> (folga), <b>FF</b> (folga feriado) ou <b>FÉRIAS</b>, marcando o calendário dele e mostra para você conferir antes de salvar. Em folga ou férias, outro colaborador assume as etapas automaticamente. Também dá para tocar nos dias abaixo para marcar ou tirar folga.</p>
-    ${hojeF.length ? `<div class="ban warn" style="margin-top:10px">Hoje: ${hojeF.map(([u, f]) => `<b>${esc(u.nome)}</b> de folga → cobre <b>${esc(nomeU(responsavelCob(u.user_id, hoje())) || "ninguém definido")}</b>`).join(" · ")}</div>` : ""}</div>
+    ${hojeF.length ? `<div class="ban warn" style="margin-top:10px">Hoje: ${hojeF.map(([u, f]) => `<b>${esc(u.nome)}</b> de ${esc(f.tipo)} → cobre <b>${esc(nomeU(responsavelCob(u.user_id, hoje())) || "ninguém definido")}</b>`).join(" · ")}</div>` : ""}</div>
     ${col.map(u => { const nf = Array.from({length:nd}, (_, i) => emFolga(u.user_id, dia(i + 1))).filter(Boolean).length; return `<div class="card"><div class="row" style="justify-content:space-between"><b style="font-size:17px">${esc(u.nome)} ${folgaPill(u.user_id, hoje())}</b><span class="meta">${esc(u.funcao)} · ${TURNOS[u.turno] || ""} · ${nf} folga(s) no mês</span></div>
       <div class="grid2"><label class="f">Tipo de escala<select class="inp" onchange="salvaEscala('${u.user_id}','escala',this.value)">${[["livre", "Pela foto / manual"], ["6x1", "6x1 (1 folga por semana)"], ["12x36", "12x36 (dia sim, dia não)"]].map(([k, t]) => `<option value="${k}" ${(u.escala || "livre") === k ? "selected" : ""}>${t}</option>`).join("")}</select></label>
         ${u.escala === "6x1" ? `<label class="f">Dia da folga<select class="inp" onchange="salvaEscala('${u.user_id}','folga_dia',this.value)"><option value="">Escolha…</option>${DIAS.map((t, i) => `<option value="${i}" ${String(u.folga_dia) === String(i) ? "selected" : ""}>${t}</option>`).join("")}</select></label>` : ""}
         ${u.escala === "12x36" ? `<label class="f">Um dia em que trabalha<input type="date" class="inp" value="${u.escala_base || ""}" onchange="salvaEscala('${u.user_id}','escala_base',this.value)"></label>` : ""}
         <label class="f">Quem cobre as folgas<select class="inp" onchange="salvaEscala('${u.user_id}','cobertura',this.value)"><option value="">Automático (triagem)</option>${col.filter(x => x.user_id !== u.user_id).map(x => `<option value="${x.user_id}" ${u.cobertura === x.user_id ? "selected" : ""}>${esc(x.nome)}</option>`).join("")}</select></label></div>
-      <div class="cal">${Array.from({length:(new Date(a, m - 1, 1).getDay())}, () => "<i></i>").join("")}${Array.from({length:nd}, (_, i) => { const d = dia(i + 1), f = emFolga(u.user_id, d); return `<button class="${f ? (f.auto ? "fr" : f.cod === "escala-ferias" || f.cod === "férias" ? "fe" : f.cod === "escala-feriado" ? "ff" : "fo") : ""} ${d === hoje() ? "hj" : ""}" onclick="toggleFolga('${u.user_id}','${d}')" title="${f ? esc(f.tipo) : "trabalha"}">${i + 1}</button>`; }).join("")}</div>
+      <div class="cal">${DIAS.map(t => `<b>${t}</b>`).join("")}${Array.from({length:(new Date(a, m - 1, 1).getDay())}, () => "<i></i>").join("")}${Array.from({length:nd}, (_, i) => { const d = dia(i + 1), f = emFolga(u.user_id, d); return `<button class="${f ? (f.auto ? "fr" : f.cod === "escala-ferias" || f.cod === "férias" ? "fe" : f.cod === "escala-feriado" ? "ff" : "fo") : ""} ${d === hoje() ? "hj" : ""}" onclick="toggleFolga('${u.user_id}','${d}')" title="${f ? esc(f.tipo) : "trabalha"}">${i + 1}</button>`; }).join("")}</div>
       <div class="meta" style="margin-top:4px"><span class="lg fo"></span> FR folga <span class="lg ff"></span> FF feriado <span class="lg fe"></span> férias <span class="lg fr"></span> pela regra ${u.escala === "livre" ? "" : u.escala}</div></div>`; }).join("") || `<p class="meta">Cadastre os colaboradores em 👥 Equipe.</p>`}
     <div class="card"><h2>🏖️ Férias e ausências</h2><button class="btn" onclick="formFolga()">+ Férias / ausência / folga avulsa</button>
       ${(S.folgas || []).filter(f => !ehEscala(f.tipo) && f.data_fim >= addDia(hoje(), -30)).map(f => `<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line);padding:6px 0"><span><b>${esc(nomeU(f.user_id))}</b> · ${esc(f.tipo)} · ${dBR(f.data_ini)}${f.data_fim !== f.data_ini ? " a " + dBR(f.data_fim) : ""}</span><button class="btn sm" onclick="apagaFolga(${f.id})">🗑️</button></div>`).join("") || `<p class="meta">Nenhuma.</p>`}</div>`;
@@ -1239,7 +1242,7 @@ async function toggleFolga(uid, d){
 }
 let tessP = null;
 function carregaTesseract(){ if (window.Tesseract) return Promise.resolve(window.Tesseract); if (!tessP) tessP = new Promise((ok, er) => { const sc = document.createElement("script"); sc.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"; sc.onload = () => ok(window.Tesseract); sc.onerror = () => { tessP = null; er(new Error("Sem internet para ler a foto.")); }; document.head.appendChild(sc); }); return tessP; }
-function prepImg(img, larg, lim){ const k = Math.max(1, larg / img.width), cv = document.createElement("canvas"); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k); const g = cv.getContext("2d"); g.drawImage(img, 0, 0, cv.width, cv.height); const d = g.getImageData(0, 0, cv.width, cv.height); for (let i = 0; i < d.data.length; i += 4) { const r = d.data[i], gg = d.data[i + 1], bb = d.data[i + 2], lu = 0.3 * r + 0.59 * gg + 0.11 * bb, sat = Math.max(r, gg, bb) - Math.min(r, gg, bb); const y = sat > 50 && lu > 90 ? 255 : lu < lim ? 0 : 255;   /* célula colorida (ex.: azul da folga) vira branco para ler o texto */ d.data[i] = d.data[i + 1] = d.data[i + 2] = y; } g.putImageData(d, 0, 0); return cv; }
+function prepImg(img, larg, lim){ const k = Math.min(4, larg / img.width), cv = document.createElement("canvas"); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k); const g = cv.getContext("2d"); g.drawImage(img, 0, 0, cv.width, cv.height); const d = g.getImageData(0, 0, cv.width, cv.height); for (let i = 0; i < d.data.length; i += 4) { const r = d.data[i], gg = d.data[i + 1], bb = d.data[i + 2], lu = 0.3 * r + 0.59 * gg + 0.11 * bb, sat = Math.max(r, gg, bb) - Math.min(r, gg, bb); const y = sat > 50 && lu > 90 ? 255 : lu < lim ? 0 : 255;   /* célula colorida (ex.: azul da folga) vira branco para ler o texto */ d.data[i] = d.data[i + 1] = d.data[i + 2] = y; } g.putImageData(d, 0, 0); return cv; }
 const semAc = v => String(v || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
 /* lê o texto da foto: em cada linha com o nome de alguém, pega os dias de folga (números do dia, ou a grade de letras com F/X/D) */
 function parseEscala(txt, nd){
@@ -1262,37 +1265,40 @@ function palavrasOCR(data){
   const W = []; for (const b of data.blocks || []) for (const p of b.paragraphs || []) for (const l of p.lines || []) W.push(...(l.words || [])); return W;
 }
 function parseEscalaPos(words, nd, users){
-  const W = (words || []).map(w => ({t:semAc(w.text).replace(/[^A-Z0-9]/g, ""), x0:w.bbox.x0, x1:w.bbox.x1, y0:w.bbox.y0, y1:w.bbox.y1})).filter(w => w.t);
+  const W = (words || []).map(w => { const raw = semAc(w.text), dt = raw.match(/^(\d{1,2})[\/.\-]\d{1,2}/); return {t:dt ? dt[1] : raw.replace(/[^A-Z0-9]/g, ""), x0:w.bbox.x0, x1:w.bbox.x1, y0:w.bbox.y0, y1:w.bbox.y1}; }).filter(w => w.t);
   W.forEach(w => { w.xc = (w.x0 + w.x1) / 2; w.yc = (w.y0 + w.y1) / 2; w.h = Math.max(4, w.y1 - w.y0); });
-  /* linha do cabeçalho: a faixa horizontal com mais números de 1 a nd em ordem crescente da esquerda para a direita */
+  /* cabeçalho dos dias: a maior sequência de números crescentes (1..N) da esquerda para a direita, aceitando foto um pouco torta */
+  const N = W.filter(o => /^\d{1,2}$/.test(o.t) && +o.t >= 1 && +o.t <= nd).sort((a, b) => a.xc - b.xc);
   let melhor = [];
-  for (const w of W) {
-    const lin = W.filter(o => /^\d{1,2}$/.test(o.t) && +o.t >= 1 && +o.t <= nd && Math.abs(o.yc - w.yc) < w.h * .6).sort((a, b) => a.xc - b.xc);
-    const ok = lin.filter((o, i) => i === 0 || +o.t > +lin[i - 1].t);
-    if (ok.length > melhor.length) melhor = ok;
+  for (let i = 0; i < N.length; i++) {
+    const ch = [N[i]];
+    for (let j = i + 1; j < N.length; j++) { const u = ch[ch.length - 1], o = N[j]; if (+o.t > +u.t && +o.t - +u.t <= 4 && Math.abs(o.yc - u.yc) < Math.max(u.h, o.h) * .8 && o.x0 > u.x0) ch.push(o); }
+    if (ch.length > melhor.length) melhor = ch;
   }
-  if (melhor.length < Math.min(10, nd / 2)) return null;
-  /* reta dia -> x (mínimos quadrados): tolera dias que o OCR não leu */
-  const n = melhor.length, sx = melhor.reduce((a, o) => a + +o.t, 0), sy = melhor.reduce((a, o) => a + o.xc, 0), sxx = melhor.reduce((a, o) => a + (+o.t) ** 2, 0), sxy = melhor.reduce((a, o) => a + (+o.t) * o.xc, 0);
-  const b = (n * sxy - sx * sy) / (n * sxx - sx * sx), a = (sy - b * sx) / n; if (!(b > 0)) return null;
-  const diaDe = x => Math.round((x - a) / b), yCab = melhor[0].yc;
+  if (melhor.length < Math.min(8, nd / 3)) return null;
+  const fit = (P, fx, fy) => { const n = P.length, sx = P.reduce((s, o) => s + fx(o), 0), sy = P.reduce((s, o) => s + fy(o), 0), sxx = P.reduce((s, o) => s + fx(o) ** 2, 0), sxy = P.reduce((s, o) => s + fx(o) * fy(o), 0), d = n * sxx - sx * sx; const b = d ? (n * sxy - sx * sy) / d : 0; return [(sy - b * sx) / n, b]; };
+  const [a, b] = fit(melhor, o => +o.t, o => o.xc), [, e] = fit(melhor, o => o.xc, o => o.yc);   /* dia -> x  e  inclinação da foto */
+  if (!(b > 0)) return null;
+  const diaDe = x => Math.round((x - a) / b), cab = melhor[0], yCab = x => cab.yc + e * (x - cab.xc);
   const cod = t => /^(FF|FFE|FD)$/.test(t) ? "FF" : /^(FE|FER|FERIA|FERIAS)$/.test(t) ? "FE" : /^(FR|F|FO|FOL|FOLGA)$/.test(t) ? "FR" : null;
   const res = {}, linhas = [];
   for (const u of users) {
-    const p = semAc(u.nome).split(" ")[0]; if (p.length < 3) continue;
-    const nomes = W.filter(w => w.t.startsWith(p) && Math.abs(w.yc - yCab) > w.h * .6); if (!nomes.length) continue;
-    linhas.push({uid:u.user_id, yc:nomes[0].yc, h:nomes[0].h});
+    const p = semAc(u.nome).split(" ")[0].replace(/[^A-Z]/g, ""); if (p.length < 3) continue;
+    const pre = p.slice(0, Math.max(3, p.length - 1));   /* tolera a última letra lida errada */
+    const nomes = W.filter(w => w.t.startsWith(pre) && Math.abs(w.yc - yCab(w.xc)) > w.h * .8 && w.x1 < a + b * .5); if (!nomes.length) continue;
     const set = {};
-    for (const nm of nomes) for (const w of W) {
-      if (w === nm || w.xc < nm.x1 || Math.abs(w.yc - nm.yc) > nm.h * .7) continue;
-      const c = cod(w.t); if (!c) continue;
-      let d1 = diaDe(w.x0 + b * .35), d2 = diaDe(w.x1 - b * .35); if (d2 < d1) d1 = d2 = diaDe(w.xc);
-      if (c !== "FE") d1 = d2 = diaDe(w.xc);   /* FR e FF ocupam 1 dia; FÉRIAS pode cobrir várias colunas */
-      for (let d = Math.max(1, d1); d <= Math.min(nd, d2); d++) set[d] = c;
+    for (const nm of nomes) {
+      const yIn = x => nm.yc + e * (x - nm.xc); linhas.push({uid:u.user_id, yc:nm.yc, xc:nm.xc, h:nm.h});
+      for (const w of W) {
+        if (w === nm || w.xc < nm.x1 || Math.abs(w.yc - yIn(w.xc)) > nm.h * .7) continue;
+        const c = cod(w.t); if (!c) continue;
+        let d1 = diaDe(w.x0 + b * .35), d2 = diaDe(w.x1 - b * .35); if (c !== "FE" || d2 < d1) d1 = d2 = diaDe(w.xc);
+        for (let d = Math.max(1, d1); d <= Math.min(nd, d2); d++) set[d] = c;
+      }
     }
     if (Object.keys(set).length) res[u.user_id] = Object.assign(res[u.user_id] || {}, set);
   }
-  Object.defineProperty(res, "_grade", {value:{a, b, linhas}});
+  Object.defineProperty(res, "_grade", {value:{a, b, e, linhas}});
   return res;
 }
 /* dia pintado de AZUL na foto = folga (FR). 7 ou mais dias azuis seguidos = férias */
@@ -1302,12 +1308,12 @@ function folgasAzuis(img, k, grade, nd){
   for (const l of grade.linhas) {
     const dias = [];
     for (let d = 1; d <= nd; d++) {
-      const cx = (grade.a + grade.b * d) / k, cy = l.yc / k, hw = Math.max(2, grade.b * .3 / k), hh = Math.max(2, l.h * .45 / k);
+      const xd = grade.a + grade.b * d, cx = xd / k, cy = (l.yc + (grade.e || 0) * (xd - (l.xc || 0))) / k, hw = Math.max(2, grade.b * .3 / k), hh = Math.max(2, l.h * .45 / k);
       const x0 = Math.max(0, Math.round(cx - hw)), y0 = Math.max(0, Math.round(cy - hh)), w = Math.min(cv.width - x0, Math.round(hw * 2)), h = Math.min(cv.height - y0, Math.round(hh * 2)); if (w < 1 || h < 1) continue;
       const px = g.getImageData(x0, y0, w, h).data; let n = 0; for (let i = 0; i < px.length; i += 4) if (azul(px[i], px[i + 1], px[i + 2])) n++;
       if (n / (px.length / 4) > .3) dias.push(d);
     }
-    if (!dias.length) continue; const set = res[l.uid] = {};
+    if (!dias.length) continue; const set = res[l.uid] = res[l.uid] || {};
     for (let i = 0; i < dias.length;) { let j = i; while (j + 1 < dias.length && dias[j + 1] === dias[j] + 1) j++; for (let q = i; q <= j; q++) set[dias[q]] = j - i + 1 >= 7 ? "FE" : "FR"; i = j + 1; }
   }
   return res;
@@ -1325,7 +1331,7 @@ async function lerFotoEscala(inp){
     const T = await carregaTesseract(), img = await new Promise((ok, er) => { const i = new Image(); i.onload = () => ok(i); i.onerror = er; i.src = URL.createObjectURL(f); });
     const [a, m] = S.escMes.split("-").map(Number), nd = new Date(a, m, 0).getDate(), pos = {}; let azuis = null;
     const w = await T.createWorker("por"); let txt = ""; try { for (const [larg, lim] of [[2000, 150], [2400, 170]]) { const r = (await w.recognize(prepImg(img, larg, lim), {}, {text:true, blocks:true})).data; txt += "\n" + r.text; const p = parseEscalaPos(palavrasOCR(r), nd, ativos()); if (p) { for (const [k, v] of Object.entries(p)) if (!pos[k]) pos[k] = v;
-      if (!azuis) { azuis = folgasAzuis(img, Math.max(1, larg / img.width), p._grade, nd); for (const [k, v] of Object.entries(azuis)) pos[k] = {...v, ...(pos[k] || {})}; } } } } finally { await w.terminate(); }
+      if (!azuis) { azuis = folgasAzuis(img, Math.min(4, larg / img.width), p._grade, nd); for (const [k, v] of Object.entries(azuis)) pos[k] = {...v, ...(pos[k] || {})}; } } } } finally { await w.terminate(); }
     S.escLida = {mes:S.escMes, dias:{...parseEscala(txt, nd), ...pos}, pos:Object.keys(pos)};
     previaEscala();
   } catch (e) { console.error(e); openSheet(`<h2>Não foi possível ler</h2><p class="meta">${esc(e.message || "Tente uma foto mais nítida, de frente e com boa luz.")}</p><button class="btn" onclick="closeSheet()">Fechar</button>`); }
@@ -1334,7 +1340,7 @@ function previaEscala(){
   const E = S.escLida, [a, m] = E.mes.split("-").map(Number), nd = new Date(a, m, 0).getDate(), col = ativos();
   openSheet(`<h2>📅 Conferir a escala lida</h2><p class="meta">Os dias pintados de <b>azul</b> na foto e os escritos FR viram folga; 7 ou mais dias azuis seguidos viram férias. Toque no dia para trocar: trabalha → <b>FR</b> folga → <b>FF</b> folga feriado → <b>FÉRIAS</b>. Nos dias de folga e férias as etapas vão sozinhas para quem cobre. Quem não apareceu na foto fica sem alteração.</p>
     ${col.map(u => { const d = E.dias[u.user_id], fr = d ? Object.keys(d).filter(k => d[k] === "FR").map(Number) : [], sg = d ? sugereEscala(fr, E.mes) : null, n = c => d ? Object.values(d).filter(v => v === c).length : 0; return `<div class="fslot"><div class="row" style="justify-content:space-between"><b>${esc(u.nome)}</b><span class="meta">${d ? `FR ${n("FR")} · FF ${n("FF")} · férias ${n("FE")}${(E.pos || []).includes(u.user_id) ? " · 📐 lido pela coluna do dia" : ""}` : "não encontrado na foto"}</span></div>
-      ${d ? `<div class="cal">${Array.from({length:(new Date(a, m - 1, 1).getDay())}, () => "<i></i>").join("")}${Array.from({length:nd}, (_, i) => `<button class="${({FR:"fo", FF:"ff", FE:"fe"})[d[i + 1]] || ""}" onclick="tglPrev('${u.user_id}',${i + 1})">${d[i + 1] ? `<small style="display:block;font-size:9px">${d[i + 1] === "FE" ? "FÉR" : d[i + 1]}</small>` : ""}${i + 1}</button>`).join("")}</div>
+      ${d ? `<div class="cal">${DIAS.map(t => `<b>${t}</b>`).join("")}${Array.from({length:(new Date(a, m - 1, 1).getDay())}, () => "<i></i>").join("")}${Array.from({length:nd}, (_, i) => `<button class="${({FR:"fo", FF:"ff", FE:"fe"})[d[i + 1]] || ""}" onclick="tglPrev('${u.user_id}',${i + 1})">${d[i + 1] ? `<small style="display:block;font-size:9px">${d[i + 1] === "FE" ? "FÉR" : d[i + 1]}</small>` : ""}${i + 1}</button>`).join("")}</div>
       ${sg ? `<label class="meta" style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" data-sug="${u.user_id}" ${sg && sg.escala === "12x36" ? "checked" : ""}> Usar a regra <b>${sg.txt}</b> nos próximos meses</label>` : ""}` : `<button class="btn sm" onclick="S.escLida.dias['${u.user_id}']={};previaEscala()">+ Marcar folgas à mão</button>`}</div>`; }).join("")}
     <button class="btn pri xl" onclick="salvaEscalaLida(this)">💾 Salvar escala</button><button class="btn" onclick="closeSheet()">Cancelar</button>`);
 }
@@ -1356,7 +1362,23 @@ async function salvaEscalaLida(b){
 }
 /* início do administrador: botões grandes */
 setInterval(() => { const ag = agoraHM(); document.querySelectorAll("[data-relogio]").forEach(e => e.textContent = ag); }, 15000);
-const heroTec = (pct, titulo, sub, extra) => `<div class="tec"><div class="anel" style="--p:${pct}"><b>${pct}%</b></div><div style="position:relative;z-index:1;flex:1;min-width:0"><div class="oi">${titulo}</div><div class="meta">${sub}</div><span class="relp"><i></i>agora <span data-relogio>${agoraHM()}</span></span></div>${extra || ""}</div>`;
+const heroTec = (pct, titulo, sub, extra, lista) => `<div class="tec" style="flex-wrap:wrap"><div class="anel" style="--p:${pct}"><b>${pct}%</b></div><div style="position:relative;z-index:1;flex:1;min-width:0"><div class="oi">${titulo}</div><div class="meta">${sub}</div><span class="relp"><i></i>agora <span data-relogio>${agoraHM()}</span></span></div>${extra || ""}${lista ? `<div class="tecl">${lista}</div>` : ""}</div>`;
+/* situação de cada colaborador agora (atualiza sozinho a cada minuto) */
+function agoraEquipe(d){
+  const L = linhasDia(d), ag = agoraHM();
+  return ativos().filter(u => !/teste/i.test(u.funcao + u.nome)).map(u => {
+    const f = emFolga(u.user_id, d), l = L.filter(x => x.resp === u.user_id), nm = `<b>${esc(u.nome.split(" ")[0])}</b>`;
+    if (f) return {o:5, t:`${/férias/.test(f.tipo) ? "🌴" : "🏖️"} ${nm} está de ${esc(f.tipo)}`};
+    if (!l.length) return null;
+    const and = l.find(x => x.reg && x.reg.status === "andamento");
+    if (and) return and.st === "estourado" ? {o:0, c:"crit", t:`⏰ ${nm} passou do horário em <b>${esc(and.s.nome)}</b> (até ${hm(and.s.horario_fim)})`} : {o:2, c:"ok", t:`🟡 ${nm} está em andamento: <b>${esc(and.s.nome)}</b> desde ${hmTs(and.reg.iniciado_em)}`};
+    const par = l.find(x => !x.reg && x.st === "agora" && ag > addMin(hm(x.s.horario), tolerancia()));
+    if (par) return {o:1, c:"warn", t:`⏸️ ${nm} ainda não começou <b>${esc(par.s.nome)}</b> (era às ${hm(par.s.horario)})`};
+    const pul = l.filter(pulada).length, prox = l.find(x => !FINAL(x.st) && !pulada(x));
+    if (!prox) return {o:4, t:`✅ ${nm} terminou as tarefas do dia${pul ? ` · <b style="color:#fca5a5">${pul} pulada(s)</b>` : ""}`};
+    return {o:3, t:`⏳ ${nm}: próxima <b>${esc(prox.s.nome)}</b> às ${hm(prox.s.horario)}${pul ? ` · <b style="color:#fca5a5">${pul} pulada(s)</b>` : ""}`};
+  }).filter(Boolean).sort((a, b) => a.o - b.o);
+}
 function telaInicio(){
   const d = hoje(), L = linhasDia(d), c = contagem(L), fora = L.filter(foraHorario).length, pend = S.nPed || 0, folga = ativos().filter(u => emFolga(u.user_id, d));
   const T = [["hoje", "📊", "Acompanhar o dia", `${c.ok} de ${c.tot} etapas · ${fora} fora do horário`, fora ? "crit" : ""], ["demanda", "📌", "Passar demanda extra", "Mandar uma tarefa para alguém agora", ""],
@@ -1364,7 +1386,8 @@ function telaInicio(){
     ["equipe", "👥", "Equipe e links", ativos().length + " colaboradores · enviar ou resetar link", ""], ["mat", "📦", "Pedidos e liberações", pend ? pend + " esperando resposta" : "Nenhum pedido novo", pend ? "warn" : ""],
     ["hist", "📜", "Histórico e relatórios", "PDF e Excel por dia, semana ou mês", ""], ["cfg", "⚙️", "Configurações", "Local do posto, cores, tolerância", ""]].filter(t => S.admin || ["hoje", "demanda"].includes(t[0]));
   const pessoas = ativos().map(u => { const l = L.filter(x => x.resp === u.user_id), ok = l.filter(x => ["concluido", "concluido_obs"].includes(x.st)).length; return {u, n:l.length, ok, pul:l.filter(pulada).length, p:l.length ? Math.round(ok / l.length * 100) : 0}; }).filter(x => x.n || emFolga(x.u.user_id, d));
-  $("#app").innerHTML = heroTec(c.pct, `olá, <em>${esc((S.perfil.nome || "").split(" ")[0])}</em>`, `${DIAS[diaSem(d)]} ${dBR(d)} · ${c.ok} de ${c.tot} etapas concluídas`) + `
+  const EQ = agoraEquipe(d), emAnd = EQ.filter(x => x.o === 2).length, parados = EQ.filter(x => x.o <= 1).length;
+  $("#app").innerHTML = heroTec(c.pct, `olá, <em>${esc((S.perfil.nome || "").split(" ")[0])}</em>`, `${DIAS[diaSem(d)]} ${dBR(d)} · ${c.ok} de ${c.tot} etapas concluídas${emAnd ? ` · <b style="color:#fde047">${emAnd} em andamento agora</b>` : ""}${parados ? ` · <b style="color:#fca5a5">${parados} precisa(m) de atenção</b>` : ""}`, "", EQ.map(x => `<div class="tecr ${x.c || ""}">${x.t}</div>`).join("")) + `
     <div class="cbox"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><b style="font-size:16px">📈 Acompanhamento das tarefas</b><b style="font-family:var(--display);font-size:28px;color:var(--brand)">${c.pct}%</b></div>
       <div class="bar big"><i style="width:${c.pct}%"></i></div>
       <div class="meta" style="margin-top:6px">✅ ${c.ok} feitas · 🟡 ${c.and} em andamento · 🔴 ${c.atr} atrasadas/puladas · ❌ ${c.no} não feitas · total ${c.tot}</div>
