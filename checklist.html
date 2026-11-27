@@ -91,7 +91,7 @@ tr.cl{cursor:pointer}tr.cl:hover{background:var(--surface2)}
 @keyframes pulsa{50%{box-shadow:0 0 0 5px rgba(56,189,248,.18),0 0 34px rgba(56,189,248,.6)}}
 .relp{display:inline-flex;align-items:center;gap:6px;background:#292524;border:1px solid #3f3a36;color:#fdba74;border-radius:999px;padding:4px 10px;font:700 12px/1 ui-monospace,Menlo,monospace;margin-top:6px}.relp i{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e;animation:pisca 1.4s infinite}
 @keyframes pisca{50%{opacity:.25}}
-.tecl{flex-basis:100%;position:relative;z-index:1;display:grid;gap:6px;margin-top:4px}.tecr{background:#292524;border:1px solid #3f3a36;border-radius:12px;padding:8px 10px;font-size:13px;color:#e7e5e4}.tecr b{color:#fff}.tecr.ok{border-color:#ca8a04}.tecr.warn{border-color:#f97316;background:#431407}.tecr.crit{border-color:#ef4444;background:#450a0a}
+.tecl{flex-basis:100%;position:relative;z-index:1;display:grid;gap:6px;margin-top:4px}.tecr{background:#292524;border:1px solid #3f3a36;border-radius:12px;padding:8px 10px;font-size:13px;color:#e7e5e4}.tecr b{color:#fff}.tecr.ok{border-color:#ca8a04}.tecr.warn{border-color:#f97316;background:#431407}.tecr.crit{border-color:#ef4444;background:#450a0a}.tecr.alm{border-color:#38bdf8;background:#082f49}
 .tec .btn{position:relative;z-index:1;background:#292524;border-color:#3f3a36;color:#fafaf9}
 .entra>*{animation:entra .5s cubic-bezier(.2,.8,.2,1) both}.entra>*:nth-child(2){animation-delay:.05s}.entra>*:nth-child(3){animation-delay:.1s}.entra>*:nth-child(4){animation-delay:.15s}.entra>*:nth-child(5){animation-delay:.2s}.entra>*:nth-child(6){animation-delay:.25s}.entra>*:nth-child(7){animation-delay:.3s}.entra>*:nth-child(8){animation-delay:.35s}
 @keyframes entra{from{opacity:0;transform:translateY(14px);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
@@ -287,7 +287,7 @@ async function entrou(offline){
 
 /* ================= dados ================= */
 async function carregaBase(){
-  const [us, lo, sv, fo, cf] = await Promise.all([tb("ck_usuarios", "select=user_id,nome,login,funcao,turno,ativo,papel,escala,folga_dia,escala_base,cobertura,local_base&order=nome").catch(() => tb("ck_usuarios", "select=user_id,nome,login,funcao,turno,ativo,papel,escala,folga_dia,escala_base,cobertura&order=nome")), tb("ck_locais", "select=*&order=ordem,nome"), tb("ck_servicos", "select=*&order=horario"), tb("ck_folgas", "select=*&order=data_ini.desc"), tb("ck_config", "select=*")]);
+  const [us, lo, sv, fo, cf] = await Promise.all([tb("ck_usuarios", "select=user_id,nome,login,funcao,turno,ativo,papel,escala,folga_dia,escala_base,cobertura,local_base,almoco_ini&order=nome").catch(() => tb("ck_usuarios", "select=user_id,nome,login,funcao,turno,ativo,papel,escala,folga_dia,escala_base,cobertura,local_base&order=nome")).catch(() => tb("ck_usuarios", "select=user_id,nome,login,funcao,turno,ativo,papel,escala,folga_dia,escala_base,cobertura&order=nome")), tb("ck_locais", "select=*&order=ordem,nome"), tb("ck_servicos", "select=*&order=horario"), tb("ck_folgas", "select=*&order=data_ini.desc"), tb("ck_config", "select=*")]);
   Object.assign(S, {usuarios:us || [], locais:lo || [], servicos:sv || [], folgas:fo || [], cfg:(cf || [])[0] || {filial:S.filial, retencao_dias:90}});
   if (S.admin) S.links = await rpc("ck_links").catch(() => ({})) || {};
   if (!S.visTmp) { aplicaVisual(S.cfg.visual); LS.set(NS + ".ck.visual", S.cfg.visual || {}); }
@@ -331,9 +331,9 @@ const FINAL = st => ["concluido", "concluido_obs", "nao_realizado"].includes(st)
 /* pulada: o horário passou sem começar; só volta se o administrador liberar */
 const pulada = x => x.st === "atrasado" && !(x.rr && x.rr.liberado);
 /* almoço: todo dia no horário da Config (padrão 12:00); o colaborador para X min antes para bater o ponto */
-const almoco = () => { const c = S.cfg || {}, ini = hm(c.intervalo_ini || "12:00"), min = c.intervalo_min == null ? 60 : +c.intervalo_min, pt = c.ponto_min == null ? 5 : +c.ponto_min; return {ini, min, pt, fim:addMin(ini, min), para:addMin(ini, -pt)}; };
+const almoco = uid => { const c = S.cfg || {}, u = uid && (S.usuarios || []).find(x => x.user_id === uid), ini = hm((u && u.almoco_ini) || c.intervalo_ini || "12:00"), min = c.intervalo_min == null ? 60 : +c.intervalo_min, pt = c.ponto_min == null ? 5 : +c.ponto_min; return {ini, min, pt, fim:addMin(ini, min), para:addMin(ini, -pt)}; };
 const cafe = () => { const c = S.cfg || {}, ini = hm(c.cafe_ini || "09:00"), min = c.cafe_min == null ? 15 : +c.cafe_min; return {ini, min, fim:addMin(ini, min)}; };
-const antesAlmoco = L => { const A = almoco(), l = L.filter(x => hm(x.s.horario) < A.ini); return l[l.length - 1]; };
+const antesAlmoco = L => { const A = almoco(L[0] && L[0].resp), l = L.filter(x => hm(x.s.horario) < A.ini); return l[l.length - 1]; };
 async function liberaEtapa(id, d, uid, sem){
   try { await api("POST", "/rest/v1/ck_ajustes?on_conflict=servico_id,data", {filial:S.filial, servico_id:id, data:d, responsavel:uid, liberado:true}, {prefer:"resolution=merge-duplicates,return=minimal"}); if (!sem) { closeSheet(); await atualizaDia(); render(); } toast("🔓 Etapa liberada para " + nomeU(uid) + "."); return true; }
   catch (e) { toast(/liberado/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); return false; }
@@ -448,7 +448,7 @@ function telaColab(){
   const P = S.perfil, d = hoje(); S.data = d;
   $("#tSub").textContent = "Hoje · " + dBR(d);
   const L = linhasDia(d).filter(x => x.resp === P.user_id), dem = ((S.fil[d] || {}).dem || []).filter(x => x.user_id === P.user_id && !FINAL(x.status));
-  const H = horasDia(P.user_id, d), feitas = L.filter(x => FINAL(x.st)).length, atualI = L.findIndex(x => !FINAL(x.st) && !pulada(x)), h = new Date().getHours(), pct = L.length ? Math.round(feitas / L.length * 100) : 0, A = almoco(), ag = agoraHM();
+  const H = horasDia(P.user_id, d), feitas = L.filter(x => FINAL(x.st)).length, atualI = L.findIndex(x => !FINAL(x.st) && !pulada(x)), h = new Date().getHours(), pct = L.length ? Math.round(feitas / L.length * 100) : 0, A = almoco(P.user_id), ag = agoraHM();
   if (S.etAuto !== atualI || S.etIdx == null || S.etIdx >= L.length) { S.etIdx = atualI >= 0 ? atualI : Math.max(0, L.length - 1); S.etAuto = atualI; }
   const est = x => FINAL(x.st) ? (x.st === "nao_realizado" ? ["❌", "Não feita", "no"] : ["✅", "Feita", "ok"]) : pulada(x) ? ["🔒", "Pulada · só o administrador libera", "pul"] : x === L[atualI] ? ["▶️", "Fazer agora", "ag"] : ["⏳", "Depois", ""];
   const almRow = `<div class="drow alm"><span class="hr">${A.ini}–${A.fim}</span><span class="ic">🍽️</span><span style="flex:1"><b>Almoço</b><div class="meta">Pare às ${A.para} para bater o ponto</div></span></div>`;
@@ -479,7 +479,7 @@ function cardEtapa(x, i, L, atualI){
   else if (pulada(x)) { rel = "🔒 O horário passou sem você começar. Só o administrador pode liberar."; rc = "crit"; }
   else if (i === atualI) { const f = minEntre(ag, ini); rel = f > 0 ? "🕐 Começa em " + f + " min (" + ini + ")" : (st === "atrasado" ? "⏰ Atrasada: comece agora" : "▶️ Hora de começar"); rc = f > 0 ? "info" : st === "atrasado" ? "crit" : "warn"; }
   else { rel = "⏳ Libera depois da etapa de agora"; rc = "muted"; }
-  const A = almoco(), ultAlm = !fim && A.min && x === antesAlmoco(L);
+  const A = almoco(x.resp), ultAlm = !fim && A.min && x === antesAlmoco(L);
   const volta = i === atualI ? "" : atualI >= 0 ? `S.etIdx=${atualI};render()` : i > 0 ? "passa(-1)" : "";
   return `<div class="etapa ${x.s.urgente && !fim ? "urg" : ""}" id="etapa">
     ${volta ? `<button class="voltar" onclick="${volta}">◀ Voltar${atualI >= 0 && i !== atualI ? " para a etapa de agora" : ""}</button>` : ""}
@@ -620,7 +620,7 @@ function avisos(){
     if (!t) continue; avisados[k] = 1; notifica(t);
   }
   { const C = cafe(), ag = agoraHM(), k = "caf" + hoje(); if (C.min && (S.perfil.turno || "manha") === "manha" && ag >= C.ini && ag < C.fim && !avisados[k]) { avisados[k] = 1; notifica("☕ " + C.ini + ": hora do café (" + C.min + " min)."); } }
-  { const A = almoco(), ag = agoraHM(), k = "alm" + hoje(); if (A.min && ag >= A.para && ag < A.ini && !avisados[k]) { avisados[k] = 1; notifica("🍽️ " + A.para + ": pare agora e vá bater o ponto. Almoço às " + A.ini + "."); } }
+  { const A = almoco(S.perfil.user_id), ag = agoraHM(), k = "alm" + hoje(); if (A.min && ag >= A.para && ag < A.ini && !avisados[k]) { avisados[k] = 1; notifica("🍽️ " + A.para + ": pare agora e vá bater o ponto. Almoço às " + A.ini + "."); } }
   for (const d of ((S.fil[hoje()] || {}).dem || []).filter(d => d.user_id === S.perfil.user_id && d.status === "pendente")) { if (avisados["d" + d.id]) continue; avisados["d" + d.id] = 1; notifica("📌 Nova demanda extra: " + d.descricao); }
 }
 function trocaSenha(){
@@ -757,8 +757,9 @@ function telaServ(){
   $("#app").innerHTML = `<div class="card"><h2>⚙️ Etapas (em sequência, com horário de começo e término)</h2><div class="row"><button class="btn pri sm" onclick="formServ()">+ NOVA ETAPA</button><button class="btn sm" onclick="formLocal()">+ Novo local</button></div>
     <button class="btn" onclick="formPadrao()">✨ Montar equipe e etapas padrão (Denilde, Firmino, Kayo, Teste)</button>
     <div class="row" style="margin-top:8px">${ativos().map(u => `<button class="btn sm" onclick="formOrdem('${u.user_id}')">🔀 Sequência de ${esc(u.nome.split(" ")[0])}</button>`).join("")}</div></div>
-    ${[...L, {id:null, nome:"Sem local", ativo:true}].map(l => { const sv = (S.servicos || []).filter(s => (s.local_id || null) === l.id); if (!l.id && !sv.length) return ""; return `<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">📍 ${esc(l.nome)} ${l.lat != null ? `<span class="pill p-ok">GPS próprio</span>` : ""} ${l.ativo ? "" : `<span class="pill p-fut">inativo</span>`}</h2>${l.id ? `<button class="btn sm" onclick="formLocal(${l.id})">✏️</button>` : ""}</div>
-      ${sv.length ? `<table style="margin-top:6px">${sv.map(s => `<tr class="cl" onclick="formServ(${s.id})" style="${s.ativo ? "" : "opacity:.5"}"><td><b>${janela(s)}</b></td><td>${s.urgente ? "🚨 " : ""}${esc(s.nome)}${(s.passos || []).length ? ` <span class="meta">· ${s.passos.length} passos</span>` : ""}<div class="meta">${TURNOS[s.turno] || s.turno} · ${esc(s.funcao)} · ${esc(s.responsavel ? nomeU(s.responsavel) : "automático")} · ${freqTxt(s)}${s.foto !== "nao" ? " · " + FOTO[s.foto] : ""}${s.ativo ? "" : " · inativo"}</div></td></tr>`).join("")}</table>` : `<p class="meta">Nenhum serviço neste local.</p>`}</div>`; }).join("")}`;
+    ${[...L, {id:null, nome:"Sem local", ativo:true}].map(l => { const sv = (S.servicos || []).filter(s => (s.local_id || null) === l.id && !s.arquivado); if (!l.id && !sv.length) return ""; return `<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">📍 ${esc(l.nome)} ${l.lat != null ? `<span class="pill p-ok">GPS próprio</span>` : ""} ${l.ativo ? "" : `<span class="pill p-fut">inativo</span>`}</h2>${l.id ? `<button class="btn sm" onclick="formLocal(${l.id})">✏️</button>` : ""}</div>
+      ${sv.length ? `<table style="margin-top:6px">${sv.map(s => `<tr class="cl" onclick="formServ(${s.id})" style="${s.ativo ? "" : "opacity:.5"}"><td><b>${janela(s)}</b></td><td>${s.urgente ? "🚨 " : ""}${esc(s.nome)}${(s.passos || []).length ? ` <span class="meta">· ${s.passos.length} passos</span>` : ""}<div class="meta">${TURNOS[s.turno] || s.turno} · ${esc(s.funcao)} · ${esc(s.responsavel ? nomeU(s.responsavel) : "automático")} · ${freqTxt(s)}${s.foto !== "nao" ? " · " + FOTO[s.foto] : ""}${s.ativo ? "" : " · inativo"}</div></td><td style="width:44px"><button class="btn sm" style="margin:0" title="Apagar" onclick="apagaServ(${s.id},event)">🗑️</button></td></tr>`).join("")}</table>` : `<p class="meta">Nenhum serviço neste local.</p>`}
+      ${l.id ? `<button class="btn sm" style="margin-top:8px" onclick="formServ(null,${l.id})">+ Incluir horário em ${esc(l.nome)}</button>` : ""}</div>`; }).join("")}`;
 }
 function formOrdem(uid){
   const L = (S.servicos || []).filter(s => s.ativo && s.responsavel === uid).sort((a, b) => hm(a.horario).localeCompare(hm(b.horario)));
@@ -784,8 +785,14 @@ function formLocal(id){
     if (xy || l.lat != null) Object.assign(row, xy ? {lat:+xy[1].replace(",", "."), lng:+xy[2].replace(",", "."), raio:+$("#lRa").value} : {lat:null, lng:null, raio:null});
     try { if (id) await api("PATCH", "/rest/v1/ck_locais?id=eq." + id, row, {prefer:"return=minimal"}); else await api("POST", "/rest/v1/ck_locais", row, {prefer:"return=minimal"}); closeSheet(); await carregaBase(); render(); toast("Local salvo."); } catch (e) { toast(/lat|lng|raio/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); } };
 }
-function formServ(id){
-  const s = (S.servicos || []).find(x => x.id === id) || {nome:"", local_id:(S.locais || [])[0] && S.locais[0].id, horario:"08:00", horario_fim:"08:50", turno:"manha", funcao:"Limpeza", responsavel:null, dias:[0, 1, 2, 3, 4, 5, 6], foto:"nao", urgente:false, observacao:"", ativo:true, passos:[]};
+async function apagaServ(id, ev){
+  if (ev) ev.stopPropagation(); const s = (S.servicos || []).find(x => x.id === id); if (!s) return;
+  if (!confirm("Apagar o horário " + janela(s) + " · " + s.nome + "?\nEle sai do checklist e da lista. O histórico do que já foi feito continua guardado.")) return;
+  try { await api("PATCH", "/rest/v1/ck_servicos?id=eq." + id, {ativo:false, arquivado:true}, {prefer:"return=minimal"}); closeSheet(); await carregaBase(); render(); toast("🗑️ Horário apagado."); }
+  catch (e) { toast(/arquivado/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); }
+}
+function formServ(id, loc){
+  const s = (S.servicos || []).find(x => x.id === id) || {nome:"", local_id:loc || ((S.locais || [])[0] && S.locais[0].id), horario:"08:00", horario_fim:"08:50", turno:"manha", funcao:"Limpeza", responsavel:null, dias:[0, 1, 2, 3, 4, 5, 6], foto:"nao", urgente:false, observacao:"", ativo:true, passos:[]};
   const d = s.dias || [];
   openSheet(`<h2>${id ? "Editar etapa" : "+ Nova etapa"}</h2>
     <label class="f">Nome<input id="sN" class="inp" value="${esc(s.nome)}" placeholder="Ex.: Limpeza e higienização dos banheiros"></label>
@@ -800,12 +807,12 @@ function formServ(id){
     <label class="f">Foto<select id="sFo" class="inp">${Object.entries(FOTO).map(([k, t]) => `<option value="${k}" ${s.foto === k ? "selected" : ""}>${t}</option>`).join("")}</select></label>
     <label class="f">Observação (aparece para o colaborador)<input id="sO" class="inp" value="${esc(s.observacao)}"></label>
     <div class="chk"><label><input type="checkbox" id="sU" ${s.urgente ? "checked" : ""}>🚨 Urgente (destaque vermelho)</label><label><input type="checkbox" id="sA" ${s.ativo ? "checked" : ""}>Ativa</label></div>
-    <button class="btn pri" id="btS">💾 Salvar</button><button class="btn" onclick="closeSheet()">Voltar</button>
+    <button class="btn pri" id="btS">💾 Salvar</button>${id ? `<button class="btn no" onclick="apagaServ(${id})">🗑️ Apagar este horário</button>` : ""}<button class="btn" onclick="closeSheet()">Voltar</button>
     ${id ? `<p class="meta">Para tirar uma etapa do checklist, desmarque "Ativa". O histórico continua guardado. Mudanças aparecem sozinhas no link dos colaboradores (até 1 minuto).</p>` : ""}`);
   $("#btS").onclick = async () => {
     const dias = $$("[data-dia]").filter(x => x.checked).map(x => +x.dataset.dia), nome = $("#sN").value.trim(), h1 = $("#sH").value, h2 = $("#sHF").value;
     if (!nome) return toast("Digite o nome da etapa."); if (!h1) return toast("Informe o horário de começo."); if (h2 && h2 <= h1) return toast("O término tem que ser depois do começo."); if (!dias.length) return toast("Marque pelo menos um dia.");
-    { const A = almoco(); if (A.min && h1 < A.fim && (h2 || h1) > A.para && !confirm("Esta etapa pega o almoço (" + A.ini + "–" + A.fim + ", parar às " + A.para + " para bater o ponto). Salvar assim mesmo?")) return; }
+    { const A = almoco($("#sR").value || null); if (A.min && h1 < A.fim && (h2 || h1) > A.para && !confirm("Esta etapa pega o almoço (" + A.ini + "–" + A.fim + ", parar às " + A.para + " para bater o ponto). Salvar assim mesmo?")) return; }
     const row = {filial:S.filial, nome, local_id:+$("#sL").value || null, horario:h1, horario_fim:h2 || null, passos:$("#sP").value.split("\n").map(x => x.trim()).filter(Boolean), turno:$("#sT").value, funcao:$("#sF").value.trim() || "Limpeza", responsavel:$("#sR").value || null, dias, frequencia:dias.length === 7 ? "todos" : dias.join() === "1,2,3,4,5" ? "seg-sex" : "dias", foto:$("#sFo").value, observacao:$("#sO").value.trim(), urgente:$("#sU").checked, ativo:$("#sA").checked};
     try { if (id) await api("PATCH", "/rest/v1/ck_servicos?id=eq." + id, row, {prefer:"return=minimal"}); else await api("POST", "/rest/v1/ck_servicos", row, {prefer:"return=minimal"}); closeSheet(); await carregaBase(); render(); toast("Etapa salva."); } catch (e) { toast(/horario_fim|passos/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase (campos novos)." : e.message); }
   };
@@ -881,7 +888,7 @@ async function resetarLink(id){ const u = S.usuarios.find(x => x.user_id === id)
 function telaEquipe(){
   const U = S.usuarios || [];
   $("#app").innerHTML = `<div class="card"><h2>👥 Colaboradores e líderes</h2><p class="meta">Cada pessoa tem login próprio só do checklist (não entra no estoque nem nas metas) e o próprio link, que abre direto a tela dela. <b>⭐ Administrador auxiliar</b>: entra com usuário e senha próprios, de qualquer lugar; vê a porcentagem das tarefas, passa demandas extras e pode abonar qualquer tarefa. Não mexe em etapas, equipe nem configurações.</p><button class="btn pri" onclick="formUser()">+ Novo colaborador ou líder</button><button class="btn" onclick="formPadrao()">✨ Montar equipe e etapas padrão (Denilde, Firmino, Kayo, Teste)</button></div>
-    ${U.map(u => `<div class="card" style="${u.ativo ? "" : "opacity:.55"}"><div><b style="font-size:16px">${esc(u.nome)}</b> ${folgaPill(u.user_id, hoje())} ${u.papel === "lider" ? `<span class="pill p-and">⭐ Administrador auxiliar</span>` : ""} ${u.ativo ? "" : `<span class="pill p-fut">inativo</span>`}<div class="meta">login: ${esc(u.login)}${u.papel === "lider" ? "" : " · " + esc(u.funcao) + " · " + (TURNOS[u.turno] || esc(u.turno))}${u.local_base ? " · 📍 " + esc(nomeL(u.local_base)) : ""}</div></div>
+    ${U.map(u => `<div class="card" style="${u.ativo ? "" : "opacity:.55"}"><div><b style="font-size:16px">${esc(u.nome)}</b> ${folgaPill(u.user_id, hoje())} ${u.papel === "lider" ? `<span class="pill p-and">⭐ Administrador auxiliar</span>` : ""} ${u.ativo ? "" : `<span class="pill p-fut">inativo</span>`}<div class="meta">login: ${esc(u.login)}${u.papel === "lider" ? "" : " · " + esc(u.funcao) + " · " + (TURNOS[u.turno] || esc(u.turno))}${u.local_base ? " · 📍 " + esc(nomeL(u.local_base)) : ""}${u.papel === "lider" ? "" : " · 🍽️ almoço " + almoco(u.user_id).ini}</div></div>
       <div class="row"><button class="btn sm" onclick="enviaLink('${u.user_id}')">📤 Enviar link</button><button class="btn sm" onclick="resetarLink('${u.user_id}')">🔄 Resetar link</button><button class="btn sm" onclick="formUser('${u.user_id}')">✏️ Editar</button><button class="btn sm" onclick="senhaUser('${u.user_id}')">🔑 Nova senha</button>${u.papel === "lider" ? "" : `<button class="btn sm" onclick="histUser('${u.user_id}')">📜 Histórico</button>`}</div></div>`).join("") || `<p class="meta">Ninguém cadastrado ainda.</p>`}`;
 }
 async function enviaLink(id){
@@ -898,19 +905,20 @@ function formUser(id){
     ${id ? `<p class="meta">Login: <b>${esc(u.login)}</b></p>` : `<div class="grid2"><label class="f">Usuário (login)<input id="uL" class="inp" autocapitalize="none" placeholder="denilde"></label><label class="f">Senha inicial (mín. 6)<input id="uS" class="inp" type="text" autocomplete="off"></label></div>`}
     <div class="grid2"><label class="f">Função<input id="uF" class="inp" list="lFun2" value="${esc(u.funcao)}"><datalist id="lFun2">${FUNCOES.map(f => `<option>${f}</option>`).join("")}</datalist></label>
       <label class="f">Turno<select id="uT" class="inp">${Object.entries(TURNOS).map(([k, t]) => `<option value="${k}" ${u.turno === k ? "selected" : ""}>${t}</option>`).join("")}</select></label></div>
+    <label class="f">🍽️ Horário de almoço (vazio = o da Config, ${hm((S.cfg || {}).intervalo_ini || "12:00")})<input id="uAl" type="time" class="inp" value="${u.almoco_ini ? hm(u.almoco_ini) : ""}"></label>
     <label class="f">Local de trabalho (onde o link abre)<select id="uLb" class="inp"><option value="">🏢 Posto (Config)</option>${(S.locais || []).filter(l => l.lat != null || l.id === u.local_base).map(l => `<option value="${l.id}" ${l.id === u.local_base ? "selected" : ""}>📍 ${esc(l.nome)}</option>`).join("")}</select></label>
     ${id ? `<label class="f"><input type="checkbox" id="uA" ${u.ativo ? "checked" : ""}> Ativo (desmarcado: não consegue mais entrar)</label>` : ""}
     <button class="btn pri" id="btU">💾 Salvar</button><button class="btn" onclick="closeSheet()">Voltar</button>`);
   $("#btU").onclick = async () => {
     const nome = $("#uN").value.trim(), funcao = $("#uF").value.trim() || "Limpeza", turno = $("#uT").value, papel = $("#uPa").value; if (!nome) return toast("Digite o nome.");
     try {
-      const lb = +$("#uLb").value || null, extra = lb || u.local_base ? {local_base:lb} : {};
+      const lb = +$("#uLb").value || null, extra = lb || u.local_base ? {local_base:lb} : {}, al = $("#uAl").value || null; if (al !== (u.almoco_ini ? hm(u.almoco_ini) : null)) extra.almoco_ini = al;
       if (id) await api("PATCH", "/rest/v1/ck_usuarios?user_id=eq." + id, {nome, funcao, turno, papel, ativo:$("#uA").checked, ...extra}, {prefer:"return=minimal"});
       else { const l = $("#uL").value.trim(), s = $("#uS").value; if (!l) return toast("Digite o usuário."); if (s.length < 6) return toast("Senha com pelo menos 6 caracteres.");
         const nid = await rpc("ck_criar_colaborador", {p_login:l, p_senha:s, p_nome:nome, p_funcao:funcao, p_turno:turno});
-        if (papel === "lider" || lb) await api("PATCH", "/rest/v1/ck_usuarios?user_id=eq." + nid, {papel, ...extra}, {prefer:"return=minimal"}); }
+        if (papel === "lider" || lb || al) await api("PATCH", "/rest/v1/ck_usuarios?user_id=eq." + nid, {papel, ...extra}, {prefer:"return=minimal"}); }
       closeSheet(); await carregaBase(); render(); toast(id ? "Salvo." : "Criado. Toque em 📤 Enviar link para mandar o acesso.");
-    } catch (e) { toast(/papel/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase (campos novos)." : e.message); }
+    } catch (e) { toast(/papel|almoco|local_base/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase (campos novos)." : e.message); }
   };
 }
 function senhaUser(id){
@@ -1108,7 +1116,7 @@ const hhmm = m => Math.floor(m / 60) + "h" + pad(Math.round(m % 60));
 function horasDia(uid, d){
   const D = S.fil[d] || {}, cfg = S.cfg || {}, iMin = cfg.intervalo_min == null ? 60 : +cfg.intervalo_min, meta = (+(cfg.jornada_horas || 8)) * 60 - iMin;
   let J = (D.jor || []).find(j => j.user_id === uid) || null; if (!J && S.papel === "colaborador" && uid === S.perfil.user_id && S.jor && S.jor.data === d) J = S.jor;
-  const t = s => new Date(s).getTime(), agora = Date.now(), iI = new Date(d + "T" + hm(cfg.intervalo_ini || "12:00") + ":00").getTime(), iF = iI + iMin * 60000;
+  const t = s => new Date(s).getTime(), agora = Date.now(), iI = new Date(d + "T" + almoco(uid).ini + ":00").getTime(), iF = iI + iMin * 60000;
   const ivs = [];
   linhasDia(d).filter(x => x.reg && x.reg.user_id === uid && x.reg.iniciado_em).forEach(x => ivs.push([t(x.reg.iniciado_em), x.reg.concluido_em ? t(x.reg.concluido_em) : agora, "etapa"]));
   (D.dem || []).filter(x => x.user_id === uid && x.iniciado_em).forEach(x => ivs.push([t(x.iniciado_em), x.concluido_em ? t(x.concluido_em) : agora, "demanda"]));
@@ -1119,7 +1127,7 @@ function horasDia(uid, d){
   let gaps = [];
   if (J) { const ini = t(J.entrada), fimRef = J.saida ? t(J.saida) : Math.min(agora, t(J.ate)); let cur = ini; for (const [a, b] of uni) { if (a > cur) gaps.push([cur, Math.min(a, fimRef)]); cur = Math.max(cur, b); } if (fimRef > cur) gaps.push([cur, fimRef]); gaps = gaps.flatMap(corta).filter(([a, b]) => b - a >= 10 * 60000); }
   const reg = min(uni);
-  return {J, meta, reg, falta:Math.max(0, meta - reg), etapas:tipo("etapa"), demandas:tipo("demanda"), atividades:tipo("atividade"), gaps, intervalo:hm(cfg.intervalo_ini || "12:00") + "–" + hmTs(iF)};
+  return {J, meta, reg, falta:Math.max(0, meta - reg), etapas:tipo("etapa"), demandas:tipo("demanda"), atividades:tipo("atividade"), gaps, intervalo:almoco(uid).ini + "–" + hmTs(iF)};
 }
 function cardExpediente(L){
   const H = horasDia(S.perfil.user_id, hoje()), J = H.J, todas = L.length && L.every(x => FINAL(x.st)), pct = Math.min(100, Math.round(H.reg / H.meta * 100));
@@ -1369,6 +1377,8 @@ function agoraEquipe(d){
   return ativos().filter(u => !/teste/i.test(u.funcao + u.nome)).map(u => {
     const f = emFolga(u.user_id, d), l = L.filter(x => x.resp === u.user_id), nm = `<b>${esc(u.nome.split(" ")[0])}</b>`;
     if (f) return {o:5, t:`${/férias/.test(f.tipo) ? "🌴" : "🏖️"} ${nm} está de ${esc(f.tipo)}`};
+    const A = almoco(u.user_id);
+    if (A.min && ag >= A.ini && ag < A.fim) return {o:2.5, c:"alm", t:`🍽️ ${nm} está no horário de almoço (${A.ini}–${A.fim})`};
     if (!l.length) return null;
     const and = l.find(x => x.reg && x.reg.status === "andamento");
     if (and) return and.st === "estourado" ? {o:0, c:"crit", t:`⏰ ${nm} passou do horário em <b>${esc(and.s.nome)}</b> (até ${hm(and.s.horario_fim)})`} : {o:2, c:"ok", t:`🟡 ${nm} está em andamento: <b>${esc(and.s.nome)}</b> desde ${hmTs(and.reg.iniciado_em)}`};
@@ -1386,8 +1396,8 @@ function telaInicio(){
     ["equipe", "👥", "Equipe e links", ativos().length + " colaboradores · enviar ou resetar link", ""], ["mat", "📦", "Pedidos e liberações", pend ? pend + " esperando resposta" : "Nenhum pedido novo", pend ? "warn" : ""],
     ["hist", "📜", "Histórico e relatórios", "PDF e Excel por dia, semana ou mês", ""], ["cfg", "⚙️", "Configurações", "Local do posto, cores, tolerância", ""]].filter(t => S.admin || ["hoje", "demanda"].includes(t[0]));
   const pessoas = ativos().map(u => { const l = L.filter(x => x.resp === u.user_id), ok = l.filter(x => ["concluido", "concluido_obs"].includes(x.st)).length; return {u, n:l.length, ok, pul:l.filter(pulada).length, p:l.length ? Math.round(ok / l.length * 100) : 0}; }).filter(x => x.n || emFolga(x.u.user_id, d));
-  const EQ = agoraEquipe(d), emAnd = EQ.filter(x => x.o === 2).length, parados = EQ.filter(x => x.o <= 1).length;
-  $("#app").innerHTML = heroTec(c.pct, `olá, <em>${esc((S.perfil.nome || "").split(" ")[0])}</em>`, `${DIAS[diaSem(d)]} ${dBR(d)} · ${c.ok} de ${c.tot} etapas concluídas${emAnd ? ` · <b style="color:#fde047">${emAnd} em andamento agora</b>` : ""}${parados ? ` · <b style="color:#fca5a5">${parados} precisa(m) de atenção</b>` : ""}`, "", EQ.map(x => `<div class="tecr ${x.c || ""}">${x.t}</div>`).join("")) + `
+  const EQ = agoraEquipe(d), emAnd = EQ.filter(x => x.o === 2).length, parados = EQ.filter(x => x.o <= 1).length, noAlm = EQ.filter(x => x.o === 2.5).length;
+  $("#app").innerHTML = heroTec(c.pct, `olá, <em>${esc((S.perfil.nome || "").split(" ")[0])}</em>`, `${DIAS[diaSem(d)]} ${dBR(d)} · ${c.ok} de ${c.tot} etapas concluídas${emAnd ? ` · <b style="color:#fde047">${emAnd} em andamento agora</b>` : ""}${noAlm ? ` · <b style="color:#7dd3fc">${noAlm} no almoço</b>` : ""}${parados ? ` · <b style="color:#fca5a5">${parados} precisa(m) de atenção</b>` : ""}`, "", EQ.map(x => `<div class="tecr ${x.c || ""}">${x.t}</div>`).join("")) + `
     <div class="cbox"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><b style="font-size:16px">📈 Acompanhamento das tarefas</b><b style="font-family:var(--display);font-size:28px;color:var(--brand)">${c.pct}%</b></div>
       <div class="bar big"><i style="width:${c.pct}%"></i></div>
       <div class="meta" style="margin-top:6px">✅ ${c.ok} feitas · 🟡 ${c.and} em andamento · 🔴 ${c.atr} atrasadas/puladas · ❌ ${c.no} não feitas · total ${c.tot}</div>
