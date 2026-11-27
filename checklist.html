@@ -101,11 +101,12 @@ tr.cl{cursor:pointer}tr.cl:hover{background:var(--surface2)}
 .sec{font-weight:800;font-size:13px;letter-spacing:.08em;color:var(--muted);margin:16px 4px 8px}
 .drow{display:flex;gap:10px;align-items:center;width:100%;text-align:left;font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:7px;cursor:pointer}
 .drow .hr{font-family:var(--display);font-weight:800;font-size:14px;min-width:92px}.drow .ic{font-size:22px}.drow.on{border:2px solid var(--brand);box-shadow:0 6px 16px rgba(249,115,22,.18)}.drow.ok,.drow.no{opacity:.6}.drow.pul{background:var(--crit-bg);border-color:var(--crit)}.drow.ag{border-color:var(--brand)}.drow.alm{background:var(--warn-bg);border-style:dashed;cursor:default}
+.fpill{display:inline-block;background:#2563eb;color:#fff;font-weight:900;font-size:12px;letter-spacing:.06em;border-radius:999px;padding:4px 10px;vertical-align:middle;box-shadow:0 4px 10px rgba(37,99,235,.3)}
 .home{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}.hbtn{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;cursor:pointer;min-height:132px;box-shadow:0 6px 18px rgba(43,26,16,.06)}
 .hbtn{position:relative;overflow:hidden;transition:transform .15s,box-shadow .2s}.hbtn::after{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,#f97316,#fb923c,#38bdf8);opacity:.85}.hbtn:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(249,115,22,.18)}
 .hbtn .hic{font-size:26px;width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:#1c1917;box-shadow:inset 0 0 0 1px #3f3a36,0 6px 14px rgba(28,25,23,.25)}.hbtn b{font-size:16px;font-family:var(--display)}.hbtn small{color:var(--muted);font-size:12px;line-height:1.35}.hbtn.crit{border:2px solid var(--crit)}.hbtn.warn{border:2px solid var(--warn)}.hbtn:active{transform:scale(.98)}
-.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px}.cal button{border:1px solid var(--line);background:var(--surface2);border-radius:8px;padding:7px 0;font-weight:700;font-size:13px;cursor:pointer}.cal .fo{background:var(--brand);border-color:var(--brand);color:#fff}.cal .fr{background:var(--warn-bg);border-color:var(--warn);color:var(--warn)}.cal .hj{outline:2px solid var(--cyan)}.cal .ff{background:#7c3aed;border-color:#7c3aed;color:#fff}.cal .fe{background:#0891b2;border-color:#0891b2;color:#fff}.lg.ff{background:#7c3aed}.lg.fe{background:#0891b2}
-.lg{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle;margin:0 2px 0 8px}.lg.fo{background:var(--brand)}.lg.fr{background:var(--warn-bg);border:1px solid var(--warn)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px}.cal button{border:1px solid var(--line);background:var(--surface2);border-radius:8px;padding:7px 0;font-weight:700;font-size:13px;cursor:pointer}.cal .fo{background:#2563eb;border-color:#2563eb;color:#fff}.cal .fr{background:var(--warn-bg);border-color:var(--warn);color:var(--warn)}.cal .hj{outline:2px solid var(--cyan)}.cal .ff{background:#7c3aed;border-color:#7c3aed;color:#fff}.cal .fe{background:#0d9488;border-color:#0d9488;color:#fff}.lg.ff{background:#7c3aed}.lg.fe{background:#0d9488}
+.lg{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle;margin:0 2px 0 8px}.lg.fo{background:#2563eb}.lg.fr{background:var(--warn-bg);border:1px solid var(--warn)}
 body.cardEscuro .etapa{background:#1c1917;border-color:#292524;color:#fafaf9;box-shadow:0 14px 34px rgba(28,25,23,.25)}body.cardEscuro .etapa .meta{color:#d6d3d1}body.cardEscuro .etapa .relogio{background:#292524}
 body.cardEscuro .passo{background:#292524;border-color:#3f3a36;color:#fafaf9}body.cardEscuro .passo span{border-color:#57534e}body.cardEscuro .etapa .btn:not(.pri):not(.ok){background:#292524;border-color:#3f3a36;color:#fafaf9}
 @media(max-width:560px){.hide-m{display:none}.grid2{grid-template-columns:1fr}table{font-size:12px}th,td{padding:7px 3px}td .pill{font-size:10.5px;padding:2px 6px;white-space:nowrap}}
@@ -270,7 +271,7 @@ async function entrar(){
 }
 function sair(){ S.sess = null; LS.del(K.sess); LS.del(NS + ".ck.perfil"); location.reload(); }
 async function entrou(offline){
-  S.papel = S.perfil.papel || "colaborador"; S.admin = S.papel === "admin"; S.lider = S.papel === "lider"; S.data = hoje(); if (S.admin) S.view = "inicio";
+  S.papel = S.perfil.papel || "colaborador"; S.admin = S.papel === "admin"; S.lider = S.papel === "lider"; S.data = hoje(); if (S.admin || S.lider) S.view = "inicio";
   $("#tTit").textContent = "Checklist Serviços Gerais"; S.nomeFilial = S.perfil.nome_filial || "";
   $("#tAcoes").innerHTML = `<button class="btn sm" onclick="sair()">🚪 Sair</button>`;
   if (!offline) await carregaBase().catch(e => { console.error(e); toast("Sem internet: usando os dados guardados."); });
@@ -303,10 +304,11 @@ const nomeU = id => { const u = (S.usuarios || []).find(x => x.user_id === id); 
 const nomeL = id => { const l = (S.locais || []).find(x => x.id === id); return l ? l.nome : ""; };
 const TIPOF = {escala:"folga", "escala-feriado":"folga feriado", "escala-ferias":"férias"}, COD = {FR:"escala", FF:"escala-feriado", FE:"escala-ferias"}, CODT = {FR:"Folga", FF:"Folga feriado", FE:"Férias"};
 const tipoF = t => TIPOF[t] || t, ehEscala = t => /^escala/.test(t || "");
-const emFolga = (uid, d) => { const f = (S.folgas || []).find(f => f.user_id === uid && f.data_ini <= d && f.data_fim >= d); if (f) return {...f, tipo:tipoF(f.tipo), cod:f.tipo}; const u = (S.usuarios || []).find(x => x.user_id === uid); if (!u) return null;
+const emFolga = (uid, d) => { const u0 = (S.usuarios || []).find(x => x.user_id === uid), r12 = u0 && u0.escala === "12x36" && u0.escala_base; const f = (S.folgas || []).find(f => f.user_id === uid && f.data_ini <= d && f.data_fim >= d && !(r12 && f.tipo === "escala"));   /* 12x36: a regra decide as folgas FR */ if (f) return {...f, tipo:tipoF(f.tipo), cod:f.tipo}; const u = (S.usuarios || []).find(x => x.user_id === uid); if (!u) return null;
   if (u.escala === "6x1" && u.folga_dia != null && diaSem(d) === +u.folga_dia) return {tipo:"folga 6x1", cobertura:u.cobertura, auto:1};
   if (u.escala === "12x36" && u.escala_base) { const n = Math.round((new Date(d + "T12:00:00") - new Date(u.escala_base + "T12:00:00")) / 86400000); if (((n % 2) + 2) % 2 === 1) return {tipo:"folga 12x36", cobertura:u.cobertura, auto:1}; }
   return null; };
+const folgaPill = (uid, d) => { const f = emFolga(uid, d); if (!f) return ""; const t = /férias/.test(f.tipo) ? "🌴 FÉRIAS" : /feriado/.test(f.tipo) ? "🎉 FOLGA FERIADO" : "🏖️ FOLGA"; return `<span class="fpill">${t}</span>`; };
 const ativos = () => (S.usuarios || []).filter(u => u.ativo && u.papel !== "lider");
 function programa(s, d){ return s.ativo && (s.dias || [0, 1, 2, 3, 4, 5, 6]).includes(diaSem(d)) && !(s.criado_em && d < dStr(new Date(s.criado_em))); }
 /* quem faz o serviço no dia: troca manual > responsável fixo > mesma função e turno; de folga -> cobertura */
@@ -329,6 +331,7 @@ const FINAL = st => ["concluido", "concluido_obs", "nao_realizado"].includes(st)
 const pulada = x => x.st === "atrasado" && !(x.rr && x.rr.liberado);
 /* almoço: todo dia no horário da Config (padrão 12:00); o colaborador para X min antes para bater o ponto */
 const almoco = () => { const c = S.cfg || {}, ini = hm(c.intervalo_ini || "12:00"), min = c.intervalo_min == null ? 60 : +c.intervalo_min, pt = c.ponto_min == null ? 5 : +c.ponto_min; return {ini, min, pt, fim:addMin(ini, min), para:addMin(ini, -pt)}; };
+const cafe = () => { const c = S.cfg || {}, ini = hm(c.cafe_ini || "09:00"), min = c.cafe_min == null ? 15 : +c.cafe_min; return {ini, min, fim:addMin(ini, min)}; };
 const antesAlmoco = L => { const A = almoco(), l = L.filter(x => hm(x.s.horario) < A.ini); return l[l.length - 1]; };
 async function liberaEtapa(id, d, uid, sem){
   try { await api("POST", "/rest/v1/ck_ajustes?on_conflict=servico_id,data", {filial:S.filial, servico_id:id, data:d, responsavel:uid, liberado:true}, {prefer:"resolution=merge-duplicates,return=minimal"}); if (!sem) { closeSheet(); await atualizaDia(); render(); } toast("🔓 Etapa liberada para " + nomeU(uid) + "."); return true; }
@@ -431,10 +434,10 @@ function render(){
   if (!S.perfil) return;
   if (S.papel === "colaborador") { $("#tabs").innerHTML = `<div class="tabs">${[["hoje", "✅ Minhas etapas"], ["mat", "📦 Pedir material"]].map(([k, t]) => `<button class="${S.view === k ? "on" : ""}" onclick="S.view='${k}';render()">${t}</button>`).join("")}</div>`; return S.view === "mat" ? telaMatColab() : telaColab(); }
   const tabs = S.admin ? [["inicio", "🏠 Início"], ["hoje", "📊 Hoje"], ["dem", "📌 Demandas extras"], ["mat", "📦 Materiais" + (S.nPed ? " (" + S.nPed + ")" : "")], ["hist", "📜 Histórico"], ["serv", "🧹 Etapas"], ["equipe", "👥 Equipe"], ["escala", "📅 Escala"], ["cfg", "⚙️ Config"]]
-    : [["hoje", "📊 Demandas do dia"], ["dem", "📌 Demandas extras"]];
+    : [["inicio", "🏠 Início"], ["hoje", "📊 Demandas do dia"], ["dem", "📌 Demandas extras"]];
   if (!tabs.some(t => t[0] === S.view)) S.view = S.admin ? "inicio" : "hoje";
   $("#tabs").innerHTML = `<div class="tabs">${tabs.map(([k, t]) => `<button class="${S.view === k ? "on" : ""}" onclick="if(S.view==='cfg'&&'${k}'!=='cfg'){S.visTmp=null;aplicaVisual((S.cfg||{}).visual)}S.view='${k}';render()">${t}</button>`).join("")}</div>`;
-  $("#tSub").textContent = (S.nomeFilial ? S.nomeFilial + " · " : "") + (S.admin ? "Administrador" : "Líder · " + (S.perfil.nome || ""));
+  $("#tSub").textContent = (S.nomeFilial ? S.nomeFilial + " · " : "") + (S.admin ? "Administrador" : "Adm. auxiliar · " + (S.perfil.nome || ""));
   ({inicio:telaInicio, hoje:telaHoje, dem:telaDemandas, mat:telaMatAdmin, hist:telaHist, serv:telaServ, equipe:telaEquipe, escala:telaEscala, cfg:telaCfg})[S.view]();
 }
 const pill = st => `<span class="pill ${ST[st][1]}">${ST[st][0]}</span>`;
@@ -448,13 +451,14 @@ function telaColab(){
   if (S.etAuto !== atualI || S.etIdx == null || S.etIdx >= L.length) { S.etIdx = atualI >= 0 ? atualI : Math.max(0, L.length - 1); S.etAuto = atualI; }
   const est = x => FINAL(x.st) ? (x.st === "nao_realizado" ? ["❌", "Não feita", "no"] : ["✅", "Feita", "ok"]) : pulada(x) ? ["🔒", "Pulada · só o administrador libera", "pul"] : x === L[atualI] ? ["▶️", "Fazer agora", "ag"] : ["⏳", "Depois", ""];
   const almRow = `<div class="drow alm"><span class="hr">${A.ini}–${A.fim}</span><span class="ic">🍽️</span><span style="flex:1"><b>Almoço</b><div class="meta">Pare às ${A.para} para bater o ponto</div></span></div>`;
-  let rows = "", alm = !A.min; L.forEach((x, i) => { if (!alm && hm(x.s.horario) >= A.ini) { rows += almRow; alm = true; } const [ic, t, c] = est(x); rows += `<button class="drow ${c} ${i === S.etIdx ? "on" : ""}" onclick="S.etIdx=${i};render();scrollTo(0,0)"><span class="hr">${janela(x.s)}</span><span class="ic">${ic}</span><span style="flex:1;min-width:0"><b>${esc(x.s.nome)}</b><div class="meta">📍 ${esc(x.local)} · ${t}</div></span></button>`; }); if (!alm && L.length) rows += almRow;
+  const C = cafe(), temCafe = C.min && (P.turno || "manha") === "manha", cafRow = `<div class="drow alm"><span class="hr">${C.ini}–${C.fim}</span><span class="ic">☕</span><span style="flex:1"><b>Café</b><div class="meta">${C.min} minutos · todo dia</div></span></div>`;
+  let rows = "", alm = !A.min, caf = !temCafe; L.forEach((x, i) => { if (!caf && hm(x.s.horario) >= C.ini) { rows += cafRow; caf = true; } if (!alm && hm(x.s.horario) >= A.ini) { rows += almRow; alm = true; } const [ic, t, c] = est(x); rows += `<button class="drow ${c} ${i === S.etIdx ? "on" : ""}" onclick="S.etIdx=${i};render();scrollTo(0,0)"><span class="hr">${janela(x.s)}</span><span class="ic">${ic}</span><span style="flex:1;min-width:0"><b>${esc(x.s.nome)}</b><div class="meta">📍 ${esc(x.local)} · ${t}</div></span></button>`; }); if (!caf && L.length) rows += cafRow; if (!alm && L.length) rows += almRow;
   const almBan = A.min && ag >= addMin(A.para, -10) && ag < A.fim ? `<div class="ban warn" style="font-size:16px;font-weight:700">🍽️ ${ag < A.para ? "Às " + A.para + " pare e vá bater o ponto. Almoço às " + A.ini + "." : ag < A.ini ? "Pare agora e vá bater o ponto!" : "Hora do almoço até " + A.fim + ". Bom almoço!"}</div>` : "";
   $("#app").innerHTML = `<div class="cbox"><div class="ola">${h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite"}, ${esc((P.nome || "").split(" ")[0])}! 👋</div>
       <div class="cpct"><b>${pct}%</b><span class="meta">do seu dia feito · ${feitas} de ${L.length} tarefas</span></div><div class="bar big"><i style="width:${pct}%"></i></div>
       <div class="row" style="margin-top:10px"><button class="btn sm" style="margin:0" onclick="verMeuDia()">🕐 Minhas horas (${hhmm(H.reg)} de ${hhmm(H.meta)})</button></div></div>
-    ${almBan}
-    ${emFolga(P.user_id, d) ? `<div class="ban info">📅 Você está de ${esc(emFolga(P.user_id, d).tipo)} hoje.</div>` : ""}
+    ${almBan}${temCafe && ag >= C.ini && ag < C.fim ? `<div class="ban info" style="font-size:16px;font-weight:700">☕ Hora do café até ${C.fim}.</div>` : ""}
+    ${emFolga(P.user_id, d) ? `<div class="cbox" style="text-align:center;background:#2563eb;color:#fff;border:0"><div style="font-size:40px">${/férias/.test(emFolga(P.user_id, d).tipo) ? "🌴" : "🏖️"}</div><div style="font-family:var(--display);font-size:26px;font-weight:900">HOJE É SUA ${esc(emFolga(P.user_id, d).tipo.toUpperCase())}</div><div>Bom descanso!</div></div>` : ""}
     ${dem.length ? `<button class="ban warn" style="width:100%;text-align:left;cursor:pointer;font:inherit;font-weight:700" onclick="verDemandas()">📌 ${dem.length === 1 ? "1 demanda extra" : dem.length + " demandas extras"} para você · toque para ver</button>` : ""}
     ${L.length && atualI < 0 ? telaFimDia(H) : ""}
     ${L.length ? `<div class="sec">${S.etIdx === atualI ? "👉 FAÇA AGORA" : "👀 VOCÊ ESTÁ VENDO"}</div>${cardEtapa(L[S.etIdx], S.etIdx, L, atualI)}<div class="sec">📋 MEU DIA · O QUE FAZER EM CADA HORÁRIO</div>${rows}`
@@ -612,6 +616,7 @@ function avisos(){
     else if (x.st === "agora") t = "▶️ Hora de começar: " + x.s.nome + (x.s.horario_fim ? " (até " + hm(x.s.horario_fim) + ")" : "") + ".";
     if (!t) continue; avisados[k] = 1; notifica(t);
   }
+  { const C = cafe(), ag = agoraHM(), k = "caf" + hoje(); if (C.min && (S.perfil.turno || "manha") === "manha" && ag >= C.ini && ag < C.fim && !avisados[k]) { avisados[k] = 1; notifica("☕ " + C.ini + ": hora do café (" + C.min + " min)."); } }
   { const A = almoco(), ag = agoraHM(), k = "alm" + hoje(); if (A.min && ag >= A.para && ag < A.ini && !avisados[k]) { avisados[k] = 1; notifica("🍽️ " + A.para + ": pare agora e vá bater o ponto. Almoço às " + A.ini + "."); } }
   for (const d of ((S.fil[hoje()] || {}).dem || []).filter(d => d.user_id === S.perfil.user_id && d.status === "pendente")) { if (avisados["d" + d.id]) continue; avisados["d" + d.id] = 1; notifica("📌 Nova demanda extra: " + d.descricao); }
 }
@@ -648,6 +653,7 @@ function telaHoje(){
     <div class="card"><h2>Checklist diário: ${c.pct}% concluído</h2><div class="bar"><i style="width:${c.pct}%"></i></div>
       <div class="tiles" style="margin-top:10px">${[["Etapas", c.tot], ["Concluídas", c.ok], ["Pendentes", c.pend], ["Em andamento", c.and], ["Não realizadas", c.no], ["Com observação", c.obs], ["Fora do horário", fora.length], ["Abonadas", Lall.filter(x => x.ab).length], ["Demandas extras", dem.length]].map(([t, v]) => `<div class="tile"><b>${v}</b><span>${t}</span></div>`).join("")}</div>
       <p class="meta" style="margin:10px 0 0">👷 Trabalhando: ${trabalhando.length ? trabalhando.map(u => `<b>${esc(u.nome)}</b> (${TURNOS[u.turno] || u.turno})`).join(", ") : "—"}${(S.folgas || []).filter(f => f.data_ini <= d && f.data_fim >= d).map(f => ` · 📅 ${esc(nomeU(f.user_id))} de ${esc(tipoF(f.tipo))}`).join("")}</p></div>
+    ${ativos().some(u => emFolga(u.user_id, d)) ? `<div class="card"><h2>📅 De folga ${d === hoje() ? "hoje" : "neste dia"}</h2>${ativos().filter(u => emFolga(u.user_id, d)).map(u => `<div style="padding:6px 0"><b style="font-size:16px">${esc(u.nome)}</b> ${folgaPill(u.user_id, d)} <span class="meta">→ tarefas com ${esc(nomeU(responsavelCob(u.user_id, d)) || "—")}</span></div>`).join("")}</div>` : ""}
     <div class="card"><h2>Por colaborador</h2>${Object.entries(porU).map(([u, l]) => { const k = contagem(l), fh = l.filter(foraHorario).length; return `<div style="margin-top:8px"><div class="row" style="justify-content:space-between"><b>${esc(u === "-" ? "Sem responsável" : nomeU(u))}</b><span class="meta">${k.ok}/${l.length} · ${k.pct}%${fh ? ` · <b style="color:var(--crit)">${fh} fora do horário</b>` : ""}</span></div><div class="bar"><i style="width:${k.pct}%;background:${k.pct >= 100 ? "var(--good)" : fh ? "var(--crit)" : "var(--warn)"}"></i></div></div>`; }).join("")}</div>
     <div class="card"><h2>Etapas do dia</h2>${filtrosHTML("Hoje")}
       <div style="overflow-x:auto;margin-top:8px"><table><tr><th>Horário</th><th>Etapa</th><th class="hide-m">Local</th><th>Responsável</th><th>Status</th></tr>
@@ -670,6 +676,7 @@ async function detalhe(id, d){
     ${x.ab ? `<tr><td class="meta">🛡️ Abono</td><td>${esc(x.ab.motivo)}<div class="meta">por ${esc(x.ab.por_nome || nomeU(x.ab.por))} · ${dhTs(x.ab.em)}</div>${dm ? `<div class="meta">📌 Demanda: ${esc(dm.descricao)} · ${esc(ST[dm.status] ? ST[dm.status][0] : dm.status)}${dm.resposta ? "<br>💬 Resposta: " + esc(dm.resposta) : ""}</div>` : ""}</td></tr>` : ""}</table>
     ${r ? `<div class="fotos" id="dFotos"><span class="meta">Carregando fotos…</span></div>` : ""}
     ${S.admin && !r && x.st === "atrasado" && d === hoje() ? (x.rr.liberado ? `<div class="ban info">🔓 Já liberada para ${esc(nomeU(x.resp))} fazer.</div>` : `<button class="btn pri" onclick="liberaEtapa(${id},'${d}','${x.resp}')">🔓 Liberar para ${esc(nomeU(x.resp))} fazer agora</button><p class="meta">O horário passou sem começar (etapa pulada). Sem liberar, o colaborador não consegue voltar nela.</p>`) : ""}
+    ${(S.admin || S.lider) && !x.ab && x.resp ? `<details style="margin-top:10px"><summary class="btn">🛡️ Abonar esta tarefa</summary><label class="f">Motivo do abono (obrigatório)<input id="abM" class="inp" placeholder="Ex.: chamado para ajudar na pista"></label><button class="btn pri" onclick="abonaDireto(${id},'${d}')">🛡️ Abonar</button></details>` : ""}
     ${S.admin && (!r || r.status === "andamento") ? `<label class="f">🔁 Trocar responsável neste dia<select id="dResp" class="inp">${ativos().map(u => `<option value="${u.user_id}" ${u.user_id === x.resp ? "selected" : ""}>${esc(u.nome)}</option>`).join("")}</select></label><button class="btn" onclick="trocaResp(${id},'${d}')">Salvar troca</button>` : ""}
     ${S.admin && r && r.status !== "andamento" && r.id ? `<details style="margin-top:10px"><summary class="btn">✏️ Corrigir registro (fica na auditoria)</summary>
       <label class="f">Status<select id="cSt" class="inp">${["concluido", "concluido_obs", "nao_realizado"].map(k => `<option value="${k}" ${r.status === k ? "selected" : ""}>${ST[k][0]}</option>`).join("")}</select></label>
@@ -745,9 +752,21 @@ async function baixa(blob, nome){
 function telaServ(){
   const L = S.locais || [];
   $("#app").innerHTML = `<div class="card"><h2>⚙️ Etapas (em sequência, com horário de começo e término)</h2><div class="row"><button class="btn pri sm" onclick="formServ()">+ NOVA ETAPA</button><button class="btn sm" onclick="formLocal()">+ Novo local</button></div>
-    <button class="btn" onclick="formPadrao()">✨ Montar equipe e etapas padrão (Denilde, Firmino, Kayo, Teste)</button></div>
+    <button class="btn" onclick="formPadrao()">✨ Montar equipe e etapas padrão (Denilde, Firmino, Kayo, Teste)</button>
+    <div class="row" style="margin-top:8px">${ativos().map(u => `<button class="btn sm" onclick="formOrdem('${u.user_id}')">🔀 Sequência de ${esc(u.nome.split(" ")[0])}</button>`).join("")}</div></div>
     ${[...L, {id:null, nome:"Sem local", ativo:true}].map(l => { const sv = (S.servicos || []).filter(s => (s.local_id || null) === l.id); if (!l.id && !sv.length) return ""; return `<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">📍 ${esc(l.nome)} ${l.lat != null ? `<span class="pill p-ok">GPS próprio</span>` : ""} ${l.ativo ? "" : `<span class="pill p-fut">inativo</span>`}</h2>${l.id ? `<button class="btn sm" onclick="formLocal(${l.id})">✏️</button>` : ""}</div>
       ${sv.length ? `<table style="margin-top:6px">${sv.map(s => `<tr class="cl" onclick="formServ(${s.id})" style="${s.ativo ? "" : "opacity:.5"}"><td><b>${janela(s)}</b></td><td>${s.urgente ? "🚨 " : ""}${esc(s.nome)}${(s.passos || []).length ? ` <span class="meta">· ${s.passos.length} passos</span>` : ""}<div class="meta">${TURNOS[s.turno] || s.turno} · ${esc(s.funcao)} · ${esc(s.responsavel ? nomeU(s.responsavel) : "automático")} · ${freqTxt(s)}${s.foto !== "nao" ? " · " + FOTO[s.foto] : ""}${s.ativo ? "" : " · inativo"}</div></td></tr>`).join("")}</table>` : `<p class="meta">Nenhum serviço neste local.</p>`}</div>`; }).join("")}`;
+}
+function formOrdem(uid){
+  const L = (S.servicos || []).filter(s => s.ativo && s.responsavel === uid).sort((a, b) => hm(a.horario).localeCompare(hm(b.horario)));
+  openSheet(`<h2>🔀 Sequência de ${esc(nomeU(uid))}</h2><p class="meta">Use ▲ ▼ para trocar a ordem. Os horários ficam no lugar e as tarefas trocam entre si. O colaborador vê a nova ordem na hora.</p>
+    ${L.map((s, i) => `<div class="drow" style="cursor:default"><span class="hr">${janela(s)}</span><span style="flex:1;min-width:0"><b>${esc(s.nome)}</b><div class="meta">📍 ${esc(nomeL(s.local_id))}</div></span><button class="btn sm" style="margin:0" ${i ? "" : "disabled"} onclick="trocaOrdem(${s.id},${i ? L[i - 1].id : 0},'${uid}')">▲</button><button class="btn sm" style="margin:0" ${i < L.length - 1 ? "" : "disabled"} onclick="trocaOrdem(${s.id},${i < L.length - 1 ? L[i + 1].id : 0},'${uid}')">▼</button></div>`).join("") || `<p class="meta">Nenhuma tarefa fixa desta pessoa.</p>`}
+    <button class="btn" onclick="closeSheet()">Pronto</button>`);
+}
+async function trocaOrdem(a, b, uid){
+  const A = S.servicos.find(s => s.id === a), B = S.servicos.find(s => s.id === b); if (!A || !B) return;
+  try { await api("PATCH", "/rest/v1/ck_servicos?id=eq." + A.id, {horario:B.horario, horario_fim:B.horario_fim}, {prefer:"return=minimal"}); await api("PATCH", "/rest/v1/ck_servicos?id=eq." + B.id, {horario:A.horario, horario_fim:A.horario_fim}, {prefer:"return=minimal"});
+    await carregaBase(); formOrdem(uid); toast("Ordem trocada."); } catch (e) { toast(e.message); }
 }
 function freqTxt(s){ const d = (s.dias || []).slice().sort(); if (d.length === 7) return "Todos os dias"; if (d.join() === "1,2,3,4,5") return "Seg a sex"; return d.map(i => DIAS[i]).join(", ") || "Nenhum dia"; }
 function formLocal(id){
@@ -858,8 +877,8 @@ function linkDe(u){ return new URL("checklist.html", location.href).href.split("
 async function resetarLink(id){ const u = S.usuarios.find(x => x.user_id === id); if (!confirm("Resetar o link de " + u.nome + "? O link antigo para de funcionar e o celular dele é desconectado.")) return; try { const t = await rpc("ck_resetar_link", {p_user:id}); S.links = {...(S.links || {}), [id]:t}; toast("Link novo gerado."); enviaLink(id); } catch (e) { toast(/ck_resetar/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); } }
 function telaEquipe(){
   const U = S.usuarios || [];
-  $("#app").innerHTML = `<div class="card"><h2>👥 Colaboradores e líderes</h2><p class="meta">Cada pessoa tem login próprio só do checklist (não entra no estoque nem nas metas) e o próprio link, que abre direto a tela dela. <b>Líder</b>: acompanha as demandas do dia e passa demandas extras (que abonam o horário da etapa); não mexe em etapas, equipe nem configurações.</p><button class="btn pri" onclick="formUser()">+ Novo colaborador ou líder</button><button class="btn" onclick="formPadrao()">✨ Montar equipe e etapas padrão (Denilde, Firmino, Kayo, Teste)</button></div>
-    ${U.map(u => `<div class="card" style="${u.ativo ? "" : "opacity:.55"}"><div><b style="font-size:16px">${esc(u.nome)}</b> ${u.papel === "lider" ? `<span class="pill p-and">⭐ Líder</span>` : ""} ${u.ativo ? "" : `<span class="pill p-fut">inativo</span>`}<div class="meta">login: ${esc(u.login)}${u.papel === "lider" ? "" : " · " + esc(u.funcao) + " · " + (TURNOS[u.turno] || esc(u.turno))}${u.local_base ? " · 📍 " + esc(nomeL(u.local_base)) : ""}</div></div>
+  $("#app").innerHTML = `<div class="card"><h2>👥 Colaboradores e líderes</h2><p class="meta">Cada pessoa tem login próprio só do checklist (não entra no estoque nem nas metas) e o próprio link, que abre direto a tela dela. <b>⭐ Administrador auxiliar</b>: entra com usuário e senha próprios, de qualquer lugar; vê a porcentagem das tarefas, passa demandas extras e pode abonar qualquer tarefa. Não mexe em etapas, equipe nem configurações.</p><button class="btn pri" onclick="formUser()">+ Novo colaborador ou líder</button><button class="btn" onclick="formPadrao()">✨ Montar equipe e etapas padrão (Denilde, Firmino, Kayo, Teste)</button></div>
+    ${U.map(u => `<div class="card" style="${u.ativo ? "" : "opacity:.55"}"><div><b style="font-size:16px">${esc(u.nome)}</b> ${folgaPill(u.user_id, hoje())} ${u.papel === "lider" ? `<span class="pill p-and">⭐ Administrador auxiliar</span>` : ""} ${u.ativo ? "" : `<span class="pill p-fut">inativo</span>`}<div class="meta">login: ${esc(u.login)}${u.papel === "lider" ? "" : " · " + esc(u.funcao) + " · " + (TURNOS[u.turno] || esc(u.turno))}${u.local_base ? " · 📍 " + esc(nomeL(u.local_base)) : ""}</div></div>
       <div class="row"><button class="btn sm" onclick="enviaLink('${u.user_id}')">📤 Enviar link</button><button class="btn sm" onclick="resetarLink('${u.user_id}')">🔄 Resetar link</button><button class="btn sm" onclick="formUser('${u.user_id}')">✏️ Editar</button><button class="btn sm" onclick="senhaUser('${u.user_id}')">🔑 Nova senha</button>${u.papel === "lider" ? "" : `<button class="btn sm" onclick="histUser('${u.user_id}')">📜 Histórico</button>`}</div></div>`).join("") || `<p class="meta">Ninguém cadastrado ainda.</p>`}`;
 }
 async function enviaLink(id){
@@ -871,7 +890,7 @@ function histUser(id){ S.hist = {ini:addDia(hoje(), -29), fim:hoje(), g:"u", L:n
 function formUser(id){
   const u = (S.usuarios || []).find(x => x.user_id === id) || {nome:"", login:"", funcao:"Limpeza", turno:"manha", ativo:true, papel:"colaborador"};
   openSheet(`<h2>${id ? "Editar" : "Novo colaborador ou líder"}</h2>
-    <label class="f">Tipo de acesso<select id="uPa" class="inp"><option value="colaborador" ${u.papel !== "lider" ? "selected" : ""}>👷 Colaborador (faz as etapas)</option><option value="lider" ${u.papel === "lider" ? "selected" : ""}>⭐ Líder (acompanha e passa demandas extras)</option></select></label>
+    <label class="f">Tipo de acesso<select id="uPa" class="inp"><option value="colaborador" ${u.papel !== "lider" ? "selected" : ""}>👷 Colaborador (faz as etapas)</option><option value="lider" ${u.papel === "lider" ? "selected" : ""}>⭐ Administrador auxiliar (vê a % das tarefas, passa demandas e abona)</option></select></label>
     <label class="f">Nome<input id="uN" class="inp" value="${esc(u.nome)}" placeholder="Ex.: Denilde"></label>
     ${id ? `<p class="meta">Login: <b>${esc(u.login)}</b></p>` : `<div class="grid2"><label class="f">Usuário (login)<input id="uL" class="inp" autocapitalize="none" placeholder="denilde"></label><label class="f">Senha inicial (mín. 6)<input id="uS" class="inp" type="text" autocomplete="off"></label></div>`}
     <div class="grid2"><label class="f">Função<input id="uF" class="inp" list="lFun2" value="${esc(u.funcao)}"><datalist id="lFun2">${FUNCOES.map(f => `<option>${f}</option>`).join("")}</datalist></label>
@@ -906,7 +925,7 @@ function telaEscala(){
     <label class="btn pri xl" style="cursor:pointer">📷 Ler foto da escala de folgas<input type="file" accept="image/*" hidden onchange="lerFotoEscala(this)"></label>
     <p class="meta" style="margin:6px 0 0">Escolha a foto da escala: o sistema acha a linha dos <b>dias do mês</b> e, na linha de cada colaborador, vê em qual dia está <b>FR</b> (folga), <b>FF</b> (folga feriado) ou <b>FÉRIAS</b>, marcando o calendário dele e mostra para você conferir antes de salvar. Em folga ou férias, outro colaborador assume as etapas automaticamente. Também dá para tocar nos dias abaixo para marcar ou tirar folga.</p>
     ${hojeF.length ? `<div class="ban warn" style="margin-top:10px">Hoje: ${hojeF.map(([u, f]) => `<b>${esc(u.nome)}</b> de folga → cobre <b>${esc(nomeU(responsavelCob(u.user_id, hoje())) || "ninguém definido")}</b>`).join(" · ")}</div>` : ""}</div>
-    ${col.map(u => { const nf = Array.from({length:nd}, (_, i) => emFolga(u.user_id, dia(i + 1))).filter(Boolean).length; return `<div class="card"><div class="row" style="justify-content:space-between"><b style="font-size:17px">${esc(u.nome)}</b><span class="meta">${esc(u.funcao)} · ${TURNOS[u.turno] || ""} · ${nf} folga(s) no mês</span></div>
+    ${col.map(u => { const nf = Array.from({length:nd}, (_, i) => emFolga(u.user_id, dia(i + 1))).filter(Boolean).length; return `<div class="card"><div class="row" style="justify-content:space-between"><b style="font-size:17px">${esc(u.nome)} ${folgaPill(u.user_id, hoje())}</b><span class="meta">${esc(u.funcao)} · ${TURNOS[u.turno] || ""} · ${nf} folga(s) no mês</span></div>
       <div class="grid2"><label class="f">Tipo de escala<select class="inp" onchange="salvaEscala('${u.user_id}','escala',this.value)">${[["livre", "Pela foto / manual"], ["6x1", "6x1 (1 folga por semana)"], ["12x36", "12x36 (dia sim, dia não)"]].map(([k, t]) => `<option value="${k}" ${(u.escala || "livre") === k ? "selected" : ""}>${t}</option>`).join("")}</select></label>
         ${u.escala === "6x1" ? `<label class="f">Dia da folga<select class="inp" onchange="salvaEscala('${u.user_id}','folga_dia',this.value)"><option value="">Escolha…</option>${DIAS.map((t, i) => `<option value="${i}" ${String(u.folga_dia) === String(i) ? "selected" : ""}>${t}</option>`).join("")}</select></label>` : ""}
         ${u.escala === "12x36" ? `<label class="f">Um dia em que trabalha<input type="date" class="inp" value="${u.escala_base || ""}" onchange="salvaEscala('${u.user_id}','escala_base',this.value)"></label>` : ""}
@@ -1158,7 +1177,7 @@ async function liberarAcesso(uid){
 }
 async function salvaCfg(campos, txt){
   try { await api("POST", "/rest/v1/ck_config?on_conflict=filial", {filial:S.filial, retencao_dias:+(S.cfg || {}).retencao_dias || 90, ...campos}, {prefer:"resolution=merge-duplicates,return=minimal"}); S.cfg = {...S.cfg, ...campos}; toast(txt || "Salvo."); if (S.view === "cfg") render(); }
-  catch (e) { toast(/column|posto_|jornada|intervalo|janela|descanso/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); }
+  catch (e) { toast(/column|posto_|jornada|intervalo|janela|descanso|cafe|ponto/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); }
 }
 function salvaCoord(){ const m = ($("#lcXY").value || "").match(/(-?\d+[.,]\d+)\s*[,; ]\s*(-?\d+[.,]\d+)/); if (!m) return toast("Cole assim: -2.5305, -44.3002 (do Google Maps)."); salvaCfg({posto_lat:+m[1].replace(",", "."), posto_lng:+m[2].replace(",", ".")}, "Local do posto gravado."); }
 function telaLocal(){
@@ -1169,6 +1188,8 @@ function telaLocal(){
     <label class="f">Raio permitido<select id="lcR" class="inp" onchange="salvaCfg({posto_raio:+this.value},'Raio: '+this.value+' m')">${[50, 100, 150, 200, 300, 500, 1000].map(n => `<option value="${n}" ${(+c.posto_raio || 200) === n ? "selected" : ""}>${n} metros</option>`).join("")}</select></label>
     <button class="btn pri" onclick="gravaLocal(this)">📍 Gravar minha localização atual como o posto</button>
     <details><summary class="btn sm">✏️ Digitar as coordenadas (Google Maps)</summary><div class="row" style="margin-top:6px"><input id="lcXY" class="inp" style="flex:1" placeholder="-2.5305, -44.3002" value="${c.posto_lat != null ? c.posto_lat + ", " + c.posto_lng : ""}"><button class="btn sm pri" onclick="salvaCoord()">Salvar</button>${c.posto_lat != null ? `<button class="btn sm" onclick="if(confirm('Tirar o local do posto? O link volta a abrir em qualquer lugar.'))salvaCfg({posto_lat:null,posto_lng:null},'Local removido.')">Tirar</button>` : ""}</div></details>
+    <div class="grid2"><label class="f">☕ Café (turno da manhã) às<input type="time" class="inp" value="${cafe().ini}" onchange="this.value&&salvaCfg({cafe_ini:this.value},'Café às '+this.value)"></label>
+      <label class="f">Duração do café<select class="inp" onchange="salvaCfg({cafe_min:+this.value},'Café: '+this.value+' min')">${[0, 10, 15, 20, 30].map(n => `<option value="${n}" ${cafe().min === n ? "selected" : ""}>${n ? n + " min" : "sem café"}</option>`).join("")}</select></label></div>
     <label class="f">Antes do almoço, parar para bater o ponto<select class="inp" onchange="salvaCfg({ponto_min:+this.value},'Parar '+this.value+' min antes do almoço')">${[0, 5, 10, 15].map(n => `<option value="${n}" ${almoco().pt === n ? "selected" : ""}>${n ? n + " minutos antes" : "não precisa"}</option>`).join("")}</select></label>
     <label class="f">Tolerância de atraso em cada etapa<select class="inp" onchange="salvaTol(this.value)">${[0, 5, 10, 15, 20].map(n => `<option value="${n}" ${tolerancia() === n ? "selected" : ""}>${n} minutos</option>`).join("")}</select></label>
     <h2 style="margin-top:16px">🕐 Expediente (tudo editável)</h2>
@@ -1187,6 +1208,10 @@ async function gravaLocal(b){
   try { await api("POST", "/rest/v1/ck_config?on_conflict=filial", {filial:S.filial, retencao_dias:+(S.cfg || {}).retencao_dias || 90, posto_lat:g.lat, posto_lng:g.lng, posto_raio:+(($("#lcR") || {}).value || (S.cfg || {}).posto_raio || 200)}, {prefer:"resolution=merge-duplicates,return=minimal"}); await carregaBase(); render(); toast("Local do posto gravado."); } catch (e) { toast(/posto_/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); }
 }
 /* abono: só pelo botão da demanda extra (etapa que o colaborador não cumpriu por causa dela) */
+async function abonaDireto(id, d){
+  const m = ($("#abM").value || "").trim(); if (!m) return toast("Escreva o motivo do abono.");
+  try { await api("POST", "/rest/v1/ck_abonos?on_conflict=servico_id,data", {filial:S.filial, servico_id:id, data:d, motivo:m, por_nome:S.perfil.nome || S.perfil.login}, {prefer:"resolution=merge-duplicates,return=minimal"}); closeSheet(); await atualizaDia(); render(); toast("🛡️ Tarefa abonada."); } catch (e) { toast(e.message); }
+}
 function abonarDemanda(id){
   const dm = ((S.fil[S.data] || {}).dem || []).find(x => x.id === id); if (!dm) return;
   const L = linhasDia(dm.data).filter(x => x.resp === dm.user_id && !x.ab && (foraHorario(x) || !FINAL(x.st)));
@@ -1206,13 +1231,15 @@ async function salvaEscala(uid, campo, v){
   try { await api("PATCH", "/rest/v1/ck_usuarios?user_id=eq." + uid, {[campo]:campo === "escala" ? (v || "livre") : val}, {prefer:"return=minimal"}); await carregaBase(); render(); toast("Escala salva."); } catch (e) { toast(/escala|folga_dia|cobertura/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); }
 }
 async function toggleFolga(uid, d){
+  const u12 = usuarioDe(uid) || {};
+  if (u12.escala === "12x36") { const f = emFolga(uid, d); if (f && !f.auto) { /* folga da foto/férias: segue o normal */ } else { await salvaEscala(uid, "escala_base", f ? d : addDia(d, 1)); return toast(f ? "Dia " + dBR(d) + " passa a ser de serviço; os outros dias foram intercalados." : "Folga em " + dBR(d) + "; os dias de serviço foram intercalados (12x36)."); } }
   const ex = (S.folgas || []).find(f => f.user_id === uid && ehEscala(f.tipo) && f.data_ini === d);
   if (!ex && emFolga(uid, d)) return toast("Esta folga vem da regra " + (usuarioDe(uid) || {}).escala + " ou de férias. Mude a regra acima.");
   try { if (ex) await api("DELETE", "/rest/v1/ck_folgas?id=eq." + ex.id); else await api("POST", "/rest/v1/ck_folgas", {filial:S.filial, user_id:uid, tipo:"escala", data_ini:d, data_fim:d, cobertura:(usuarioDe(uid) || {}).cobertura || null, motivo:"escala"}, {prefer:"return=minimal"}); await carregaBase(); render(); } catch (e) { toast(e.message); }
 }
 let tessP = null;
 function carregaTesseract(){ if (window.Tesseract) return Promise.resolve(window.Tesseract); if (!tessP) tessP = new Promise((ok, er) => { const sc = document.createElement("script"); sc.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"; sc.onload = () => ok(window.Tesseract); sc.onerror = () => { tessP = null; er(new Error("Sem internet para ler a foto.")); }; document.head.appendChild(sc); }); return tessP; }
-function prepImg(img, larg, lim){ const k = Math.max(1, larg / img.width), cv = document.createElement("canvas"); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k); const g = cv.getContext("2d"); g.drawImage(img, 0, 0, cv.width, cv.height); const d = g.getImageData(0, 0, cv.width, cv.height); for (let i = 0; i < d.data.length; i += 4) { const y = 0.3 * d.data[i] + 0.59 * d.data[i + 1] + 0.11 * d.data[i + 2] < lim ? 0 : 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = y; } g.putImageData(d, 0, 0); return cv; }
+function prepImg(img, larg, lim){ const k = Math.max(1, larg / img.width), cv = document.createElement("canvas"); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k); const g = cv.getContext("2d"); g.drawImage(img, 0, 0, cv.width, cv.height); const d = g.getImageData(0, 0, cv.width, cv.height); for (let i = 0; i < d.data.length; i += 4) { const r = d.data[i], gg = d.data[i + 1], bb = d.data[i + 2], lu = 0.3 * r + 0.59 * gg + 0.11 * bb, sat = Math.max(r, gg, bb) - Math.min(r, gg, bb); const y = sat > 50 && lu > 90 ? 255 : lu < lim ? 0 : 255;   /* célula colorida (ex.: azul da folga) vira branco para ler o texto */ d.data[i] = d.data[i + 1] = d.data[i + 2] = y; } g.putImageData(d, 0, 0); return cv; }
 const semAc = v => String(v || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
 /* lê o texto da foto: em cada linha com o nome de alguém, pega os dias de folga (números do dia, ou a grade de letras com F/X/D) */
 function parseEscala(txt, nd){
@@ -1250,10 +1277,11 @@ function parseEscalaPos(words, nd, users){
   const b = (n * sxy - sx * sy) / (n * sxx - sx * sx), a = (sy - b * sx) / n; if (!(b > 0)) return null;
   const diaDe = x => Math.round((x - a) / b), yCab = melhor[0].yc;
   const cod = t => /^(FF|FFE|FD)$/.test(t) ? "FF" : /^(FE|FER|FERIA|FERIAS)$/.test(t) ? "FE" : /^(FR|F|FO|FOL|FOLGA)$/.test(t) ? "FR" : null;
-  const res = {};
+  const res = {}, linhas = [];
   for (const u of users) {
     const p = semAc(u.nome).split(" ")[0]; if (p.length < 3) continue;
     const nomes = W.filter(w => w.t.startsWith(p) && Math.abs(w.yc - yCab) > w.h * .6); if (!nomes.length) continue;
+    linhas.push({uid:u.user_id, yc:nomes[0].yc, h:nomes[0].h});
     const set = {};
     for (const nm of nomes) for (const w of W) {
       if (w === nm || w.xc < nm.x1 || Math.abs(w.yc - nm.yc) > nm.h * .7) continue;
@@ -1264,12 +1292,30 @@ function parseEscalaPos(words, nd, users){
     }
     if (Object.keys(set).length) res[u.user_id] = Object.assign(res[u.user_id] || {}, set);
   }
+  Object.defineProperty(res, "_grade", {value:{a, b, linhas}});
+  return res;
+}
+/* dia pintado de AZUL na foto = folga (FR). 7 ou mais dias azuis seguidos = férias */
+function folgasAzuis(img, k, grade, nd){
+  const cv = document.createElement("canvas"); cv.width = img.width; cv.height = img.height; const g = cv.getContext("2d", {willReadFrequently:true}); g.drawImage(img, 0, 0);
+  const azul = (r, gg, bb) => bb > 110 && bb - r > 35 && bb - gg > 12, res = {};
+  for (const l of grade.linhas) {
+    const dias = [];
+    for (let d = 1; d <= nd; d++) {
+      const cx = (grade.a + grade.b * d) / k, cy = l.yc / k, hw = Math.max(2, grade.b * .3 / k), hh = Math.max(2, l.h * .45 / k);
+      const x0 = Math.max(0, Math.round(cx - hw)), y0 = Math.max(0, Math.round(cy - hh)), w = Math.min(cv.width - x0, Math.round(hw * 2)), h = Math.min(cv.height - y0, Math.round(hh * 2)); if (w < 1 || h < 1) continue;
+      const px = g.getImageData(x0, y0, w, h).data; let n = 0; for (let i = 0; i < px.length; i += 4) if (azul(px[i], px[i + 1], px[i + 2])) n++;
+      if (n / (px.length / 4) > .3) dias.push(d);
+    }
+    if (!dias.length) continue; const set = res[l.uid] = {};
+    for (let i = 0; i < dias.length;) { let j = i; while (j + 1 < dias.length && dias[j + 1] === dias[j] + 1) j++; for (let q = i; q <= j; q++) set[dias[q]] = j - i + 1 >= 7 ? "FE" : "FR"; i = j + 1; }
+  }
   return res;
 }
 function sugereEscala(dias, mes){
   const l = [...dias].sort((a, b) => a - b); if (l.length < 2) return null; const dif = l.slice(1).map((v, i) => v - l[i]);
   if (dif.every(x => x === 7)) return {escala:"6x1", folga_dia:diaSem(mes + "-" + pad(l[0])), txt:"6x1 · folga toda " + DIAS[diaSem(mes + "-" + pad(l[0]))]};
-  if (dif.every(x => x === 2)) { const t = l[0] === 1 ? 2 : 1; return {escala:"12x36", escala_base:mes + "-" + pad(t), txt:"12x36 · dia sim, dia não"}; }
+  if (dif.filter(x => x === 2).length >= dif.length * .8 && l.length >= 6) { const t = l[0] % 2 === 1 ? 2 : 1; return {escala:"12x36", escala_base:mes + "-" + pad(t), txt:"12x36 · dia sim, dia não (detectado)"}; }
   return null;
 }
 async function lerFotoEscala(inp){
@@ -1277,18 +1323,19 @@ async function lerFotoEscala(inp){
   openSheet(`<h2>📷 Lendo a escala…</h2><p class="meta">Pode levar alguns segundos.</p>`);
   try {
     const T = await carregaTesseract(), img = await new Promise((ok, er) => { const i = new Image(); i.onload = () => ok(i); i.onerror = er; i.src = URL.createObjectURL(f); });
-    const [a, m] = S.escMes.split("-").map(Number), nd = new Date(a, m, 0).getDate(), pos = {};
-    const w = await T.createWorker("por"); let txt = ""; try { for (const [larg, lim] of [[2000, 150], [2400, 170]]) { const r = (await w.recognize(prepImg(img, larg, lim), {}, {text:true, blocks:true})).data; txt += "\n" + r.text; const p = parseEscalaPos(palavrasOCR(r), nd, ativos()); if (p) for (const [k, v] of Object.entries(p)) if (!pos[k]) pos[k] = v; } } finally { await w.terminate(); }
+    const [a, m] = S.escMes.split("-").map(Number), nd = new Date(a, m, 0).getDate(), pos = {}; let azuis = null;
+    const w = await T.createWorker("por"); let txt = ""; try { for (const [larg, lim] of [[2000, 150], [2400, 170]]) { const r = (await w.recognize(prepImg(img, larg, lim), {}, {text:true, blocks:true})).data; txt += "\n" + r.text; const p = parseEscalaPos(palavrasOCR(r), nd, ativos()); if (p) { for (const [k, v] of Object.entries(p)) if (!pos[k]) pos[k] = v;
+      if (!azuis) { azuis = folgasAzuis(img, Math.max(1, larg / img.width), p._grade, nd); for (const [k, v] of Object.entries(azuis)) pos[k] = {...v, ...(pos[k] || {})}; } } } } finally { await w.terminate(); }
     S.escLida = {mes:S.escMes, dias:{...parseEscala(txt, nd), ...pos}, pos:Object.keys(pos)};
     previaEscala();
   } catch (e) { console.error(e); openSheet(`<h2>Não foi possível ler</h2><p class="meta">${esc(e.message || "Tente uma foto mais nítida, de frente e com boa luz.")}</p><button class="btn" onclick="closeSheet()">Fechar</button>`); }
 }
 function previaEscala(){
   const E = S.escLida, [a, m] = E.mes.split("-").map(Number), nd = new Date(a, m, 0).getDate(), col = ativos();
-  openSheet(`<h2>📅 Conferir a escala lida</h2><p class="meta">Toque no dia para trocar: trabalha → <b>FR</b> folga → <b>FF</b> folga feriado → <b>FÉRIAS</b>. Nos dias de folga e férias as etapas vão sozinhas para quem cobre. Quem não apareceu na foto fica sem alteração.</p>
+  openSheet(`<h2>📅 Conferir a escala lida</h2><p class="meta">Os dias pintados de <b>azul</b> na foto e os escritos FR viram folga; 7 ou mais dias azuis seguidos viram férias. Toque no dia para trocar: trabalha → <b>FR</b> folga → <b>FF</b> folga feriado → <b>FÉRIAS</b>. Nos dias de folga e férias as etapas vão sozinhas para quem cobre. Quem não apareceu na foto fica sem alteração.</p>
     ${col.map(u => { const d = E.dias[u.user_id], fr = d ? Object.keys(d).filter(k => d[k] === "FR").map(Number) : [], sg = d ? sugereEscala(fr, E.mes) : null, n = c => d ? Object.values(d).filter(v => v === c).length : 0; return `<div class="fslot"><div class="row" style="justify-content:space-between"><b>${esc(u.nome)}</b><span class="meta">${d ? `FR ${n("FR")} · FF ${n("FF")} · férias ${n("FE")}${(E.pos || []).includes(u.user_id) ? " · 📐 lido pela coluna do dia" : ""}` : "não encontrado na foto"}</span></div>
       ${d ? `<div class="cal">${Array.from({length:(new Date(a, m - 1, 1).getDay())}, () => "<i></i>").join("")}${Array.from({length:nd}, (_, i) => `<button class="${({FR:"fo", FF:"ff", FE:"fe"})[d[i + 1]] || ""}" onclick="tglPrev('${u.user_id}',${i + 1})">${d[i + 1] ? `<small style="display:block;font-size:9px">${d[i + 1] === "FE" ? "FÉR" : d[i + 1]}</small>` : ""}${i + 1}</button>`).join("")}</div>
-      ${sg ? `<label class="meta" style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" data-sug="${u.user_id}"> Usar a regra <b>${sg.txt}</b> nos próximos meses</label>` : ""}` : `<button class="btn sm" onclick="S.escLida.dias['${u.user_id}']={};previaEscala()">+ Marcar folgas à mão</button>`}</div>`; }).join("")}
+      ${sg ? `<label class="meta" style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" data-sug="${u.user_id}" ${sg && sg.escala === "12x36" ? "checked" : ""}> Usar a regra <b>${sg.txt}</b> nos próximos meses</label>` : ""}` : `<button class="btn sm" onclick="S.escLida.dias['${u.user_id}']={};previaEscala()">+ Marcar folgas à mão</button>`}</div>`; }).join("")}
     <button class="btn pri xl" onclick="salvaEscalaLida(this)">💾 Salvar escala</button><button class="btn" onclick="closeSheet()">Cancelar</button>`);
 }
 function tglPrev(uid, k){ const l = S.escLida.dias[uid] = S.escLida.dias[uid] || {}, prox = {undefined:"FR", FR:"FF", FF:"FE", FE:undefined}[l[k]]; if (prox) l[k] = prox; else delete l[k]; const sc = $("#sheet").scrollTop; previaEscala(); $("#sheet").scrollTop = sc; }
@@ -1315,13 +1362,13 @@ function telaInicio(){
   const T = [["hoje", "📊", "Acompanhar o dia", `${c.ok} de ${c.tot} etapas · ${fora} fora do horário`, fora ? "crit" : ""], ["demanda", "📌", "Passar demanda extra", "Mandar uma tarefa para alguém agora", ""],
     ["escala", "📅", "Escala e folgas", folga.length ? "Hoje de folga: " + folga.map(u => u.nome).join(", ") : "Ler a foto da escala, 6x1, 12x36", ""], ["serv", "🧹", "Etapas e horários", (S.servicos || []).filter(s => s.ativo).length + " etapas cadastradas", ""],
     ["equipe", "👥", "Equipe e links", ativos().length + " colaboradores · enviar ou resetar link", ""], ["mat", "📦", "Pedidos e liberações", pend ? pend + " esperando resposta" : "Nenhum pedido novo", pend ? "warn" : ""],
-    ["hist", "📜", "Histórico e relatórios", "PDF e Excel por dia, semana ou mês", ""], ["cfg", "⚙️", "Configurações", "Local do posto, cores, tolerância", ""]];
-  const pessoas = ativos().map(u => { const l = L.filter(x => x.resp === u.user_id), ok = l.filter(x => ["concluido", "concluido_obs"].includes(x.st)).length; return {u, n:l.length, ok, pul:l.filter(pulada).length, p:l.length ? Math.round(ok / l.length * 100) : 0}; }).filter(x => x.n);
+    ["hist", "📜", "Histórico e relatórios", "PDF e Excel por dia, semana ou mês", ""], ["cfg", "⚙️", "Configurações", "Local do posto, cores, tolerância", ""]].filter(t => S.admin || ["hoje", "demanda"].includes(t[0]));
+  const pessoas = ativos().map(u => { const l = L.filter(x => x.resp === u.user_id), ok = l.filter(x => ["concluido", "concluido_obs"].includes(x.st)).length; return {u, n:l.length, ok, pul:l.filter(pulada).length, p:l.length ? Math.round(ok / l.length * 100) : 0}; }).filter(x => x.n || emFolga(x.u.user_id, d));
   $("#app").innerHTML = heroTec(c.pct, `olá, <em>${esc((S.perfil.nome || "").split(" ")[0])}</em>`, `${DIAS[diaSem(d)]} ${dBR(d)} · ${c.ok} de ${c.tot} etapas concluídas`) + `
     <div class="cbox"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><b style="font-size:16px">📈 Acompanhamento das tarefas</b><b style="font-family:var(--display);font-size:28px;color:var(--brand)">${c.pct}%</b></div>
       <div class="bar big"><i style="width:${c.pct}%"></i></div>
       <div class="meta" style="margin-top:6px">✅ ${c.ok} feitas · 🟡 ${c.and} em andamento · 🔴 ${c.atr} atrasadas/puladas · ❌ ${c.no} não feitas · total ${c.tot}</div>
-      ${pessoas.map(x => `<div style="margin-top:10px"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><span><b>${esc(x.u.nome)}</b> <span class="meta">${x.ok} de ${x.n}${x.pul ? ` · <b style="color:var(--crit)">🔒 ${x.pul} pulada(s)</b>` : ""}${emFolga(x.u.user_id, d) ? " · de folga" : ""}</span></span><b>${x.p}%</b></div><div class="bar"><i style="width:${x.p}%"></i></div></div>`).join("")}</div>
+      ${pessoas.map(x => `<div style="margin-top:10px"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><span><b>${esc(x.u.nome)}</b> ${folgaPill(x.u.user_id, d)} <span class="meta">${x.n ? x.ok + " de " + x.n : "sem tarefas hoje"}${x.pul ? ` · <b style="color:var(--crit)">🔒 ${x.pul} pulada(s)</b>` : ""}</span></span><b>${x.n ? x.p + "%" : ""}</b></div><div class="bar"><i style="width:${x.p}%"></i></div></div>`).join("")}</div>
     <div class="home entra">${T.map(([k, ic, t, sub, cl]) => `<button class="hbtn ${cl}" onclick="${k === "demanda" ? "formDemanda()" : `S.view='${k}';render()`}"><span class="hic">${ic}</span><b>${t}</b><small>${esc(sub)}</small></button>`).join("")}</div>`;
 }
 </script>
