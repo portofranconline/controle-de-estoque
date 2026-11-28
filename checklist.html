@@ -297,8 +297,8 @@ async function carregaBase(){
 async function atualizaDia(){
   try {
     const q = "select=*&data=eq." + S.data, gestor = S.papel !== "colaborador";
-    const [rg, aj, dm, ab, jo, at, te] = await Promise.all([tb("ck_registros", q), tb("ck_ajustes", q), tb("ck_demandas", q + "&order=criado_em").catch(() => []), gestor ? tb("ck_abonos", q).catch(() => []) : Promise.resolve([]), tb("ck_jornadas", q).catch(() => []), tb("ck_atividades", q + "&order=inicio").catch(() => []), gestor ? tb("ck_tentativas", "select=*&order=quando.desc&quando=gte." + new Date(S.data + "T00:00:00").toISOString() + "&quando=lt." + new Date(addDia(S.data, 1) + "T00:00:00").toISOString()).catch(() => []) : Promise.resolve([])]);
-    S.fil[S.data] = {reg:rg || [], aj:aj || [], dem:dm || [], ab:ab || [], jor:jo || [], atv:at || [], tent:te || []}; LS.set(NS + ".ck.dia." + S.data, S.fil[S.data]);
+    const [rg, aj, dm, ab, jo, at, hd, te] = await Promise.all([tb("ck_registros", q), tb("ck_ajustes", q), tb("ck_demandas", q + "&order=criado_em").catch(() => []), gestor ? tb("ck_abonos", q).catch(() => []) : Promise.resolve([]), tb("ck_jornadas", q).catch(() => []), tb("ck_atividades", q + "&order=inicio").catch(() => []), tb("ck_horarios_dia", q).catch(() => []), gestor ? tb("ck_tentativas", "select=*&order=quando.desc&quando=gte." + new Date(S.data + "T00:00:00").toISOString() + "&quando=lt." + new Date(addDia(S.data, 1) + "T00:00:00").toISOString()).catch(() => []) : Promise.resolve([])]);
+    S.fil[S.data] = {reg:rg || [], aj:aj || [], dem:dm || [], ab:ab || [], jor:jo || [], atv:at || [], hd:hd || [], tent:te || []}; LS.set(NS + ".ck.dia." + S.data, S.fil[S.data]);
   } catch (e) { if (!S.fil[S.data]) S.fil[S.data] = LS.get(NS + ".ck.dia." + S.data, {reg:[], aj:[], dem:[], ab:[]}); }
 }
 const nomeU = id => { const u = (S.usuarios || []).find(x => x.user_id === id); return u ? u.nome : (S.perfil && id === S.perfil.user_id ? S.perfil.nome : "—"); };
@@ -334,6 +334,44 @@ const pulada = x => x.st === "atrasado" && !(x.rr && x.rr.liberado);
 const almoco = uid => { const c = S.cfg || {}, u = uid && (S.usuarios || []).find(x => x.user_id === uid), ini = hm((u && u.almoco_ini) || c.intervalo_ini || "12:00"), min = c.intervalo_min == null ? 60 : +c.intervalo_min, pt = c.ponto_min == null ? 5 : +c.ponto_min; return {ini, min, pt, fim:addMin(ini, min), para:addMin(ini, -pt)}; };
 const cafe = () => { const c = S.cfg || {}, ini = hm(c.cafe_ini || "09:00"), min = c.cafe_min == null ? 15 : +c.cafe_min; return {ini, min, fim:addMin(ini, min)}; };
 const antesAlmoco = L => { const A = almoco(L[0] && L[0].resp), l = L.filter(x => hm(x.s.horario) < A.ini); return l[l.length - 1]; };
+/* blocos do dia: manhã (até parar para o almoço) e tarde (depois do almoço). O almoço nunca muda. */
+const blocoDe = (x, A) => hm(x.s.horario) < A.ini ? {ini:"00:00", fim:A.para} : {ini:A.fim, fim:"23:59"};
+const minHM = h => { const [a, b] = h.split(":").map(Number); return a * 60 + b; }, hmMin = m => pad(Math.floor(m / 60)) + ":" + pad(m % 60);
+async function gravaHorarios(itens, motivo){
+  if (!itens.length) return true;
+  try { await rpc("ck_ajustar_horarios", {p_data:hoje(), p_itens:itens, p_motivo:motivo}); await atualizaDia(); render(); return true; }
+  catch (e) { toast(/ck_ajustar/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : "Sem internet para ajustar os horários: " + e.message); return false; }
+}
+/* terminou antes: a próxima etapa (do mesmo bloco, ainda não iniciada) começa agora e fica com mais tempo */
+async function adiantaProxima(x){
+  const ag = agoraHM(), fh = hm(x.s.horario_fim); if (!fh || ag >= fh) return;
+  const L = linhasDia(hoje()).filter(y => y.resp === x.resp), A = almoco(x.resp), B = blocoDe(x, A), i = L.findIndex(y => y.s.id === x.s.id);
+  const prox = L.slice(i + 1).find(y => !y.reg && !FINAL(y.st) && hm(y.s.horario) >= B.ini && hm(y.s.horario) < B.fim);
+  if (!prox || hm(prox.s.horario) <= ag) return;
+  if (await gravaHorarios([{id:prox.s.id, ini:ag, fim:hm(prox.s.horario_fim) || null}], "terminou antes: " + x.s.nome)) toast("🏁 Terminou antes! " + prox.s.nome + " já pode começar agora (até " + (hm(prox.s.horario_fim) || "—") + ").");
+}
+/* mais tempo: estica a etapa e as próximas descem; nada passa do almoço */
+function pedeMaisTempo(id){
+  const x = linhaDe(id); if (!x) return; const A = almoco(x.resp), B = blocoDe(x, A);
+  openSheet(`<h2>⏱️ Mais tempo · ${esc(x.s.nome)}</h2><p class="meta">Hoje até ${hm(x.s.horario_fim)}. As próximas etapas descem junto. O ${B.fim === A.para ? "almoço (" + A.ini + ") não muda" : "fim do dia é o limite"}.</p>
+    <div class="row">${[10, 15, 20, 30].map(n => `<button class="btn pri" style="flex:1" onclick="maisTempo(${id},${n})">+${n} min</button>`).join("")}</div>`);
+}
+async function maisTempo(id, n){
+  const x = linhaDe(id); if (!x) return; const A = almoco(x.resp), B = blocoDe(x, A), lim = minHM(B.fim);
+  const L = linhasDia(hoje()).filter(y => y.resp === x.resp && hm(y.s.horario) >= B.ini && hm(y.s.horario) < B.fim), i = L.findIndex(y => y.s.id === id), itens = [];
+  const resto = L.slice(i + 1).filter(y => !y.reg && !FINAL(y.st));   /* cada próxima fica com pelo menos 5 min, sem se chocar */
+  let fimAnt = Math.min(lim - 5 * resto.length, minHM(hm(x.s.horario_fim)) + n), aperto = [];
+  if (fimAnt <= minHM(hm(x.s.horario_fim))) return toast("Não dá para passar do horário " + (B.fim === A.para ? "de parar para o almoço (" + A.para + ")." : "do fim do dia."));
+  itens.push({id, ini:hm(x.s.horario), fim:hmMin(fimAnt)});
+  for (const y of L.slice(i + 1)) {
+    if (y.reg || FINAL(y.st)) continue; const ini = minHM(hm(y.s.horario)), fim = minHM(hm(y.s.horario_fim) || hm(y.s.horario));
+    if (ini >= fimAnt) break;
+    const depois = resto.length - resto.indexOf(y) - 1, dur = Math.max(5, fim - ini), ni = fimAnt, nf = Math.min(lim - 5 * depois, ni + dur); if (nf - ni < dur) aperto.push(y.s.nome);
+    itens.push({id:y.s.id, ini:hmMin(ni), fim:hmMin(nf)}); fimAnt = nf;
+  }
+  closeSheet();
+  if (await gravaHorarios(itens, "mais tempo +" + n + " min: " + x.s.nome)) toast("⏱️ +" + n + " min em " + x.s.nome + (itens.length > 1 ? ". As próximas desceram." : ".") + (aperto.length ? " ⚠️ Ficou apertado: " + aperto.join(", ") + "." : "") + " O almoço não muda.");
+}
 async function liberaEtapa(id, d, uid, sem){
   try { await api("POST", "/rest/v1/ck_ajustes?on_conflict=servico_id,data", {filial:S.filial, servico_id:id, data:d, responsavel:uid, liberado:true}, {prefer:"resolution=merge-duplicates,return=minimal"}); if (!sem) { closeSheet(); await atualizaDia(); render(); } toast("🔓 Etapa liberada para " + nomeU(uid) + "."); return true; }
   catch (e) { toast(/liberado/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); return false; }
@@ -359,7 +397,8 @@ const foraHorario = x => !x.ab && (["atrasado", "estourado", "sem_registro"].inc
 /* lista completa do dia: serviços programados + registros (nada some) */
 function linhasDia(d){
   const D = S.fil[d] || {reg:[], aj:[], ab:[]}, fila = filaLocal(), out = [], ab = id => (D.ab || []).find(a => a.servico_id === id) || null;
-  for (const s of (S.servicos || []).filter(s => programa(s, d))) {
+  for (const s0 of (S.servicos || []).filter(s => programa(s, d))) {
+    const ov = (D.hd || []).find(h => h.servico_id === s0.id), s = ov ? {...s0, horario:ov.ini, horario_fim:ov.fim || s0.horario_fim, _hd:ov} : s0;
     const r = responsavel(s, d, D.aj), reg = fila[s.id + "|" + d] || D.reg.find(x => x.servico_id === s.id);
     out.push({s, d, resp:reg && reg.user_id ? reg.user_id : r.uid, rr:r, reg, st:statusDe(s, reg, d), local:nomeL(s.local_id), ab:ab(s.id)});
   }
@@ -495,7 +534,8 @@ function cardEtapa(x, i, L, atualI){
     ${passos.length ? `<div class="passos">${passos.map((p, k) => `<button class="passo ${marc.includes(k) ? "ok" : ""}" ${r && !fim ? `onclick="marcaPasso(${x.s.id},${k})"` : "disabled"}><span>${marc.includes(k) ? "✔" : k + 1}</span>${esc(p)}</button>`).join("")}</div>` : ""}
     ${r && r._pend ? `<div class="meta" style="color:var(--warn)">🟠 Guardado no celular · envia quando tiver internet</div>` : ""}
     ${!r && !fim && i === atualI ? `<button class="btn pri xl" onclick="iniciar(${x.s.id})">▶️ INICIAR ETAPA</button>` : ""}
-    ${r && !fim ? `<button class="btn ok xl" onclick="finalizar(${x.s.id})">✅ CONCLUIR ETAPA</button><button class="btn sm" style="width:100%;margin-top:8px" onclick="finalizar(${x.s.id},true)">❌ Não deu para fazer</button>` : ""}
+    ${x.s._hd && !fim ? `<div class="meta" style="margin-top:6px">🔁 Horário de hoje ajustado (antes ${janela(S.servicos.find(z => z.id === x.s.id) || x.s)})</div>` : ""}
+    ${r && !fim ? `<button class="btn ok xl" onclick="finalizar(${x.s.id})">${fh && ag < fh ? "🏁 TERMINEI ANTES DO HORÁRIO" : "✅ CONCLUIR ETAPA"}</button>${fh ? `<button class="btn sm" style="width:100%;margin-top:8px" onclick="pedeMaisTempo(${x.s.id})">⏱️ Não vai dar tempo: aumentar o tempo</button>` : ""}<button class="btn sm" style="width:100%;margin-top:8px" onclick="finalizar(${x.s.id},true)">❌ Não deu para fazer</button>` : ""}
     <div class="nav"><button class="btn sm" onclick="passa(-1)" ${i === 0 ? "disabled" : ""}>◀ Anterior</button><span class="meta">deslize para o lado</span><button class="btn sm" onclick="passa(1)" ${i === L.length - 1 ? "disabled" : ""}>Próxima ▶</button></div></div>`;
 }
 function telaFimDia(H){
@@ -606,7 +646,7 @@ function envia(id, tipo, soNao){
   }
   const base = filaLocal()[k] ? {} : {...regBase(x), iniciado_em:(x.reg && x.reg.iniciado_em) || new Date().toISOString()};
   if (!salvaFila(k, {...base, status, motivo, observacao:obs, fotos, passos:marcados, atraso_min:Math.max(0, atraso), justificativa:jus || (atraso > 0 ? motivo : ""), concluido_em:new Date().toISOString()})) return;
-  LS.del(passosKey(x)); fotosTmp = []; closeSheet(); render(); sincroniza(); toast(tipo === "concluido" ? "✅ Etapa concluída às " + agoraHM() + (atraso > 0 ? " (" + atraso + " min depois do horário)" : "") : "Registrado como não realizado.");
+  LS.del(passosKey(x)); fotosTmp = []; closeSheet(); render(); sincroniza(); if (tipo === "concluido") adiantaProxima(x); toast(tipo === "concluido" ? "✅ Etapa concluída às " + agoraHM() + (atraso > 0 ? " (" + atraso + " min depois do horário)" : "") : "Registrado como não realizado.");
 }
 /* avisos internos */
 let avisados = {};
@@ -617,6 +657,7 @@ function avisos(){
   if (S.papel !== "colaborador") {
     const ini = !S.avisouIni;
     { const ag = agoraHM(); for (const x of linhasDia(hoje()).filter(x => x.resp && !x.reg && x.st === "agora" && ag > addMin(hm(x.s.horario), tolerancia()))) { const k = "par" + x.s.id; if (avisados[k]) continue; avisados[k] = 1; if (!ini) notifica("⏸️ " + nomeU(x.resp) + " ainda não começou " + x.s.nome + " (era às " + hm(x.s.horario) + ")."); } }
+    for (const h of (S.fil[hoje()] || {}).hd || []) { const k = "hd" + h.servico_id + h.em; if (avisados[k]) continue; avisados[k] = 1; if (!ini && /^mais tempo|^terminou antes/.test(h.motivo || "")) notifica((/^mais/.test(h.motivo) ? "⏱️ " : "🏁 ") + nomeU(h.por) + ": " + h.motivo); }
     for (const x of linhasDia(hoje()).filter(x => x.reg && x.reg.status === "nao_realizado")) { const k = "nr" + x.s.id; if (avisados[k]) continue; avisados[k] = 1; if (!ini) notifica("📝 " + nomeU(x.reg.user_id) + " não fez " + x.s.nome + " (" + janela(x.s) + "): " + (x.reg.motivo || "")); }
     for (const x of linhasDia(hoje()).filter(foraHorario)) { const k = "g" + x.s.id + x.st; if (avisados[k]) continue; avisados[k] = 1; if (!ini) notifica("🚨 " + nomeU(x.resp) + ": " + x.s.nome + " (" + janela(x.s) + ") fora do horário."); }
     S.avisouIni = true; return;
@@ -690,6 +731,11 @@ async function detalhe(id, d){
     ${x.ab ? `<tr><td class="meta">🛡️ Abono</td><td>${esc(x.ab.motivo)}<div class="meta">por ${esc(x.ab.por_nome || nomeU(x.ab.por))} · ${dhTs(x.ab.em)}</div>${dm ? `<div class="meta">📌 Demanda: ${esc(dm.descricao)} · ${esc(ST[dm.status] ? ST[dm.status][0] : dm.status)}${dm.resposta ? "<br>💬 Resposta: " + esc(dm.resposta) : ""}</div>` : ""}</td></tr>` : ""}</table>
     ${r ? `<div class="fotos" id="dFotos"><span class="meta">Carregando fotos…</span></div>` : ""}
     ${S.admin && !r && x.st === "atrasado" && d === hoje() ? (x.rr.liberado ? `<div class="ban info">🔓 Já liberada para ${esc(nomeU(x.resp))} fazer.</div>` : `<button class="btn pri" onclick="liberaEtapa(${id},'${d}','${x.resp}')">🔓 Liberar para ${esc(nomeU(x.resp))} fazer agora</button><p class="meta">O horário passou sem começar (etapa pulada). Sem liberar, o colaborador não consegue voltar nela.</p>`) : ""}
+    ${S.admin && x.resp && (!r || r.status === "andamento") ? `<details style="margin-top:10px"><summary class="btn">✏️ Editar esta etapa (não concluída)</summary>
+      <div class="grid2"><label class="f">Começa às (só ${d === hoje() ? "hoje" : dBR(d)})<input id="edI" type="time" class="inp" value="${hm(x.s.horario)}"></label><label class="f">Termina às<input id="edF" type="time" class="inp" value="${hm(x.s.horario_fim)}"></label></div>
+      <button class="btn" onclick="admHorario(${id},'${d}')">💾 Salvar horário deste dia</button>
+      <label class="f">Concluída às<input id="edC" type="time" class="inp" value="${agoraHM()}"></label><label class="f">Observação (obrigatória)<input id="edO" class="inp" placeholder="Ex.: conferi pessoalmente, estava feita"></label>
+      <button class="btn ok" onclick="admConclui(${id},'${d}')">✅ Marcar como CONCLUÍDA (só administrador)</button></details>` : ""}
     ${(S.admin || S.lider) && !x.ab && x.resp ? `<details style="margin-top:10px"><summary class="btn">🛡️ Abonar esta tarefa</summary><label class="f">Motivo do abono (obrigatório)<input id="abM" class="inp" placeholder="Ex.: chamado para ajudar na pista"></label><button class="btn pri" onclick="abonaDireto(${id},'${d}')">🛡️ Abonar</button></details>` : ""}
     ${S.admin && (!r || r.status === "andamento") ? `<label class="f">🔁 Trocar responsável neste dia<select id="dResp" class="inp">${ativos().map(u => `<option value="${u.user_id}" ${u.user_id === x.resp ? "selected" : ""}>${esc(u.nome)}</option>`).join("")}</select></label><button class="btn" onclick="trocaResp(${id},'${d}')">Salvar troca</button>` : ""}
     ${S.admin && r && r.status !== "andamento" && r.id ? `<details style="margin-top:10px"><summary class="btn">✏️ Corrigir registro (fica na auditoria)</summary>
@@ -763,11 +809,18 @@ async function baixa(blob, nome){
 }
 
 /* ---------- admin: locais e serviços ---------- */
+function choquesServ(){
+  const A = (S.servicos || []).filter(s => s.ativo && !s.arquivado), out = [];
+  A.forEach((a, i) => A.slice(i + 1).forEach(b => { const mesma = a.responsavel ? a.responsavel === b.responsavel : !b.responsavel && a.funcao === b.funcao && a.turno === b.turno;
+    if (mesma && (a.dias || []).some(k => (b.dias || []).includes(k)) && hm(a.horario) < (hm(b.horario_fim) || addMin(hm(b.horario), 1)) && hm(b.horario) < (hm(a.horario_fim) || addMin(hm(a.horario), 1))) out.push([a, b]); }));
+  return out;
+}
 function telaServ(){
-  const L = S.locais || [];
+  const L = S.locais || [], CH = choquesServ();
   $("#app").innerHTML = `<div class="card"><h2>⚙️ Etapas (em sequência, com horário de começo e término)</h2><div class="row"><button class="btn pri sm" onclick="formServ()">+ NOVA ETAPA</button><button class="btn sm" onclick="formLocal()">+ Novo local</button></div>
     <button class="btn" onclick="formPadrao()">✨ Montar equipe e etapas padrão (Denilde, Firmino, Kayo, Teste)</button>
     <div class="row" style="margin-top:8px">${ativos().map(u => `<button class="btn sm" onclick="formOrdem('${u.user_id}')">🔀 Sequência de ${esc(u.nome.split(" ")[0])}</button>`).join("")}</div></div>
+    ${CH.length ? `<div class="card" style="border:2px solid var(--crit)"><h2 style="color:var(--crit)">⚠️ Horários que se chocam (${CH.length})</h2><p class="meta">A mesma pessoa não pode ter dois horários iguais ou um pegando o outro. Toque para corrigir.</p>${CH.map(([a, b]) => `<div style="border-bottom:1px solid var(--line);padding:6px 0"><b>${esc(a.responsavel ? nomeU(a.responsavel) : a.funcao)}</b>: <a href="#" onclick="formServ(${a.id});return false" style="color:var(--cyan)">${janela(a)} ${esc(a.nome)}</a> × <a href="#" onclick="formServ(${b.id});return false" style="color:var(--cyan)">${janela(b)} ${esc(b.nome)}</a></div>`).join("")}</div>` : ""}
     ${[...L, {id:null, nome:"Sem local", ativo:true}].map(l => { const sv = (S.servicos || []).filter(s => (s.local_id || null) === l.id && !s.arquivado); if (!l.id && !sv.length) return ""; return `<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">📍 ${esc(l.nome)} ${l.lat != null ? `<span class="pill p-ok">GPS próprio</span>` : ""} ${l.ativo ? "" : `<span class="pill p-fut">inativo</span>`}</h2>${l.id ? `<button class="btn sm" onclick="formLocal(${l.id})">✏️</button>` : ""}</div>
       ${sv.length ? `<table style="margin-top:6px">${sv.map(s => `<tr class="cl" onclick="formServ(${s.id})" style="${s.ativo ? "" : "opacity:.5"}"><td style="width:34px" onclick="event.stopPropagation()"><input type="checkbox" title="Marcar / desmarcar este horário" ${s.ativo ? "checked" : ""} onchange="ativaServ(${s.id},this.checked)" style="width:22px;height:22px"></td><td><b>${janela(s)}</b></td><td>${s.urgente ? "🚨 " : ""}${esc(s.nome)}${(s.passos || []).length ? ` <span class="meta">· ${s.passos.length} passos</span>` : ""}<div class="meta">${TURNOS[s.turno] || s.turno} · ${esc(s.funcao)} · ${esc(s.responsavel ? nomeU(s.responsavel) : "automático")} · ${freqTxt(s)}${s.foto !== "nao" ? " · " + FOTO[s.foto] : ""}${s.ativo ? "" : " · inativo"}</div></td><td style="width:44px"><button class="btn sm" style="margin:0" title="Apagar" onclick="apagaServ(${s.id},event)">🗑️</button></td></tr>`).join("")}</table>` : `<p class="meta">Nenhum serviço neste local.</p>`}
       ${l.id ? `<button class="btn sm" style="margin-top:8px" onclick="formServ(null,${l.id})">+ Incluir horário em ${esc(l.nome)}</button>` : ""}</div>`; }).join("")}`;
@@ -824,7 +877,10 @@ function formServ(id, loc){
   $("#btS").onclick = async () => {
     const dias = $$("[data-dia]").filter(x => x.checked).map(x => +x.dataset.dia), nome = $("#sN").value.trim(), h1 = $("#sH").value, h2 = $("#sHF").value;
     if (!nome) return toast("Digite o nome da etapa."); if (!h1) return toast("Informe o horário de começo."); if (h2 && h2 <= h1) return toast("O término tem que ser depois do começo."); if (!dias.length) return toast("Marque pelo menos um dia.");
-    { const A = almoco($("#sR").value || null); if (A.min && h1 < A.fim && (h2 || h1) > A.para && !confirm("Esta etapa pega o almoço (" + A.ini + "–" + A.fim + ", parar às " + A.para + " para bater o ponto). Salvar assim mesmo?")) return; }
+    { const rs = $("#sR").value || null, fn = $("#sF").value.trim() || "Limpeza", tu = $("#sT").value, f2 = h2 || addMin(h1, 1);
+      const ch = (S.servicos || []).filter(o => o.id !== id && o.ativo && !o.arquivado && (rs ? o.responsavel === rs : !o.responsavel && o.funcao === fn && o.turno === tu) && (o.dias || []).some(k => dias.includes(k)) && hm(o.horario) < f2 && h1 < (hm(o.horario_fim) || addMin(hm(o.horario), 1)));
+      if (ch.length) return alert("⚠️ Já existe horário nesse período" + (rs ? " para " + nomeU(rs) : "") + ":\n\n" + ch.map(o => janela(o) + " · " + o.nome).join("\n") + "\n\nMude o horário (não pode ter horário igual nem que pegue o horário de outra etapa).");
+      const A = almoco($("#sR").value || null); if (A.min && h1 < A.fim && (h2 || h1) > A.para && !confirm("Esta etapa pega o almoço (" + A.ini + "–" + A.fim + ", parar às " + A.para + " para bater o ponto). Salvar assim mesmo?")) return; }
     const row = {filial:S.filial, nome, local_id:+$("#sL").value || null, horario:h1, horario_fim:h2 || null, passos:$("#sP").value.split("\n").map(x => x.trim()).filter(Boolean), turno:$("#sT").value, funcao:$("#sF").value.trim() || "Limpeza", responsavel:$("#sR").value || null, dias, frequencia:dias.length === 7 ? "todos" : dias.join() === "1,2,3,4,5" ? "seg-sex" : "dias", foto:$("#sFo").value, observacao:$("#sO").value.trim(), urgente:$("#sU").checked, ativo:$("#sA").checked};
     try { if (id) await api("PATCH", "/rest/v1/ck_servicos?id=eq." + id, row, {prefer:"return=minimal"}); else await api("POST", "/rest/v1/ck_servicos", row, {prefer:"return=minimal"}); closeSheet(); await carregaBase(); render(); toast("Etapa salva."); } catch (e) { toast(/horario_fim|passos/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase (campos novos)." : e.message); }
   };
@@ -1138,6 +1194,8 @@ function formDemanda(uid, servId){
     <button class="btn pri" id="btDm">📤 Passar demanda</button><button class="btn" onclick="closeSheet()">Voltar</button>`);
   $("#btDm").onclick = async () => {
     const u = $("#dmU").value, desc = $("#dmD").value.trim(), sv = null; if (!u || !desc) return toast("Escolha o colaborador e escreva a demanda.");
+    { const hh = $("#dmHc").checked && $("#dmH").value, et = hh && linhasDia(hoje()).find(x => x.resp === u && !FINAL(x.st) && hm(x.s.horario) <= hh && hh < (hm(x.s.horario_fim) || addMin(hm(x.s.horario), 1)));
+      if (et && !confirm("⚠️ Esta demanda pega o horário da etapa " + janela(et.s) + " · " + et.s.nome + " de " + nomeU(u) + ".\n\nPassar assim mesmo?")) return; }
     $("#btDm").disabled = true;
     try {
       const [dm] = await api("POST", "/rest/v1/ck_demandas", {filial:S.filial, user_id:u, colaborador:nomeU(u), descricao:desc, data:hoje(), horario:$("#dmHc").checked ? $("#dmH").value || null : null, servico_abonado:sv, criado_por_nome:S.perfil.nome || S.perfil.login}, {prefer:"return=representation"});
@@ -1284,6 +1342,19 @@ async function gravaLocal(b){
   try { await api("POST", "/rest/v1/ck_config?on_conflict=filial", {filial:S.filial, retencao_dias:+(S.cfg || {}).retencao_dias || 90, posto_lat:g.lat, posto_lng:g.lng, posto_raio:+(($("#lcR") || {}).value || (S.cfg || {}).posto_raio || 200)}, {prefer:"resolution=merge-duplicates,return=minimal"}); await carregaBase(); render(); toast("Local do posto gravado."); } catch (e) { toast(/posto_/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); }
 }
 /* abono: só pelo botão da demanda extra (etapa que o colaborador não cumpriu por causa dela) */
+async function admHorario(id, d){
+  const i = $("#edI").value, f = $("#edF").value; if (!i || (f && f <= i)) return toast("Confira os horários.");
+  try { await rpc("ck_ajustar_horarios", {p_data:d, p_itens:[{id, ini:i, fim:f || null}], p_motivo:"ajuste do administrador"}); closeSheet(); await atualizaDia(); render(); toast("Horário deste dia salvo."); } catch (e) { toast(/ck_ajustar/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); }
+}
+async function admConclui(id, d){
+  const x = linhasDia(d).find(y => y.s.id === id); if (!x) return; const obs = ($("#edO").value || "").trim(), hc = $("#edC").value || agoraHM(); if (!obs) return toast("Escreva a observação.");
+  const em = new Date(d + "T" + hc + ":00").toISOString(), txt = "✅ Concluída pelo administrador (" + (S.perfil.nome || "admin") + "): " + obs;
+  try {
+    if (x.reg && x.reg.id) await api("PATCH", "/rest/v1/ck_registros?id=eq." + x.reg.id, {status:"concluido", concluido_em:em, observacao:txt, motivo_alteracao:txt}, {prefer:"return=minimal"});
+    else await api("POST", "/rest/v1/ck_registros", {filial:S.filial, servico_id:id, data:d, user_id:x.resp, colaborador:nomeU(x.resp), servico:x.s.nome, local:x.local, horario_previsto:hm(x.s.horario), horario_fim:hm(x.s.horario_fim) || null, status:"concluido", iniciado_em:em, concluido_em:em, observacao:txt, passos:x.s.passos || [], fotos:[]}, {prefer:"return=minimal"});
+    closeSheet(); await atualizaDia(); render(); toast("✅ Marcada como concluída.");
+  } catch (e) { toast(e.message); }
+}
 async function abonaDireto(id, d){
   const m = ($("#abM").value || "").trim(); if (!m) return toast("Escreva o motivo do abono.");
   try { await api("POST", "/rest/v1/ck_abonos?on_conflict=servico_id,data", {filial:S.filial, servico_id:id, data:d, motivo:m, por_nome:S.perfil.nome || S.perfil.login}, {prefer:"resolution=merge-duplicates,return=minimal"}); closeSheet(); await atualizaDia(); render(); toast("🛡️ Tarefa abonada."); } catch (e) { toast(e.message); }
