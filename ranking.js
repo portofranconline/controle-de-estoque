@@ -182,8 +182,8 @@ function fotoPessoa(r, tam){
   return `<span style="width:${tam}px;height:${tam}px;border-radius:50%;flex:none;overflow:hidden;background:var(--surface2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:${Math.round(tam / 2.6)}px;color:var(--muted)">${f ? `<img src="${f}" alt="" style="width:100%;height:100%;object-fit:cover">` : esc((r.nome || "?").split(" ").map(x => x[0]).slice(0, 2).join(""))}</span>`;
 }
 function carregaFotosRk(forcar){
-  if (!rkFotosAtivas() || (S.rkFotosLidas && !forcar) || !S.db) return;
-  S.rkFotosLidas = true; let parar = null;
+  if (!rkFotosAtivas() || (S.rkFotosLidas && Date.now() - S.rkFotosLidas < 60000 && !forcar) || !S.db) return;
+  S.rkFotosLidas = Date.now(); let parar = null;
   parar = S.db.collection("rkfoto").onSnapshot(q => { const o = {}; for (const d of q.docs) { const v = d.data(); if (v && typeof v.d === "string") o[d.id] = v.d; } S.rkFotos = o; if (parar) parar(); if (S.view === "ranking" || S.view === "rkcfg") render(); }, () => {});
 }
 async function gravaVendas(patch){
@@ -926,19 +926,25 @@ function shLink(sel){
     <button class="btn" data-act="fechar">Fechar</button>`);
 }
 document.addEventListener("change", ev => { const t = ev.target; if (!t || !t.dataset || !t.dataset.rkLink) return; if (t.id === "lkCat") shLink({cat:t.value, val:($("#lkVal") || {}).value}); });
+/* busca as fotos atualizadas agora (antes de gerar link, PDF ou cartão) */
+function fotosRkAgora(){
+  return new Promise(ok => { if (!rkFotosAtivas() || !S.db) return ok(); let parar = null, feito = false; const fim = () => { if (!feito) { feito = true; ok(); } };
+    parar = S.db.collection("rkfoto").onSnapshot(q => { const o = {}; for (const d of q.docs) { const v = d.data(); if (v && typeof v.d === "string") o[d.id] = v.d; } S.rkFotos = o; S.rkFotosLidas = Date.now(); if (parar) parar(); fim(); }, fim); setTimeout(fim, 6000); });
+}
 function dadosLink(c){
   const l = listaRk(c), campoP = c.k === "opcaixa" ? "q" : c.lt ? "lt" : "mc", P = (o, campo, m) => m ? {c:campo, r:num(o[campo]), v:m.valor} : null;
   const opL = rkAbas().some(x => x.k === "opcaixa") ? vendasDoMes("opcaixa") : [];
   const linhas = l.map(r => {
     const m = metaDaPessoa(r, c.k, l), mm = m && m.campo !== "mc" ? metaDaPessoa(r, c.k, l, "mc") : null;
     let op = null; if ((r.tab === "caixa" || c.k === "caixa") && opL.length) { const o = opL.find(x => (r.pid && x.pid === r.pid) || semAcento(x.nome || "") === semAcento(r.nome || "")), base = o || {...r, q:0, tab:"opcaixa"}, mo = metaDaPessoa(base, "opcaixa", opL); if (o || mo) op = {c:"q", r:num(base.q), v:mo ? mo.valor : 0}; }
-    return {n:r.nome, f:nomeFuncao(r.funcao) || "", q:num(r.q), mc:num(r.mc), lt:num(r.lt), p:P(r, m ? m.campo : campoP, m), s:P(r, "mc", mm), o:op, ord:num(r[m ? m.campo : campoP])};
+    const ft = rkFotosAtivas() && r.pid ? (S.rkFotos || {})[r.pid] : null;
+    return {n:r.nome, ...(ft ? {ft} : {}), f:nomeFuncao(r.funcao) || "", q:num(r.q), mc:num(r.mc), lt:num(r.lt), p:P(r, m ? m.campo : campoP, m), s:P(r, "mc", mm), o:op, ord:num(r[m ? m.campo : campoP])};
   }).sort((a, b) => b.ord - a.ord).map(({ord, ...x}) => x);
   return {filial:S.nomeFilial || "", cat:c.t, ico:c.ico, mes:nomeMes(S.rkMes), lt:!!c.lt, gerado:new Date().toISOString(), linhas};
 }
 async function gerarLink(b){
   const cats = catsUnif(), c = cats.find(x => x.k === ($("#lkCat") || {}).value) || rkCat(), val = ($("#lkVal") || {}).value || "24";
-  const dados = dadosLink(c), para = ($("#lkPara") || {}).value || ""; if (para) dados.linhas = dados.linhas.filter(x => x.n === para);
+  await fotosRkAgora(); const dados = dadosLink(c), para = ($("#lkPara") || {}).value || ""; if (para) dados.linhas = dados.linhas.filter(x => x.n === para);
   if (!dados.linhas.length) return toast("Nenhum lançamento em " + c.t + " neste mês.");
   b.disabled = true;
   try {
@@ -1144,6 +1150,36 @@ async function prepImagem(img, larg, limiar){
   for (let i = 0; i < d.data.length; i += 4) { let y = 0.3 * d.data[i] + 0.59 * d.data[i + 1] + 0.11 * d.data[i + 2]; y = y < limiar ? 0 : 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = y; }
   g.putImageData(d, 0, 0); return cv;
 }
+/* lê a tabela pela POSIÇÃO das palavras: agrupa por linha (altura) e cada número na sua coluna (números ficam alinhados à direita).
+   Valor que faltar fica vazio na coluna certa, sem "andar" para a coluna do lado. */
+function palavrasLeitor(data){
+  if (data && data.words && data.words.length) return data.words;
+  const W = []; for (const b of (data && data.blocks) || []) for (const p of b.paragraphs || []) for (const l of p.lines || []) W.push(...(l.words || [])); return W;
+}
+function linhasDasPalavras(words, solto){
+  const reNum = solto ? /^(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+(?:,\d{2})?)$/ : /^(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2})$/;
+  const W = (words || []).map(w => { const t = String(w.text || "").replace(/[|]/g, "").replace(/(\d)[:;](\d)/g, "$1.$2").replace(/\.,/g, ",").replace(/^R\$/i, "").trim(); return {t, x0:w.bbox.x0, x1:w.bbox.x1, y0:w.bbox.y0, y1:w.bbox.y1}; }).filter(w => w.t);
+  if (W.length < 3) return [];
+  W.forEach(w => { w.yc = (w.y0 + w.y1) / 2; w.h = Math.max(4, w.y1 - w.y0); w.num = reNum.test(w.t); });
+  const hs = W.map(w => w.h).sort((a, b) => a - b), hMed = hs[Math.floor(hs.length / 2)];
+  /* linhas: palavras com o centro na mesma altura */
+  const rows = [];
+  for (const w of W.slice().sort((a, b) => a.yc - b.yc)) { const r = rows.find(r => Math.abs(r.yc - w.yc) < hMed * .6); if (r) { r.w.push(w); r.yc = r.w.reduce((s, o) => s + o.yc, 0) / r.w.length; } else rows.push({yc:w.yc, w:[w]}); }
+  /* colunas: borda direita dos números (agrupadas) */
+  const nums = W.filter(w => w.num), tol = hMed * 1.6, cols = [];
+  for (const n of nums.slice().sort((a, b) => a.x1 - b.x1)) { const c = cols.find(c => Math.abs(c.x - n.x1) < tol); if (c) { c.n++; c.x = (c.x * (c.n - 1) + n.x1) / c.n; } else cols.push({x:n.x1, n:1}); }
+  const comNum = rows.filter(r => r.w.some(w => w.num)).length, C = cols.filter(c => c.n >= Math.max(2, comNum * .3)).sort((a, b) => a.x - b.x);
+  if (!C.length) return [];
+  const out = [];
+  for (const r of rows) {
+    const ws = r.w.sort((a, b) => a.x0 - b.x0), ns = ws.filter(w => w.num); if (!ns.length) continue;
+    const prim = ns[0].x0, nome = ws.filter(w => !w.num && w.x1 <= prim + hMed).map(w => w.t).join(" ").replace(/R\$|RS\b/gi, " ").replace(/[^A-Za-zÀ-ÿ' .-]/g, " ").replace(/\s+/g, " ").trim();
+    if (nome.replace(/[^A-Za-zÀ-ÿ]/g, "").length < 3 || /vendedor|quantidade|venda mc|litragem|total/i.test(nome)) continue;
+    const v = C.map(c => { const n = ns.filter(w => Math.abs(w.x1 - c.x) < tol).sort((a, b) => Math.abs(a.x1 - c.x) - Math.abs(b.x1 - c.x))[0]; return n ? parse(n.t) : undefined; });
+    out.push({nome, v});
+  }
+  return out;
+}
 function linhasDoTexto(txt, solto){
   const out = [];
   for (const bruto of String(txt).split(/\n+/)) {
@@ -1201,24 +1237,26 @@ async function importarImagem(arq, aba){
     const T = await carregaLeitor();
     const url = await new Promise((ok, erro) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = erro; r.readAsDataURL(arq); });
     const img = await new Promise((ok, erro) => { const i = new Image(); i.onload = () => ok(i); i.onerror = erro; i.src = url; });
-    const w = await T.createWorker("por"), textos = [];
-    try { for (const [larg, lim] of [[1800, 160], [2000, 130], [2400, 170]]) { const {data} = await w.recognize(await prepImagem(img, larg, lim)); textos.push(data.text || ""); } }
+    const w = await T.createWorker("por"), textos = [], palavras = [];
+    try { for (const [larg, lim] of [[1800, 160], [2000, 130], [2400, 170]]) { const {data} = await w.recognize(await prepImagem(img, larg, lim), {}, {text:true, blocks:true}); textos.push(data.text || ""); palavras.push(palavrasLeitor(data)); } }
     finally { await w.terminate(); }
     const fixo = aba && RK.find(x => x.k === aba);
-    S.importaTextos = textos; S.importaDet = fixo ? {k:aba, conf:"alta", motivo:"botão de operações", fixo:true} : detectaCategoria(textos);
+    S.importaTextos = textos; S.importaPalavras = palavras; S.importaDet = fixo ? {k:aba, conf:"alta", motivo:"botão de operações", fixo:true} : detectaCategoria(textos);
     montarConferir(S.importaDet.k);
   } catch (e) { console.error("Importar imagem:", e); openSheet(`<h2>Não foi possível ler</h2><p class="meta">${esc(e.message || "Erro ao ler a imagem.")}</p><button class="btn" data-act="fechar">Fechar</button>`); }
 }
 function montarConferir(k){
   const c = RK.find(x => x.k === k) || rkCat(), textos = S.importaTextos || [], det = S.importaDet || {}; S.importaAba = c.k;
-  const leituras = textos.map(t => linhasDoTexto(t, c.k === "opcaixa"));
-  // junta as 3 leituras: fica o valor que mais se repete; se elas não concordam, a linha fica marcada para conferir
-  const base = leituras.reduce((a, b) => b.length > a.length ? b : a, []), rows = [];
-  base.forEach((r, i) => {
-    const iguais = leituras.map(L => L.find(x => semAcento(x.nome) === semAcento(r.nome)) || L[i]).filter(Boolean);
+  const leituras = textos.map((t, i) => { const pp = linhasDasPalavras((S.importaPalavras || [])[i], c.k === "opcaixa"); return pp.length ? pp : linhasDoTexto(t, c.k === "opcaixa"); });
+  // junta as 3 leituras PELA PESSOA (nunca pela posição da linha): fica o valor que mais se repete; se não concordam, a linha fica marcada para conferir
+  const chave = r => { const p = acharParecido(r.nome); return p ? "p:" + p.id : "n:" + semAcento(r.nome).replace(/[^A-Z]/gi, "").toUpperCase(); };
+  const base = [], vistos = new Set(), rows = [];
+  for (const L of leituras.slice().sort((a, b) => b.length - a.length)) for (const r of L) { const k = chave(r); if (!vistos.has(k)) { vistos.add(k); base.push(r); } }
+  base.forEach(r => {
+    const iguais = leituras.map(L => L.find(x => chave(x) === chave(r))).filter(Boolean);
     const campos = [0, 1, 2].map(k => { const vs = iguais.map(x => x.v[k]).filter(v => v != null && !isNaN(v)); if (!vs.length) return {v:undefined, ok:true}; const cont = {}; vs.forEach(v => cont[v] = (cont[v] || 0) + 1); const [v, n] = Object.entries(cont).sort((a, b) => b[1] - a[1])[0]; return {v:Number(v), ok:n === vs.length}; });
     const p = acharParecido(r.nome);
-    rows.push({nome:r.nome, cad:p ? p.nome : null, pid:p ? p.id : null, q:campos[0].v, mc:campos[1].v ?? (c.k === "opcaixa" ? 0 : undefined), lt:c.lt ? campos[2].v : undefined, conferir:!campos.slice(0, c.lt ? 3 : c.k === "opcaixa" ? 1 : 2).every(x => x.ok)});
+    rows.push({nome:r.nome, cad:p ? p.nome : null, pid:p ? p.id : null, conf:iguais.length, q:campos[0].v, mc:campos[1].v ?? (c.k === "opcaixa" ? 0 : undefined), lt:c.lt ? campos[2].v : undefined, conferir:iguais.length < 2 || !campos.slice(0, c.lt ? 3 : c.k === "opcaixa" ? 1 : 2).every(x => x.ok)});
   });
   S.importa = rows;
   const ativas = RK.filter(x => rkAbas().some(a => a.k === x.k)), corConf = det.conf === "alta" ? "var(--good)" : det.conf === "média" ? "var(--warn)" : "var(--crit)";
@@ -1553,6 +1591,7 @@ function shCartaoGeral(){
 }
 /* desenha uma categoria no mesmo visual da página do link (metas.html) */
 async function desenhaLinkCv(d){
+  const FT = await Promise.all((d.linhas || []).map(r => r.ft ? carregaImg(r.ft) : null));
   const W = 1080, P = 48, blocos = r => [r.p, r.s, r.o].filter(Boolean).length, RH = r => 190 + blocos(r) * 78, logo = rkLogo();
   const H = 230 + d.linhas.reduce((a, r) => a + RH(r), 0) + 90, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
   g.fillStyle = "#060b16"; g.fillRect(0, 0, W, H); g.strokeStyle = "rgba(34,211,238,.05)"; g.lineWidth = 2;
@@ -1572,7 +1611,9 @@ async function desenhaLinkCv(d){
     const y0 = y; g.fillStyle = "#0e1829"; rr(g, P - 16, y0 + 6, W - 2 * P + 32, RH(r) - 14, 22); g.fill(); g.strokeStyle = "#1f2f4a"; g.lineWidth = 2; g.stroke();
     g.textAlign = "center"; g.fillStyle = "#e6eef9"; g.font = "bold 40px Arial"; g.fillText(i < 3 ? ["🥇", "🥈", "🥉"][i] : String(i + 1), P + 30, y0 + 76);
     g.beginPath(); g.arc(P + 100, y0 + 62, 32, 0, 7); g.fillStyle = "#122038"; g.fill(); g.strokeStyle = "#1f2f4a"; g.stroke();
-    g.fillStyle = "#8597b2"; g.font = "bold 24px Arial"; g.fillText(String(r.n || "").trim().split(/\s+/).map(p => p[0]).slice(0, 2).join("").toUpperCase(), P + 100, y0 + 71);
+    const fti = FT[i];
+    if (fti) { g.save(); g.beginPath(); g.arc(P + 100, y0 + 62, 32, 0, 7); g.clip(); const ld = Math.min(fti.width, fti.height); g.drawImage(fti, (fti.width - ld) / 2, (fti.height - ld) / 2, ld, ld, P + 68, y0 + 30, 64, 64); g.restore(); }
+    else { g.fillStyle = "#8597b2"; g.font = "bold 24px Arial"; g.fillText(String(r.n || "").trim().split(/\s+/).map(p => p[0]).slice(0, 2).join("").toUpperCase(), P + 100, y0 + 71); }
     g.textAlign = "left"; g.fillStyle = "#e6eef9"; g.font = "bold 32px Arial"; g.fillText(String(r.n).toUpperCase().slice(0, 40), 180, y0 + 56);
     g.fillStyle = "#8597b2"; g.font = "22px Arial"; g.fillText(r.f || "", 180, y0 + 88);
     g.fillText("Qtd. " + fmtCampo("q", r.q) + "    Venda MC " + fmtCampo("mc", r.mc) + (d.lt ? "    Litragem " + fmtCampo("lt", r.lt) : ""), 180, y0 + 122);
@@ -1587,7 +1628,7 @@ async function gerarPdfMetas(b){
   const ks = [...document.querySelectorAll("[data-psel]:checked")].map(x => x.value); if (!ks.length) return toast("Marque pelo menos uma categoria.");
   b.disabled = true;
   try {
-    const imgs = [];
+    const imgs = []; await fotosRkAgora();
     for (const c of catsUnif().filter(c => ks.includes(c.k))) { const d = dadosLink(c); if (!d.linhas.length) continue; const cv = await desenhaLinkCv(d); imgs.push({blob:await new Promise(ok => cv.toBlob(ok, "image/jpeg", .9)), w:cv.width, h:cv.height}); }
     if (!imgs.length) { toast("Nenhum lançamento nas categorias marcadas."); return; }
     await compartilharOuBaixar(await rkPdf(imgs), ("Metas - " + (S.nomeFilial || "posto") + " - " + S.rkMes).replace(/[^\wÀ-ÿ -]+/g, " ").trim() + ".pdf");

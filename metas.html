@@ -107,7 +107,7 @@ body.oculto::after{content:"🔒 Print bloqueado";position:fixed;inset:0;display
     app.innerHTML = `<div class="info">${esc(d.filial)}<br>Atualizado em <b>${dh(d.gerado || j.criado_em)}</b> · válido até <b>${dh(j.expira_em)}</b><br>Aberto por <b>${esc(para)}</b> neste aparelho · somente leitura</div>
       <div class="card">${L.map((r, i) => {
         const pc = r.p ? r.p.c : (d.lt ? "lt" : "mc");
-        return `<div class="row"><div class="pos">${med(i)}</div><div class="av">${esc(ini(r.n))}</div><div style="min-width:0">
+        return `<div class="row"><div class="pos">${med(i)}</div><div class="av">${/^data:image\/(jpeg|png|webp);base64,/.test(r.ft || "") ? `<img src="${r.ft}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">` : esc(ini(r.n))}</div><div style="min-width:0">
           <div class="nm">${esc(r.n)}</div><div class="fn">${esc(r.f)}</div>
           <div class="ln">Qtd. <b>${fmt("q", r.q)}</b> &nbsp; Venda MC <b>${fmt("mc", r.mc)}</b></div>
           ${pc === "lt" ? `<div class="ln">Litragem <b>${fmt("lt", r.lt)}</b>${r.p && r.p.v > 0 ? ` &nbsp; Meta <b>${fmt("lt", r.p.v)}</b>` : ""}</div>` : r.p && r.p.v > 0 ? `<div class="ln">Meta <b>${fmt(pc, r.p.v)}</b></div>` : ""}
