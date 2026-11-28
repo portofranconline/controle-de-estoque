@@ -434,12 +434,12 @@ async function mostraFotos(el, fotos){
 function render(){
   if (!S.perfil) return;
   if (S.papel === "colaborador") { $("#tabs").innerHTML = `<div class="tabs">${[["hoje", "✅ Minhas etapas"], ["mat", "📦 Pedir material"]].map(([k, t]) => `<button class="${S.view === k ? "on" : ""}" onclick="S.view='${k}';render()">${t}</button>`).join("")}</div>`; return S.view === "mat" ? telaMatColab() : telaColab(); }
-  const tabs = S.admin ? [["inicio", "🏠 Início"], ["hoje", "📊 Hoje"], ["dem", "📌 Demandas extras"], ["mat", "📦 Materiais" + (S.nPed ? " (" + S.nPed + ")" : "")], ["hist", "📜 Histórico"], ["serv", "🧹 Etapas"], ["equipe", "👥 Equipe"], ["escala", "📅 Escala"], ["cfg", "⚙️ Config"]]
-    : [["inicio", "🏠 Início"], ["hoje", "📊 Demandas do dia"], ["dem", "📌 Demandas extras"]];
+  const tabs = S.admin ? [["inicio", "🏠 Início"], ["hoje", "📊 Hoje"], ["dem", "📌 Demandas extras"], ["mat", "📦 Materiais" + (S.nPed ? " (" + S.nPed + ")" : "")], ["hist", "📜 Histórico"], ["serv", "🧹 Etapas"], ["equipe", "👥 Equipe"], ["escala", "📅 Escala"], ["epi", "🦺 EPI"], ["cfg", "⚙️ Config"]]
+    : [["inicio", "🏠 Início"], ["hoje", "📊 Demandas do dia"], ["dem", "📌 Demandas extras"], ["epi", "🦺 EPI"]];
   if (!tabs.some(t => t[0] === S.view)) S.view = S.admin ? "inicio" : "hoje";
   $("#tabs").innerHTML = `<div class="tabs">${tabs.map(([k, t]) => `<button class="${S.view === k ? "on" : ""}" onclick="if(S.view==='cfg'&&'${k}'!=='cfg'){S.visTmp=null;aplicaVisual((S.cfg||{}).visual)}S.view='${k}';render()">${t}</button>`).join("")}</div>`;
   $("#tSub").textContent = (S.nomeFilial ? S.nomeFilial + " · " : "") + (S.admin ? "Administrador" : "Adm. auxiliar · " + (S.perfil.nome || ""));
-  ({inicio:telaInicio, hoje:telaHoje, dem:telaDemandas, mat:telaMatAdmin, hist:telaHist, serv:telaServ, equipe:telaEquipe, escala:telaEscala, cfg:telaCfg})[S.view]();
+  ({inicio:telaInicio, hoje:telaHoje, dem:telaDemandas, mat:telaMatAdmin, hist:telaHist, serv:telaServ, equipe:telaEquipe, escala:telaEscala, cfg:telaCfg, epi:telaEpi})[S.view]();
 }
 const pill = st => `<span class="pill ${ST[st][1]}">${ST[st][0]}</span>`;
 
@@ -476,7 +476,7 @@ function cardEtapa(x, i, L, atualI){
   let rel = "", rc = "";
   if (fim) { rel = (st === "nao_realizado" ? "❌ Registrada como não realizada às " : "✅ Concluída às ") + hmTs(r && r.concluido_em); rc = st === "nao_realizado" ? "crit" : "good"; }
   else if (r) { const f = fh ? minEntre(ag, fh) : null; rel = f == null ? "▶️ Em andamento" : f >= 0 ? "⏱️ Faltam " + f + " min para terminar" : "⏰ Passou " + (-f) + " min do horário"; rc = f == null || f >= 0 ? "info" : (-f > tol ? "crit" : "warn"); }
-  else if (pulada(x)) { rel = "🔒 O horário passou sem você começar. Só o administrador pode liberar."; rc = "crit"; }
+  else if (pulada(x)) { rel = "⏰ O horário passou sem você começar. Escreva a observação, assine e avise o líder. Você pode seguir para a próxima."; rc = "crit"; }
   else if (i === atualI) { const f = minEntre(ag, ini); rel = f > 0 ? "🕐 Começa em " + f + " min (" + ini + ")" : (st === "atrasado" ? "⏰ Atrasada: comece agora" : "▶️ Hora de começar"); rc = f > 0 ? "info" : st === "atrasado" ? "crit" : "warn"; }
   else { rel = "⏳ Libera depois da etapa de agora"; rc = "muted"; }
   const A = almoco(x.resp), ultAlm = !fim && A.min && x === antesAlmoco(L);
@@ -490,7 +490,8 @@ function cardEtapa(x, i, L, atualI){
     <div class="relogio ${rc}">${rel}</div>
     ${x.rr.liberado && !fim ? `<div class="ban info">🔓 Liberada pelo administrador: pode fazer agora.</div>` : ""}
     ${ultAlm ? `<div class="ban warn">🍽️ Última etapa antes do almoço: <b>pare às ${A.para}</b> para bater o ponto. Almoço ${A.ini}–${A.fim}.</div>` : ""}
-    ${pulada(x) && !r ? (LS.get(pedKey(x)) ? `<div class="ban info">🙋 Pedido enviado. Aguarde o administrador liberar.</div>` : `<button class="btn xl" onclick="pedeLiberar(${x.s.id})">🙋 Pedir para o administrador liberar</button>`) : ""}
+    ${pulada(x) && !r ? `<button class="btn no xl" onclick="finalizar(${x.s.id},true,true)">📝 Não deu tempo: escrever observação e assinar</button>${LS.get(pedKey(x)) ? `<div class="ban info">🙋 Pedido enviado. Aguarde o administrador liberar.</div>` : `<button class="btn sm" style="width:100%" onclick="pedeLiberar(${x.s.id})">🙋 Prefiro fazer agora: pedir ao administrador para liberar</button>`}` : ""}
+    ${!r && !fim && i === atualI && L.slice(0, i).filter(y => pulada(y) && !y.reg).length >= 2 ? `<div class="ban crit">🔒 Você já deixou ${L.slice(0, i).filter(y => pulada(y) && !y.reg).length} etapas sem observação. Registre a observação delas antes de começar esta (só dá para pular uma).</div>` : ""}
     ${passos.length ? `<div class="passos">${passos.map((p, k) => `<button class="passo ${marc.includes(k) ? "ok" : ""}" ${r && !fim ? `onclick="marcaPasso(${x.s.id},${k})"` : "disabled"}><span>${marc.includes(k) ? "✔" : k + 1}</span>${esc(p)}</button>`).join("")}</div>` : ""}
     ${r && r._pend ? `<div class="meta" style="color:var(--warn)">🟠 Guardado no celular · envia quando tiver internet</div>` : ""}
     ${!r && !fim && i === atualI ? `<button class="btn pri xl" onclick="iniciar(${x.s.id})">▶️ INICIAR ETAPA</button>` : ""}
@@ -512,16 +513,18 @@ let fotosTmp = [];
 function iniciar(id){
   const x = linhaDe(id); if (!x) return;
   const L = linhasDia(hoje()).filter(y => y.resp === S.perfil.user_id), i = L.findIndex(y => y.s.id === id), antes = L.slice(0, i).find(y => !FINAL(y.st) && !pulada(y));
-  if (pulada(x)) return toast("🔒 O horário desta etapa passou. Só o administrador pode liberar.");
+  if (pulada(x)) return toast("⏰ O horário desta etapa passou: toque em \"Não deu tempo\" para escrever a observação e assinar.");
+  if (L.slice(0, i).filter(y => pulada(y) && !y.reg).length >= 2) return toast("🔒 Registre a observação das etapas que ficaram para trás (só dá para pular uma).");
   if (antes) return toast("Finalize antes a etapa " + janela(antes.s) + " — " + antes.s.nome + ".");
   fotosTmp = [];
   openSheet(`<h2>▶️ ${esc(x.s.nome)}</h2><p class="meta">${janela(x.s)} · ${esc(x.local)}</p>
-    ${x.s.foto === "antes_depois" ? slotFoto("antes", "📷 Fotos de ANTES (obrigatório pelo menos 1)") : slotFoto("inicio", "📷 Fotos do começo (opcional)")}
+    ${x.s.foto === "antes_depois" ? slotFoto("antes", "📷 Fotos de ANTES (obrigatório pelo menos 1)") : slotFoto("inicio", (S.cfg || {}).foto_inicio === false ? "📷 Fotos do começo (opcional)" : "📷 Foto do começo (obrigatória: sem foto não inicia)")}
     <button class="btn pri xl" onclick="confirmaInicio(${id})">▶️ COMEÇAR AGORA</button><button class="btn" onclick="closeSheet()">Cancelar</button>`);
 }
 function confirmaInicio(id){
   const x = linhaDe(id); if (!x) return;
   if (x.s.foto === "antes_depois" && !fotosTmp.some(f => f.tipo === "antes")) return toast("Tire a foto de ANTES.");
+  if ((S.cfg || {}).foto_inicio !== false && !fotosTmp.length) return toast("📷 Tire pelo menos 1 foto para iniciar a etapa.");
   if (!salvaFila(x.s.id + "|" + x.d, {...regBase(x), status:"andamento", iniciado_em:new Date().toISOString(), fotos:fotosTmp.slice()})) return;
   fotosTmp = []; closeSheet(); render(); sincroniza(); toast("Etapa iniciada" + (x.s.horario_fim ? ": termine até " + hm(x.s.horario_fim) + "." : "."));
 }
@@ -539,10 +542,17 @@ async function pegaFoto(inp, tipo, camera){
   } catch (e) { console.error(e); toast("Não foi possível ler a foto."); }
   inp.value = "";
 }
-function finalizar(id, nao){
+function finalizar(id, nao, soNao){
   const x = linhaDe(id); if (!x) return; fotosTmp = []; const marc = LS.get(passosKey(x), []);
   const passos = x.s.passos || [], fim = hm(x.s.horario_fim), atrasado = fim && agoraHM() > addMin(fim, tolerancia());
   const pede = x.s.foto === "antes_depois" ? slotFoto("depois", "📷 Fotos de DEPOIS (obrigatório pelo menos 1)") : slotFoto("foto", x.s.foto === "sim" ? "📷 Fotos da etapa pronta (obrigatório pelo menos 1)" : "📷 Fotos da etapa pronta (opcional)");
+  if (soNao) { openSheet(`<h2>📝 ${esc(x.s.nome)}</h2><p class="meta">${janela(x.s)} · ${esc(x.local)}</p>
+      <div class="ban crit">⏰ Não deu tempo de fazer esta etapa. Escreva o motivo, assine e envie: o líder e o administrador são avisados. Depois siga para a próxima.</div>
+      <label class="f">Motivo<select id="fMot" class="inp"><option value="">Escolha…</option>${MOTIVOS.map(m => `<option>${m}</option>`).join("")}<option>Fazendo outra demanda</option></select></label>
+      <label class="f">Observação: por que não deu tempo? (obrigatório)<textarea id="fMotTx" class="inp" rows="3" placeholder="Ex.: estava limpando a pista a pedido do líder"></textarea></label><textarea id="fObs" hidden></textarea>
+      ${slotFoto("obs", "📷 Fotos da observação (opcional)")}
+      <div class="fslot"><div class="row" style="justify-content:space-between"><b>✍️ Assinatura de ${esc(S.perfil.nome || "")}</b><button class="btn sm" style="margin:0" onclick="limpaAssin()">Limpar</button></div><div class="assin" id="assin"><canvas id="cvAssin"></canvas><span class="x">✕</span><i class="lin"></i></div></div>
+      <button class="btn no xl" onclick="envia(${id},'nao_realizado',true)">📤 Enviar observação e avisar o líder</button>`); iniciaAssin(); return; }
   openSheet(`<h2>${esc(x.s.nome)}</h2><p class="meta">${janela(x.s)} · ${esc(x.local)}</p>
     ${passos.length ? `<div class="fslot"><b>Passo a passo</b>${passos.map((p, i) => `<label style="display:flex;gap:10px;align-items:center;padding:9px 2px;border-bottom:1px solid var(--line);font-size:15px"><input type="checkbox" data-passo="${i}" ${marc.includes(i) ? "checked" : ""} style="width:22px;height:22px">${esc(p)}</label>`).join("")}</div>` : ""}
     ${pede}
@@ -562,19 +572,19 @@ function finalizar(id, nao){
 let assinOk = false;
 function iniciaAssin(){
   const cv = $("#cvAssin"); if (!cv) return; assinOk = false; const r = cv.getBoundingClientRect(), k = Math.min(2, window.devicePixelRatio || 1);
-  cv.width = Math.round(r.width * k); cv.height = Math.round(170 * k); const g = cv.getContext("2d"); g.scale(k, k); g.lineWidth = 2.6; g.lineCap = g.lineJoin = "round"; g.strokeStyle = "#111827";
+  cv.width = Math.round((r.width || 320) * k); cv.height = Math.round(170 * k); const g = cv.getContext("2d"); g.scale(k, k); g.lineWidth = 2.6; g.lineCap = g.lineJoin = "round"; g.strokeStyle = "#111827";
   let ant = null; const pt = e => { const b = cv.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; };
   cv.onpointerdown = e => { e.preventDefault(); cv.setPointerCapture(e.pointerId); ant = pt(e); g.beginPath(); g.arc(ant[0], ant[1], 1.2, 0, 7); g.fillStyle = "#111827"; g.fill(); };
   cv.onpointermove = e => { if (!ant) return; e.preventDefault(); const p = pt(e); g.beginPath(); g.moveTo(ant[0], ant[1]); g.lineTo(p[0], p[1]); g.stroke(); ant = p; if (!assinOk) { assinOk = true; $("#assin").classList.add("ok"); } };
   cv.onpointerup = cv.onpointercancel = () => { ant = null; };
 }
 function limpaAssin(){ const cv = $("#cvAssin"); if (!cv) return; cv.getContext("2d").clearRect(0, 0, cv.width, cv.height); assinOk = false; $("#assin").classList.remove("ok"); }
-function pegaAssin(){
+function pegaAssin(nome){
   const cv = $("#cvAssin"); if (!cv || !assinOk) return null; const o = document.createElement("canvas"); o.width = cv.width; o.height = cv.height; const g = o.getContext("2d");
-  g.fillStyle = "#fff"; g.fillRect(0, 0, o.width, o.height); g.drawImage(cv, 0, 0); g.fillStyle = "#6b7280"; g.font = Math.round(o.height / 12) + "px Arial"; g.fillText((S.perfil.nome || "") + " · " + new Date().toLocaleString("pt-BR"), 10, o.height - 10);
+  g.fillStyle = "#fff"; g.fillRect(0, 0, o.width, o.height); g.drawImage(cv, 0, 0); g.fillStyle = "#6b7280"; g.font = Math.round(o.height / 12) + "px Arial"; g.fillText((nome || S.perfil.nome || "") + " · " + new Date().toLocaleString("pt-BR"), 10, o.height - 10);
   return {tipo:"assinatura", dataUrl:o.toDataURL("image/jpeg", .8), em:new Date().toISOString()};
 }
-function envia(id, tipo){
+function envia(id, tipo, soNao){
   const x = linhaDe(id); if (!x) return;
   const k = x.s.id + "|" + x.d, ant = filaLocal()[k] || x.reg || {}, obs = ($("#fObs").value || "").trim(), passos = x.s.passos || [];
   const marcados = $$("[data-passo]").filter(c => c.checked).map(c => passos[+c.dataset.passo]);
@@ -591,7 +601,7 @@ function envia(id, tipo){
   } else {
     const m = $("#fMot").value, t = ($("#fMotTx").value || "").trim();
     if (!m) return toast("Escolha o motivo.");
-    if (m === "Outro" && !t) return toast("Escreva o motivo.");
+    if ((m === "Outro" || soNao) && !t) return toast("Escreva a observação: por que não deu tempo.");
     motivo = m + (t ? ": " + t : "");
   }
   const base = filaLocal()[k] ? {} : {...regBase(x), iniciado_em:(x.reg && x.reg.iniciado_em) || new Date().toISOString()};
@@ -607,6 +617,7 @@ function avisos(){
   if (S.papel !== "colaborador") {
     const ini = !S.avisouIni;
     { const ag = agoraHM(); for (const x of linhasDia(hoje()).filter(x => x.resp && !x.reg && x.st === "agora" && ag > addMin(hm(x.s.horario), tolerancia()))) { const k = "par" + x.s.id; if (avisados[k]) continue; avisados[k] = 1; if (!ini) notifica("⏸️ " + nomeU(x.resp) + " ainda não começou " + x.s.nome + " (era às " + hm(x.s.horario) + ")."); } }
+    for (const x of linhasDia(hoje()).filter(x => x.reg && x.reg.status === "nao_realizado")) { const k = "nr" + x.s.id; if (avisados[k]) continue; avisados[k] = 1; if (!ini) notifica("📝 " + nomeU(x.reg.user_id) + " não fez " + x.s.nome + " (" + janela(x.s) + "): " + (x.reg.motivo || "")); }
     for (const x of linhasDia(hoje()).filter(foraHorario)) { const k = "g" + x.s.id + x.st; if (avisados[k]) continue; avisados[k] = 1; if (!ini) notifica("🚨 " + nomeU(x.resp) + ": " + x.s.nome + " (" + janela(x.s) + ") fora do horário."); }
     S.avisouIni = true; return;
   }
@@ -758,7 +769,7 @@ function telaServ(){
     <button class="btn" onclick="formPadrao()">✨ Montar equipe e etapas padrão (Denilde, Firmino, Kayo, Teste)</button>
     <div class="row" style="margin-top:8px">${ativos().map(u => `<button class="btn sm" onclick="formOrdem('${u.user_id}')">🔀 Sequência de ${esc(u.nome.split(" ")[0])}</button>`).join("")}</div></div>
     ${[...L, {id:null, nome:"Sem local", ativo:true}].map(l => { const sv = (S.servicos || []).filter(s => (s.local_id || null) === l.id && !s.arquivado); if (!l.id && !sv.length) return ""; return `<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">📍 ${esc(l.nome)} ${l.lat != null ? `<span class="pill p-ok">GPS próprio</span>` : ""} ${l.ativo ? "" : `<span class="pill p-fut">inativo</span>`}</h2>${l.id ? `<button class="btn sm" onclick="formLocal(${l.id})">✏️</button>` : ""}</div>
-      ${sv.length ? `<table style="margin-top:6px">${sv.map(s => `<tr class="cl" onclick="formServ(${s.id})" style="${s.ativo ? "" : "opacity:.5"}"><td><b>${janela(s)}</b></td><td>${s.urgente ? "🚨 " : ""}${esc(s.nome)}${(s.passos || []).length ? ` <span class="meta">· ${s.passos.length} passos</span>` : ""}<div class="meta">${TURNOS[s.turno] || s.turno} · ${esc(s.funcao)} · ${esc(s.responsavel ? nomeU(s.responsavel) : "automático")} · ${freqTxt(s)}${s.foto !== "nao" ? " · " + FOTO[s.foto] : ""}${s.ativo ? "" : " · inativo"}</div></td><td style="width:44px"><button class="btn sm" style="margin:0" title="Apagar" onclick="apagaServ(${s.id},event)">🗑️</button></td></tr>`).join("")}</table>` : `<p class="meta">Nenhum serviço neste local.</p>`}
+      ${sv.length ? `<table style="margin-top:6px">${sv.map(s => `<tr class="cl" onclick="formServ(${s.id})" style="${s.ativo ? "" : "opacity:.5"}"><td style="width:34px" onclick="event.stopPropagation()"><input type="checkbox" title="Marcar / desmarcar este horário" ${s.ativo ? "checked" : ""} onchange="ativaServ(${s.id},this.checked)" style="width:22px;height:22px"></td><td><b>${janela(s)}</b></td><td>${s.urgente ? "🚨 " : ""}${esc(s.nome)}${(s.passos || []).length ? ` <span class="meta">· ${s.passos.length} passos</span>` : ""}<div class="meta">${TURNOS[s.turno] || s.turno} · ${esc(s.funcao)} · ${esc(s.responsavel ? nomeU(s.responsavel) : "automático")} · ${freqTxt(s)}${s.foto !== "nao" ? " · " + FOTO[s.foto] : ""}${s.ativo ? "" : " · inativo"}</div></td><td style="width:44px"><button class="btn sm" style="margin:0" title="Apagar" onclick="apagaServ(${s.id},event)">🗑️</button></td></tr>`).join("")}</table>` : `<p class="meta">Nenhum serviço neste local.</p>`}
       ${l.id ? `<button class="btn sm" style="margin-top:8px" onclick="formServ(null,${l.id})">+ Incluir horário em ${esc(l.nome)}</button>` : ""}</div>`; }).join("")}`;
 }
 function formOrdem(uid){
@@ -785,6 +796,7 @@ function formLocal(id){
     if (xy || l.lat != null) Object.assign(row, xy ? {lat:+xy[1].replace(",", "."), lng:+xy[2].replace(",", "."), raio:+$("#lRa").value} : {lat:null, lng:null, raio:null});
     try { if (id) await api("PATCH", "/rest/v1/ck_locais?id=eq." + id, row, {prefer:"return=minimal"}); else await api("POST", "/rest/v1/ck_locais", row, {prefer:"return=minimal"}); closeSheet(); await carregaBase(); render(); toast("Local salvo."); } catch (e) { toast(/lat|lng|raio/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); } };
 }
+async function ativaServ(id, on){ try { await api("PATCH", "/rest/v1/ck_servicos?id=eq." + id, {ativo:on}, {prefer:"return=minimal"}); await carregaBase(); render(); toast(on ? "✅ Horário marcado: entra no checklist." : "⬜ Horário desmarcado: sai do checklist."); } catch (e) { toast(e.message); } }
 async function apagaServ(id, ev){
   if (ev) ev.stopPropagation(); const s = (S.servicos || []).find(x => x.id === id); if (!s) return;
   if (!confirm("Apagar o horário " + janela(s) + " · " + s.nome + "?\nEle sai do checklist e da lista. O histórico do que já foi feito continua guardado.")) return;
@@ -881,6 +893,58 @@ async function montaPadrao(b){
     closeSheet(); await carregaBase(); S.view = "serv"; render();
     toast("✅ Pronto! Grave o GPS do BR PARK em 🧹 Etapas → ✏️ BR PARK e envie os links em 👥 Equipe.");
   } catch (e) { b.disabled = false; b.textContent = "✨ Montar agora"; toast(e.message); }
+}
+/* ---------- entrega de EPI (admin e administrador auxiliar) ---------- */
+const EPI_PADRAO = ["Botina de segurança", "Bota de borracha", "Camisa (uniforme)", "Calça (uniforme)", "Luva de látex", "Luva de borracha", "Luva de vaqueta", "Máscara descartável", "Respirador PFF2", "Óculos de proteção", "Protetor auricular", "Boné", "Touca", "Avental impermeável", "Capa de chuva", "Colete refletivo", "Creme protetor", "Meia"];
+const epiItens = () => { const l = (S.cfg || {}).epi_itens; return Array.isArray(l) && l.length ? l : EPI_PADRAO; };
+async function telaEpi(){
+  S.epiSel = S.epiSel || {}; const sel = Object.entries(S.epiSel), nomes = [...new Set((S.usuarios || []).filter(u => u.papel !== "lider").map(u => u.nome))];
+  $("#app").innerHTML = `<div class="card"><h2>🦺 Nova entrega de EPI</h2>
+      <label class="f">Nome do colaborador<input id="epN" class="inp" list="epNomes" value="${esc(S.epiNome || "")}" placeholder="Ex.: Firmino" onchange="S.epiNome=this.value;epiMatricula()"><datalist id="epNomes">${nomes.map(n => `<option>${esc(n)}</option>`).join("")}</datalist></label>
+      <div class="grid2"><label class="f">Matrícula<input id="epM" class="inp" value="${esc(S.epiMat || "")}" onchange="S.epiMat=this.value" inputmode="numeric"></label><label class="f">Data da entrega<input id="epD" type="date" class="inp" value="${S.epiData || hoje()}" onchange="S.epiData=this.value"></label></div>
+      <button class="btn pri xl" onclick="epiEscolher()">📋 Escolher os itens${sel.length ? " (" + sel.length + ")" : ""}</button>
+      ${sel.length ? `<div class="fslot">${sel.map(([i, v]) => `<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line);padding:6px 0"><span><b>${v.q}×</b> ${esc(i)}${v.t ? ` <span class="meta">· tam. ${esc(v.t)}</span>` : ""}</span><button class="btn sm" style="margin:0" onclick="delete S.epiSel['${esc(i).replace(/'/g, "\\'")}'];render()">✕</button></div>`).join("")}</div>` : `<p class="meta">Nenhum item escolhido ainda.</p>`}
+      <label class="f">Observação (opcional)<input id="epO" class="inp" value="${esc(S.epiObs || "")}" onchange="S.epiObs=this.value"></label>
+      <div class="fslot"><div class="row" style="justify-content:space-between"><b>✍️ Assinatura de quem recebeu</b><button class="btn sm" style="margin:0" onclick="limpaAssin()">Limpar</button></div><div class="assin" id="assin"><canvas id="cvAssin"></canvas><span class="x">✕</span><i class="lin"></i></div></div>
+      <button class="btn ok xl" onclick="epiSalvar(this)">💾 Registrar entrega</button>
+      ${S.admin ? `<button class="btn sm" onclick="epiEditarLista()">✏️ Editar a lista de itens</button>` : ""}</div>
+    <div class="card"><h2>📜 Entregas registradas</h2><input id="epB" class="inp" placeholder="🔎 Pesquisar pelo nome ou item (ex.: botas)" value="${esc(S.epiBusca || "")}" oninput="S.epiBusca=this.value;epiLista()"><div id="epL" class="meta" style="margin-top:8px">Carregando…</div></div>`;
+  iniciaAssin();
+  try { S.epiReg = await tb("ck_epi", "select=*&order=criado_em.desc&limit=500"); epiLista(); } catch (e) { if ($("#epL")) $("#epL").textContent = /ck_epi/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message; }
+}
+function epiMatricula(){ const r = (S.epiReg || []).find(x => semAc(x.nome) === semAc(S.epiNome || "") && x.matricula); if (r && !$("#epM").value) { $("#epM").value = r.matricula; S.epiMat = r.matricula; } }
+function epiLista(){
+  const el = $("#epL"); if (!el) return; const b = semAc(S.epiBusca || "").trim();
+  const L = (S.epiReg || []).filter(x => !b || semAc(x.nome + " " + x.matricula + " " + (x.itens || []).map(i => i.i).join(" ")).includes(b));
+  el.innerHTML = L.length ? L.map(x => `<div style="border-bottom:1px solid var(--line);padding:8px 0;color:var(--ink)"><div class="row" style="justify-content:space-between"><span><b>${esc(x.nome)}</b> <span class="meta">${x.matricula ? "mat. " + esc(x.matricula) + " · " : ""}${dBR(x.data)}</span></span><button class="btn sm" style="margin:0" onclick="epiFicha('${esc(x.nome).replace(/'/g, "\\'")}')">🖨️ Ficha</button></div>
+    <div class="meta">${(x.itens || []).map(i => `${i.q}× ${esc(i.i)}${i.t ? " (" + esc(i.t) + ")" : ""}`).join(" · ")}${x.observacao ? "<br>📝 " + esc(x.observacao) : ""}<br>entregue por ${esc(x.por_nome || "—")}${x.assinatura ? " · ✍️ assinado" : ""}</div></div>`).join("") : "Nenhuma entrega encontrada.";
+}
+function epiEscolher(){
+  const lista = () => { const b = semAc(($("#epQ") || {}).value || ""); return epiItens().filter(i => !b || semAc(i).includes(b)).map(i => { const v = S.epiSel[i] || {q:0, t:""}, k = esc(i).replace(/'/g, "\\'"); return `<div class="drow" style="cursor:default"><span style="flex:1;min-width:0"><b>${esc(i)}</b>${v.q ? `<input class="inp" style="margin-top:4px;padding:6px 8px" placeholder="Tamanho (opcional)" value="${esc(v.t)}" onchange="S.epiSel['${k}'].t=this.value">` : ""}</span><button class="btn sm" style="margin:0" onclick="epiQ('${k}',-1)">−</button><b style="min-width:26px;text-align:center">${v.q}</b><button class="btn sm pri" style="margin:0" onclick="epiQ('${k}',1)">+</button></div>`; }).join("") || `<p class="meta">Nenhum item com esse nome. Peça ao administrador para incluir na lista.</p>`; };
+  window.epiListaItens = lista;
+  window.epiQ = (i, n) => { const v = S.epiSel[i] || {q:0, t:""}; v.q = Math.max(0, v.q + n); if (v.q) S.epiSel[i] = v; else delete S.epiSel[i]; const sc = $("#sheet").scrollTop; $("#epItens").innerHTML = lista(); $("#sheet").scrollTop = sc; };
+  openSheet(`<h2>📋 Itens de uso · Serviços gerais</h2><input id="epQ" class="inp" placeholder="🔎 Pesquisar: botas, camisa, calça, luvas…" oninput="$('#epItens').innerHTML=epiListaItens()"><div id="epItens" style="margin-top:8px">${lista()}</div><button class="btn pri xl" onclick="closeSheet();render()">✔ Pronto</button>`);
+}
+async function epiSalvar(b){
+  const nome = ($("#epN").value || "").trim(), itens = Object.entries(S.epiSel || {}).map(([i, v]) => ({i, q:v.q, t:v.t || ""}));
+  if (!nome) return toast("Digite o nome do colaborador."); if (!itens.length) return toast("Escolha pelo menos um item."); const a = pegaAssin(nome); if (!a) return toast("✍️ Falta a assinatura de quem recebeu.");
+  const u = (S.usuarios || []).find(x => semAc(x.nome) === semAc(nome));
+  b.disabled = true;
+  try { await api("POST", "/rest/v1/ck_epi", {filial:S.filial, user_id:u ? u.user_id : null, nome, matricula:($("#epM").value || "").trim(), data:$("#epD").value || hoje(), itens, assinatura:a.dataUrl, observacao:($("#epO").value || "").trim(), por_nome:S.perfil.nome || S.perfil.login}, {prefer:"return=minimal"});
+    S.epiSel = {}; S.epiNome = S.epiMat = S.epiObs = ""; S.epiData = null; toast("🦺 Entrega registrada."); render(); }
+  catch (e) { b.disabled = false; toast(/ck_epi/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase." : e.message); }
+}
+function epiEditarLista(){
+  openSheet(`<h2>✏️ Lista de itens de EPI</h2><p class="meta">Um item por linha. Inclua, apague ou mude o nome à vontade.</p><textarea id="epTx" class="inp" rows="14">${esc(epiItens().join("\n"))}</textarea><button class="btn pri" id="btEp">💾 Salvar lista</button>`);
+  $("#btEp").onclick = async () => { const l = [...new Set($("#epTx").value.split("\n").map(x => x.trim()).filter(Boolean))]; if (!l.length) return toast("A lista não pode ficar vazia."); await salvaCfg({epi_itens:l}, "Lista de EPI salva."); closeSheet(); render(); };
+}
+function epiFicha(nome){
+  const L = (S.epiReg || []).filter(x => semAc(x.nome) === semAc(nome)).sort((a, b) => a.data < b.data ? -1 : 1), mat = (L.find(x => x.matricula) || {}).matricula || "";
+  const w = window.open("", "_blank"); if (!w) return toast("Permita abrir janelas para imprimir a ficha.");
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Ficha de EPI - ${esc(nome)}</title><style>body{font-family:Arial,sans-serif;margin:24px;color:#111}h1{font-size:18px;margin:0}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px}td,th{border:1px solid #bbb;padding:5px;text-align:left;vertical-align:middle}img{height:38px}@media print{button{display:none}}</style></head><body>
+    <button onclick="print()" style="float:right;padding:10px 16px;font-weight:bold">🖨️ Imprimir / PDF</button><h1>FICHA DE ENTREGA DE EPI</h1><p>${esc(S.perfil.nome_filial || "")}<br><b>Colaborador:</b> ${esc(nome)} &nbsp; <b>Matrícula:</b> ${esc(mat)}</p>
+    <table><tr><th>Data</th><th>Itens</th><th>Entregue por</th><th>Assinatura</th></tr>${L.map(x => `<tr><td>${dBR(x.data)}</td><td>${(x.itens || []).map(i => `${i.q}× ${esc(i.i)}${i.t ? " (" + esc(i.t) + ")" : ""}`).join("<br>")}${x.observacao ? "<br><i>" + esc(x.observacao) + "</i>" : ""}</td><td>${esc(x.por_nome || "")}</td><td>${x.assinatura ? `<img src="${x.assinatura}">` : ""}</td></tr>`).join("")}</table>
+    <p style="font-size:11px;margin-top:16px">Declaro ter recebido os equipamentos acima, em perfeito estado, e me comprometo a usá-los e conservá-los.</p></body></html>`); w.document.close();
 }
 /* ---------- admin: equipe ---------- */
 function linkDe(u){ return new URL("checklist.html", location.href).href.split("?")[0] + "?f=" + encodeURIComponent(S.filial) + "&u=" + encodeURIComponent(u.login) + "&t=" + encodeURIComponent((S.links || {})[u.user_id] || ""); }
@@ -1070,13 +1134,13 @@ function formDemanda(uid, servId){
   openSheet(`<h2>📌 Nova demanda extra</h2>
     <label class="f">Colaborador<select id="dmU" class="inp">${col.map(u => `<option value="${u.user_id}" ${u.user_id === uid ? "selected" : ""}>${esc(u.nome)} · ${esc(u.funcao)} · ${TURNOS[u.turno] || ""}</option>`).join("")}</select></label>
     <label class="f">O que precisa ser feito?<textarea id="dmD" class="inp" rows="3" placeholder="Ex.: Limpar óleo derramado na pista 3"></textarea></label>
-    <label class="f">Horário<input id="dmH" type="time" class="inp" value="${agoraHM()}"></label>
+    <label class="f"><span><input type="checkbox" id="dmHc" checked onchange="$('#dmH').disabled=!this.checked"> ⏰ Marcar horário</span><input id="dmH" type="time" class="inp" value="${agoraHM()}"></label>
     <button class="btn pri" id="btDm">📤 Passar demanda</button><button class="btn" onclick="closeSheet()">Voltar</button>`);
   $("#btDm").onclick = async () => {
     const u = $("#dmU").value, desc = $("#dmD").value.trim(), sv = null; if (!u || !desc) return toast("Escolha o colaborador e escreva a demanda.");
     $("#btDm").disabled = true;
     try {
-      const [dm] = await api("POST", "/rest/v1/ck_demandas", {filial:S.filial, user_id:u, colaborador:nomeU(u), descricao:desc, data:hoje(), horario:$("#dmH").value || null, servico_abonado:sv, criado_por_nome:S.perfil.nome || S.perfil.login}, {prefer:"return=representation"});
+      const [dm] = await api("POST", "/rest/v1/ck_demandas", {filial:S.filial, user_id:u, colaborador:nomeU(u), descricao:desc, data:hoje(), horario:$("#dmHc").checked ? $("#dmH").value || null : null, servico_abonado:sv, criado_por_nome:S.perfil.nome || S.perfil.login}, {prefer:"return=representation"});
       if (sv) await api("POST", "/rest/v1/ck_abonos?on_conflict=servico_id,data", {filial:S.filial, servico_id:sv, data:hoje(), motivo:"Demanda extra: " + desc, demanda_id:dm.id, por_nome:S.perfil.nome || S.perfil.login}, {prefer:"resolution=merge-duplicates,return=minimal"});
       closeSheet(); S.data = hoje(); await atualizaDia(); S.view = "dem"; render(); toast("Demanda passada para " + nomeU(u) + (sv ? " e horário abonado." : "."));
     } catch (e) { $("#btDm").disabled = false; toast(/ck_demandas|ck_abonos/.test(e.message) ? "Rode de novo o arquivo 07-checklist.sql no Supabase (tabelas novas)." : e.message); }
@@ -1201,6 +1265,7 @@ function telaLocal(){
     <details><summary class="btn sm">✏️ Digitar as coordenadas (Google Maps)</summary><div class="row" style="margin-top:6px"><input id="lcXY" class="inp" style="flex:1" placeholder="-2.5305, -44.3002" value="${c.posto_lat != null ? c.posto_lat + ", " + c.posto_lng : ""}"><button class="btn sm pri" onclick="salvaCoord()">Salvar</button>${c.posto_lat != null ? `<button class="btn sm" onclick="if(confirm('Tirar o local do posto? O link volta a abrir em qualquer lugar.'))salvaCfg({posto_lat:null,posto_lng:null},'Local removido.')">Tirar</button>` : ""}</div></details>
     <div class="grid2"><label class="f">☕ Café (turno da manhã) às<input type="time" class="inp" value="${cafe().ini}" onchange="this.value&&salvaCfg({cafe_ini:this.value},'Café às '+this.value)"></label>
       <label class="f">Duração do café<select class="inp" onchange="salvaCfg({cafe_min:+this.value},'Café: '+this.value+' min')">${[0, 10, 15, 20, 30].map(n => `<option value="${n}" ${cafe().min === n ? "selected" : ""}>${n ? n + " min" : "sem café"}</option>`).join("")}</select></label></div>
+    <label class="f">📷 Foto para iniciar a etapa<select class="inp" onchange="salvaCfg({foto_inicio:this.value==='1'},this.value==='1'?'Foto obrigatória para iniciar':'Foto opcional para iniciar')"><option value="1" ${(S.cfg || {}).foto_inicio !== false ? "selected" : ""}>Obrigatória (sem foto não inicia)</option><option value="0" ${(S.cfg || {}).foto_inicio === false ? "selected" : ""}>Opcional</option></select></label>
     <label class="f">Antes do almoço, parar para bater o ponto<select class="inp" onchange="salvaCfg({ponto_min:+this.value},'Parar '+this.value+' min antes do almoço')">${[0, 5, 10, 15].map(n => `<option value="${n}" ${almoco().pt === n ? "selected" : ""}>${n ? n + " minutos antes" : "não precisa"}</option>`).join("")}</select></label>
     <label class="f">Tolerância de atraso em cada etapa<select class="inp" onchange="salvaTol(this.value)">${[0, 5, 10, 15, 20].map(n => `<option value="${n}" ${tolerancia() === n ? "selected" : ""}>${n} minutos</option>`).join("")}</select></label>
     <h2 style="margin-top:16px">🕐 Expediente (tudo editável)</h2>
@@ -1372,21 +1437,30 @@ async function salvaEscalaLida(b){
 setInterval(() => { const ag = agoraHM(); document.querySelectorAll("[data-relogio]").forEach(e => e.textContent = ag); }, 15000);
 const heroTec = (pct, titulo, sub, extra, lista) => `<div class="tec" style="flex-wrap:wrap"><div class="anel" style="--p:${pct}"><b>${pct}%</b></div><div style="position:relative;z-index:1;flex:1;min-width:0"><div class="oi">${titulo}</div><div class="meta">${sub}</div><span class="relp"><i></i>agora <span data-relogio>${agoraHM()}</span></span></div>${extra || ""}${lista ? `<div class="tecl">${lista}</div>` : ""}</div>`;
 /* situação de cada colaborador agora (atualiza sozinho a cada minuto) */
+async function atualizarTudo(b){ if (b) b.disabled = true; try { await carregaBase(); if (S.admin) await contaPedidos(); render(); toast("🔄 Atualizado às " + agoraHM() + "."); } catch (e) { toast("Sem internet para atualizar."); if (b) b.disabled = false; } }
+/* andamento de um colaborador: todas as etapas do dia, com a situação de cada uma */
+function verAndamento(uid){
+  const d = S.data || hoje(), L = linhasDia(d).filter(x => x.resp === uid), H = horasDia(uid, d), c = contagem(L), f = emFolga(uid, d), u = usuarioDe(uid) || {};
+  openSheet(`<h2>👷 ${esc(u.nome || nomeU(uid))} ${folgaPill(uid, d)}</h2><p class="meta">${dBR(d)} · ${c.ok} de ${L.length} etapas feitas (${c.pct}%) · ${hhmm(H.reg)} de ${hhmm(H.meta)} registradas · 🍽️ almoço ${almoco(uid).ini}–${almoco(uid).fim}</p><div class="bar big"><i style="width:${c.pct}%"></i></div>
+    ${f ? `<div class="ban info">Hoje de ${esc(f.tipo)}: as etapas dela(e) foram para ${esc(nomeU(responsavelCob(uid, d)) || "—")}.</div>` : ""}
+    <div style="margin-top:10px">${L.map(x => `<button class="drow ${FINAL(x.st) ? "ok" : pulada(x) ? "pul" : x.reg ? "ag" : ""}" onclick="closeSheet();detalhe(${x.s.id},'${d}')"><span class="hr">${janela(x.s)}</span><span style="flex:1;min-width:0"><b>${esc(x.s.nome)}</b><div class="meta">${pill(x.st)}${x.reg && x.reg.iniciado_em ? " · início " + hmTs(x.reg.iniciado_em) : ""}${x.reg && x.reg.concluido_em ? " · fim " + hmTs(x.reg.concluido_em) : ""}${x.reg && x.reg.motivo ? "<br>📝 " + esc(x.reg.motivo) : ""}${x.reg && x.reg.observacao ? "<br>💬 " + esc(x.reg.observacao) : ""}</div></span><span>›</span></button>`).join("") || `<p class="meta">Nenhuma etapa neste dia.</p>`}</div>
+    <div class="row"><button class="btn sm" onclick="closeSheet();formDemanda('${uid}')">📌 Passar demanda extra</button><button class="btn sm" onclick="closeSheet();horasDetalhe('${uid}','${d}')">⏱️ Horas do dia</button></div>`);
+}
 function agoraEquipe(d){
   const L = linhasDia(d), ag = agoraHM();
   return ativos().filter(u => !/teste/i.test(u.funcao + u.nome)).map(u => {
     const f = emFolga(u.user_id, d), l = L.filter(x => x.resp === u.user_id), nm = `<b>${esc(u.nome.split(" ")[0])}</b>`;
-    if (f) return {o:5, t:`${/férias/.test(f.tipo) ? "🌴" : "🏖️"} ${nm} está de ${esc(f.tipo)}`};
+    if (f) return {o:5, uid:u.user_id, t:`${/férias/.test(f.tipo) ? "🌴" : "🏖️"} ${nm} está de ${esc(f.tipo)}`};
     const A = almoco(u.user_id);
-    if (A.min && ag >= A.ini && ag < A.fim) return {o:2.5, c:"alm", t:`🍽️ ${nm} está no horário de almoço (${A.ini}–${A.fim})`};
+    if (A.min && ag >= A.ini && ag < A.fim) return {o:2.5, c:"alm", uid:u.user_id, t:`🍽️ ${nm} está no horário de almoço (${A.ini}–${A.fim})`};
     if (!l.length) return null;
     const and = l.find(x => x.reg && x.reg.status === "andamento");
-    if (and) return and.st === "estourado" ? {o:0, c:"crit", t:`⏰ ${nm} passou do horário em <b>${esc(and.s.nome)}</b> (até ${hm(and.s.horario_fim)})`} : {o:2, c:"ok", t:`🟡 ${nm} está em andamento: <b>${esc(and.s.nome)}</b> desde ${hmTs(and.reg.iniciado_em)}`};
+    if (and) return and.st === "estourado" ? {o:0, c:"crit", uid:u.user_id, t:`⏰ ${nm} passou do horário em <b>${esc(and.s.nome)}</b> (até ${hm(and.s.horario_fim)})`} : {o:2, c:"ok", uid:u.user_id, t:`🟡 ${nm} está em andamento: <b>${esc(and.s.nome)}</b> desde ${hmTs(and.reg.iniciado_em)}`};
     const par = l.find(x => !x.reg && x.st === "agora" && ag > addMin(hm(x.s.horario), tolerancia()));
-    if (par) return {o:1, c:"warn", t:`⏸️ ${nm} ainda não começou <b>${esc(par.s.nome)}</b> (era às ${hm(par.s.horario)})`};
+    if (par) return {o:1, c:"warn", uid:u.user_id, t:`⏸️ ${nm} ainda não começou <b>${esc(par.s.nome)}</b> (era às ${hm(par.s.horario)})`};
     const pul = l.filter(pulada).length, prox = l.find(x => !FINAL(x.st) && !pulada(x));
-    if (!prox) return {o:4, t:`✅ ${nm} terminou as tarefas do dia${pul ? ` · <b style="color:#fca5a5">${pul} pulada(s)</b>` : ""}`};
-    return {o:3, t:`⏳ ${nm}: próxima <b>${esc(prox.s.nome)}</b> às ${hm(prox.s.horario)}${pul ? ` · <b style="color:#fca5a5">${pul} pulada(s)</b>` : ""}`};
+    if (!prox) return {o:4, uid:u.user_id, t:`✅ ${nm} terminou as tarefas do dia${pul ? ` · <b style="color:#fca5a5">${pul} pulada(s)</b>` : ""}`};
+    return {o:3, uid:u.user_id, t:`⏳ ${nm}: próxima <b>${esc(prox.s.nome)}</b> às ${hm(prox.s.horario)}${pul ? ` · <b style="color:#fca5a5">${pul} pulada(s)</b>` : ""}`};
   }).filter(Boolean).sort((a, b) => a.o - b.o);
 }
 function telaInicio(){
@@ -1394,14 +1468,14 @@ function telaInicio(){
   const T = [["hoje", "📊", "Acompanhar o dia", `${c.ok} de ${c.tot} etapas · ${fora} fora do horário`, fora ? "crit" : ""], ["demanda", "📌", "Passar demanda extra", "Mandar uma tarefa para alguém agora", ""],
     ["escala", "📅", "Escala e folgas", folga.length ? "Hoje de folga: " + folga.map(u => u.nome).join(", ") : "Ler a foto da escala, 6x1, 12x36", ""], ["serv", "🧹", "Etapas e horários", (S.servicos || []).filter(s => s.ativo).length + " etapas cadastradas", ""],
     ["equipe", "👥", "Equipe e links", ativos().length + " colaboradores · enviar ou resetar link", ""], ["mat", "📦", "Pedidos e liberações", pend ? pend + " esperando resposta" : "Nenhum pedido novo", pend ? "warn" : ""],
-    ["hist", "📜", "Histórico e relatórios", "PDF e Excel por dia, semana ou mês", ""], ["cfg", "⚙️", "Configurações", "Local do posto, cores, tolerância", ""]].filter(t => S.admin || ["hoje", "demanda"].includes(t[0]));
+    ["hist", "📜", "Histórico e relatórios", "PDF e Excel por dia, semana ou mês", ""], ["cfg", "⚙️", "Configurações", "Local do posto, cores, tolerância", ""], ["epi", "🦺", "Entrega de EPI", "Botas, luvas, uniforme… com assinatura", ""]].filter(t => S.admin || ["hoje", "demanda", "epi"].includes(t[0]));
   const pessoas = ativos().map(u => { const l = L.filter(x => x.resp === u.user_id), ok = l.filter(x => ["concluido", "concluido_obs"].includes(x.st)).length; return {u, n:l.length, ok, pul:l.filter(pulada).length, p:l.length ? Math.round(ok / l.length * 100) : 0}; }).filter(x => x.n || emFolga(x.u.user_id, d));
   const EQ = agoraEquipe(d), emAnd = EQ.filter(x => x.o === 2).length, parados = EQ.filter(x => x.o <= 1).length, noAlm = EQ.filter(x => x.o === 2.5).length;
-  $("#app").innerHTML = heroTec(c.pct, `olá, <em>${esc((S.perfil.nome || "").split(" ")[0])}</em>`, `${DIAS[diaSem(d)]} ${dBR(d)} · ${c.ok} de ${c.tot} etapas concluídas${emAnd ? ` · <b style="color:#fde047">${emAnd} em andamento agora</b>` : ""}${noAlm ? ` · <b style="color:#7dd3fc">${noAlm} no almoço</b>` : ""}${parados ? ` · <b style="color:#fca5a5">${parados} precisa(m) de atenção</b>` : ""}`, "", EQ.map(x => `<div class="tecr ${x.c || ""}">${x.t}</div>`).join("")) + `
+  $("#app").innerHTML = heroTec(c.pct, `olá, <em>${esc((S.perfil.nome || "").split(" ")[0])}</em>`, `${DIAS[diaSem(d)]} ${dBR(d)} · ${c.ok} de ${c.tot} etapas concluídas${emAnd ? ` · <b style="color:#fde047">${emAnd} em andamento agora</b>` : ""}${noAlm ? ` · <b style="color:#7dd3fc">${noAlm} no almoço</b>` : ""}${parados ? ` · <b style="color:#fca5a5">${parados} precisa(m) de atenção</b>` : ""}`, `<button class="btn sm" style="margin:0;flex:none" onclick="atualizarTudo(this)">🔄 Atualizar</button>`, EQ.map(x => `<div class="tecr ${x.c || ""}" style="cursor:pointer" onclick="verAndamento('${x.uid}')">${x.t} <span style="float:right;opacity:.6">›</span></div>`).join("")) + `
     <div class="cbox"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><b style="font-size:16px">📈 Acompanhamento das tarefas</b><b style="font-family:var(--display);font-size:28px;color:var(--brand)">${c.pct}%</b></div>
       <div class="bar big"><i style="width:${c.pct}%"></i></div>
       <div class="meta" style="margin-top:6px">✅ ${c.ok} feitas · 🟡 ${c.and} em andamento · 🔴 ${c.atr} atrasadas/puladas · ❌ ${c.no} não feitas · total ${c.tot}</div>
-      ${pessoas.map(x => `<div style="margin-top:10px"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><span><b>${esc(x.u.nome)}</b> ${folgaPill(x.u.user_id, d)} <span class="meta">${x.n ? x.ok + " de " + x.n : "sem tarefas hoje"}${x.pul ? ` · <b style="color:var(--crit)">🔒 ${x.pul} pulada(s)</b>` : ""}</span></span><b>${x.n ? x.p + "%" : ""}</b></div><div class="bar"><i style="width:${x.p}%"></i></div></div>`).join("")}</div>
+      ${pessoas.map(x => `<div style="margin-top:10px;cursor:pointer" onclick="verAndamento('${x.u.user_id}')"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><span><b>${esc(x.u.nome)}</b> ${folgaPill(x.u.user_id, d)} <span class="meta">${x.n ? x.ok + " de " + x.n : "sem tarefas hoje"}${x.pul ? ` · <b style="color:var(--crit)">🔒 ${x.pul} pulada(s)</b>` : ""}</span></span><b>${x.n ? x.p + "%" : ""}</b></div><div class="bar"><i style="width:${x.p}%"></i></div></div>`).join("")}</div>
     <div class="home entra">${T.map(([k, ic, t, sub, cl]) => `<button class="hbtn ${cl}" onclick="${k === "demanda" ? "formDemanda()" : `S.view='${k}';render()`}"><span class="hic">${ic}</span><b>${t}</b><small>${esc(sub)}</small></button>`).join("")}</div>`;
 }
 </script>
